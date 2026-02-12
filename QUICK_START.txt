@@ -1,0 +1,94 @@
+================================================================================
+QUICK START GUIDE - NEW FEATURES
+================================================================================
+
+TWO NEW FEATURES ADDED:
+1. Dynamic Form Field Editor (customize forms for each drive)
+2. Admin Deadline Notifications (get notified when deadlines expire)
+
+================================================================================
+SETUP (ONE TIME ONLY)
+================================================================================
+
+STEP 1: Run SQL Setup
+----------------------
+1. Open phpMyAdmin: http://localhost/phpmyadmin
+2. Select database: admin_placement_db
+3. Click "SQL" tab
+4. Copy contents from: sql/create_admin_notifications.sql
+5. Paste and click "Go"
+
+That's it! No other setup needed.
+
+================================================================================
+USING THE FEATURES
+================================================================================
+
+FEATURE 1: Customize Application Forms
+---------------------------------------
+1. Go to any drive → Click "Edit Drive"
+2. Click "Customize Application Form" button (top-right)
+3. Check/uncheck fields you want to include
+4. Add custom fields if needed
+5. Click "Save Form Configuration"
+6. Preview the form to verify
+
+Example use case:
+- Company doesn't need PG details? Uncheck all PG fields
+- Company wants portfolio link? Add custom field "Portfolio URL"
+- Only need basic info? Deselect advanced fields
+
+FEATURE 2: Deadline Notifications
+----------------------------------
+1. Look for bell icon in sidebar (below logo)
+2. Red badge shows unread notification count
+3. Click bell to view all notifications
+
+Notifications are created automatically when:
+- Deadline expires (1+ hour after deadline)
+- Deadline approaching (within 24 hours)
+
+Just refresh any admin page to check for new notifications!
+
+================================================================================
+TESTING
+================================================================================
+
+Test Form Editor:
+-----------------
+1. Edit any drive
+2. Click "Customize Application Form"
+3. Uncheck some fields
+4. Save and preview
+5. Verify only selected fields appear
+
+Test Notifications:
+-------------------
+1. Create test drive with deadline = 2 hours ago
+2. Refresh dashboard (or any admin page)
+3. Bell icon should show badge "1"
+4. Click bell to see notification
+
+================================================================================
+TIPS
+================================================================================
+
+- Form customization is per-drive (not global)
+- Notifications check happens on every page load
+- No background tasks or scheduled jobs needed
+- Changes apply immediately
+- You can edit forms multiple times
+
+================================================================================
+NEED HELP?
+================================================================================
+
+See detailed docs: NEW_FEATURES_README.md
+Full setup guide: SETUP_INSTRUCTIONS.txt
+
+Common Issues:
+- No notifications? Wait at least 1 hour after deadline, then refresh
+- Fields not saving? Clear browser cache (Ctrl+F5)
+- Bell not showing? Verify SQL setup completed successfully
+
+================================================================================

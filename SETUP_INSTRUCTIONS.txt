@@ -1,0 +1,184 @@
+================================================================================
+PLACEMENT CELL - NEW FEATURES SETUP INSTRUCTIONS
+================================================================================
+
+Two new features have been implemented:
+1. Dynamic Form Field Editor for Drives
+2. Admin Notification System with Deadline Reminders
+
+================================================================================
+STEP 1: DATABASE SETUP (REQUIRED)
+================================================================================
+
+You MUST run the SQL setup script before using the new features.
+
+Option A: Using phpMyAdmin (Recommended)
+-----------------------------------------
+1. Open your browser and go to: http://localhost/phpmyadmin
+2. Click on database: admin_placement_db
+3. Click the "SQL" tab at the top
+4. Open this file in a text editor:
+   C:\Users\Kavin\Downloads\placementcell041225\placementcell\sql\create_admin_notifications.sql
+5. Copy ALL the contents
+6. Paste into the SQL text box in phpMyAdmin
+7. Click "Go" button to execute
+8. You should see success messages for:
+   - admin_notifications table created
+   - deadline_notifications_sent table created
+   - drives table altered (form_fields column added)
+
+Option B: Using MySQL Command Line
+-----------------------------------
+1. Open Command Prompt (cmd)
+2. Navigate to MySQL bin directory:
+   cd C:\xampp\mysql\bin
+3. Run this command:
+   mysql -u root -p admin_placement_db < "C:\Users\Kavin\Downloads\placementcell041225\placementcell\sql\create_admin_notifications.sql"
+4. Enter your MySQL password when prompted (usually blank for XAMPP)
+
+================================================================================
+STEP 2: HOW NOTIFICATIONS WORK
+================================================================================
+
+The notification system works automatically - NO additional setup needed!
+
+How it works:
+-------------
+1. Whenever you load any admin page, the system automatically checks for:
+   - Drives where deadline expired more than 1 hour ago
+   - Drives with deadlines in the next 24 hours
+
+2. If found, it creates notifications automatically
+
+3. Notifications appear in the bell icon in the sidebar
+
+That's it! No Windows Task Scheduler or background processes needed.
+
+When you'll see notifications:
+-------------------------------
+- AFTER deadline expires: Notification appears 1+ hour after deadline
+- BEFORE deadline: Notification appears when deadline is within 24 hours
+- Just refresh any admin page to check for new notifications
+
+================================================================================
+STEP 3: TEST THE FEATURES
+================================================================================
+
+Test Feature 1: Form Field Editor
+----------------------------------
+1. Login to admin portal
+2. Go to any drive's edit page
+3. Click "Customize Application Form" button
+4. Try unchecking some fields
+5. Add a custom field (e.g., "Portfolio Link")
+6. Click "Save Form Configuration"
+7. Click "Preview Form" to see the changes
+8. Verify only selected fields appear
+
+Test Feature 2: Notifications
+------------------------------
+1. Login to admin portal
+2. Look for the bell icon in the sidebar (below the logo)
+3. Click on it to open notification center
+4. To test deadline notifications:
+   a. Create a test drive with close_date = 1 hour ago
+   b. Wait 15 minutes for the scheduled task to run
+   c. Refresh the page and check the bell icon
+   d. You should see a notification about the expired deadline
+
+================================================================================
+STEP 4: VERIFY EVERYTHING IS WORKING
+================================================================================
+
+Checklist:
+----------
+[ ] Database tables created successfully
+    - Check in phpMyAdmin: admin_notifications table exists
+    - Check in phpMyAdmin: deadline_notifications_sent table exists
+    - Check in phpMyAdmin: drives table has form_fields column
+
+[ ] Notification bell appears in admin sidebar
+    - Look below the logo in the collapsed sidebar
+    - Bell should be visible and clickable
+
+[ ] Form field editor accessible
+    - Edit any drive
+    - "Customize Application Form" button visible
+    - Clicking it opens the editor page
+
+[ ] Form customization works
+    - Edit form fields for a drive
+    - Save changes
+    - Preview form shows only selected fields
+
+[ ] Notifications appear automatically
+    - Create a test drive with deadline that expired 2 hours ago
+    - Refresh any admin page (dashboard, drives, etc.)
+    - Bell icon shows badge count
+    - Click bell to see the notification
+
+================================================================================
+TROUBLESHOOTING
+================================================================================
+
+Issue: "Table already exists" error
+Solution: The tables were already created. This is fine, skip the SQL step.
+
+Issue: Notification bell not showing
+Solution:
+  - Clear browser cache (Ctrl + Shift + Delete)
+  - Hard refresh page (Ctrl + F5)
+  - Check if admin_notifications table exists in database
+
+Issue: No notifications appearing
+Solution:
+  - Verify drive close_date is in the past (at least 1 hour ago)
+  - Refresh any admin page to trigger the check
+  - Check admin_notifications table in phpMyAdmin - are there any rows?
+  - Check deadline_notifications_sent table - it should have entries
+  - Verify check_deadlines_on_load.php exists in the placementcell folder
+
+Issue: Form fields not saving
+Solution:
+  - Check browser console for JavaScript errors (F12)
+  - Verify form_fields column exists in drives table
+  - Check PHP error log
+  - Clear browser cache and try again
+
+================================================================================
+DOCUMENTATION
+================================================================================
+
+For detailed documentation, see:
+C:\Users\Kavin\Downloads\placementcell041225\placementcell\NEW_FEATURES_README.md
+
+This file contains:
+- Detailed usage instructions
+- Screenshots and examples
+- Technical details
+- Database schema
+- Advanced troubleshooting
+
+================================================================================
+SUPPORT
+================================================================================
+
+If you encounter issues:
+1. Check PHP error log (usually in xampp/apache/logs/error.log)
+2. Verify database connection in config.php
+3. Check database tables exist in phpMyAdmin
+4. Test with sample data first before using in production
+
+================================================================================
+COMPLETED!
+================================================================================
+
+Once all steps are done, you can:
+
+1. Customize application forms for each drive based on job requirements
+2. Receive automatic notifications when deadlines expire
+3. Get reminders 24 hours before deadlines
+4. View all notifications in the notification center
+5. Track which companies need applicant lists shared
+
+Enjoy the new features!

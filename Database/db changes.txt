@@ -1,0 +1,58 @@
+ALTER TABLE drives ADD COLUMN form_fields TEXT NULL;
+
+UPDATE drives d
+JOIN (
+    SELECT drive_id, MAX(form_fields) AS form_fields
+    FROM drive_roles
+    WHERE form_fields IS NOT NULL
+    GROUP BY drive_id
+) dr ON d.drive_id = dr.drive_id
+SET d.form_fields = dr.form_fields;
+
+
+
+ALTER TABLE drives
+ADD COLUMN company_url VARCHAR(255),
+ADD COLUMN graduating_year VARCHAR(10),
+ADD COLUMN work_location VARCHAR(255);
+
+
+ALTER TABLE drive_roles
+ADD COLUMN work_timings VARCHAR(100);
+
+
+
+ALTER TABLE placed_students
+ADD COLUMN offer_type VARCHAR(100) DEFAULT NULL;
+
+
+ALTER TABLE students
+ADD COLUMN offer_type VARCHAR(100) DEFAULT NULL;
+
+ALTER TABLE placed_students
+ADD COLUMN percentage FLOAT DEFAULT NULL;
+
+
+ALTER TABLE students CHANGE COLUMN comments editable_comment TEXT NULL;
+ALTER TABLE students ADD COLUMN Offcampus_selection ENUM('unknown', 'not_placed', 'placed') DEFAULT 'unknown';
+
+
+ALTER TABLE placed_students 
+ADD COLUMN edit_ctc VARCHAR(50),
+ADD COLUMN edit_stipend VARCHAR(50);
+
+
+DELIMITER $$
+
+CREATE TRIGGER reset_edit_fields_on_drive_or_role_change
+BEFORE UPDATE ON placed_students
+FOR EACH ROW
+BEGIN
+    IF NEW.drive_id <> OLD.drive_id OR NEW.role_id <> OLD.role_id THEN
+        SET NEW.edit_ctc = NULL;
+        SET NEW.edit_stipend = NULL;
+    END IF;
+END$$
+
+DELIMITER ;
+

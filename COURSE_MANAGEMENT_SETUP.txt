@@ -1,0 +1,174 @@
+========================================
+COURSE MANAGEMENT FEATURE - SETUP GUIDE
+========================================
+
+This document explains how to set up and use the new dynamic course management system.
+
+========================================
+WHAT IS THIS FEATURE?
+========================================
+
+Previously, courses were hardcoded in the "course_groups.php" file. If you wanted to add,
+edit, or remove courses, you had to manually edit PHP code.
+
+NOW: Admins can manage courses directly from the admin panel through a user-friendly
+interface. No coding required!
+
+========================================
+SETUP INSTRUCTIONS
+========================================
+
+Step 1: Run the SQL Script
+---------------------------
+1. Open phpMyAdmin (http://localhost/phpmyadmin)
+2. Select your database: admin_placement_db
+3. Click on "SQL" tab
+4. Open the file: sql/create_courses_table.sql
+5. Copy the entire content and paste it into the SQL query box
+6. Click "Go" to execute
+
+This will:
+- Create a new "courses" table
+- Pre-populate it with all existing courses
+- Preserve all your current course data
+
+Step 2: Verify Installation
+----------------------------
+1. Log in to the admin panel
+2. Look for "Manage Courses" in the left sidebar (below "Generate Report")
+3. Click on it to open the course management interface
+
+If you see the page with a list of courses, the setup is complete!
+
+========================================
+HOW TO USE
+========================================
+
+Adding a New Course:
+--------------------
+1. Go to "Manage Courses" from the sidebar
+2. Click the "Add New Course" button (top right)
+3. Fill in the form:
+   - Course Name: e.g., "Computer Science Engineering"
+   - Program Type: UG or PG
+   - School: e.g., "School of Engineering"
+   - Program Level: e.g., "B.Tech", "M.Tech"
+   - Display Order: Number for sorting (lower appears first)
+4. Click "Add Course"
+
+The new course will immediately appear in:
+- Student registration form dropdowns
+- All report generation pages
+- Drive creation forms
+
+Editing a Course:
+-----------------
+1. Find the course in the list
+2. Click the pencil icon (Edit button)
+3. Modify any field
+4. Click "Save Changes"
+
+Deleting a Course:
+------------------
+1. Find the course in the list
+2. Click the trash icon (Delete button)
+3. Confirm deletion
+
+IMPORTANT: You cannot delete a course if students are already registered under it!
+The system will show an error if you try to delete a course in use.
+
+Activating/Deactivating a Course:
+----------------------------------
+1. Click the toggle switch next to any course
+2. Inactive courses won't appear in dropdowns but are preserved in the database
+3. Use this if you want to temporarily hide a course without deleting it
+
+Searching and Filtering:
+-------------------------
+- Use the search box to find courses by name
+- Use the "Filter by Type" dropdown to show only UG or PG courses
+- Use the "Filter by Status" dropdown to show active or inactive courses
+
+========================================
+TECHNICAL DETAILS
+========================================
+
+Files Changed:
+--------------
+1. course_groups_dynamic.php - Smart loader that reads from database
+2. course_groups_backup.php - Backup of original hardcoded courses
+3. manage_courses.php - Admin interface for course management
+4. All pages now use course_groups_dynamic.php instead of course_groups.php
+
+How It Works:
+-------------
+- course_groups_dynamic.php first tries to load courses from the database
+- If the database table doesn't exist (e.g., fresh installation), it falls back
+  to the hardcoded backup file
+- This ensures backward compatibility
+
+Database Table Structure:
+-------------------------
+Table name: courses
+Columns:
+- course_id (Primary Key, Auto-increment)
+- course_name (Course name)
+- program_type (UG or PG)
+- school (School name)
+- program_level (B.Tech, M.Tech, etc.)
+- display_order (For sorting)
+- is_active (1 = active, 0 = inactive)
+- created_at (Timestamp)
+- updated_at (Timestamp)
+
+========================================
+TROUBLESHOOTING
+========================================
+
+Problem: "Manage Courses" menu item not showing
+Solution: Clear your browser cache and refresh the page
+
+Problem: Course management page shows error
+Solution:
+1. Verify the SQL script was run successfully
+2. Check that the "courses" table exists in phpMyAdmin
+3. Check config.php has correct database credentials
+
+Problem: New courses don't appear in registration form
+Solution:
+1. Make sure the course is marked as "Active" (toggle should be green)
+2. Clear browser cache
+3. Check the course display_order is set correctly
+
+Problem: Can't delete a course
+Solution: This is expected if students are registered under that course.
+You can deactivate it instead using the toggle switch.
+
+Problem: Courses reverted to old list after adding new ones
+Solution:
+1. Check that sql/create_courses_table.sql was executed
+2. Verify database connection in config.php
+3. Check error logs in phpMyAdmin
+
+========================================
+SENDING TO A FRIEND
+========================================
+
+Your friend needs to:
+1. Import the entire database using the latest backup
+2. Run sql/create_courses_table.sql
+3. That's it! The course management will work automatically
+
+The feature has backward compatibility, so even if they don't run the SQL script,
+the system will fall back to hardcoded courses and won't break.
+
+========================================
+ADDITIONAL NOTES
+========================================
+
+- All existing functionality continues to work exactly as before
+- Student registration, drive creation, and reports all automatically use the new system
+- You can always switch back to hardcoded courses by manually editing files if needed
+- The database stores course history, so you can track when courses were added/modified
+
+For support or issues, contact the placement cell admin team.

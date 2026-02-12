@@ -1,0 +1,19 @@
+# Custom PHP settings
+php_value max_input_vars 3000
+
+# Enable mod_rewrite
+RewriteEngine On
+
+# Hide .php extension in browser URLs
+RewriteCond %{THE_REQUEST} ^[A-Z]{3,}\s([^.]+)\.php\sHTTP/
+RewriteRule ^ %1 [R=301,L]
+
+
+# Route /student_form and /student_form/... to student_form.php and pass extra path as PATH_INFO
+RewriteRule ^student_form(/.*)?$ student_form.php$1 [L,QSA]
+
+
+# Internally route URLs like /dashboard to dashboard.php
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^([a-zA-Z0-9_-]+)$ $1.php [L]

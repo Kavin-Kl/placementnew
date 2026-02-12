@@ -1,0 +1,105 @@
+[❌ ERROR] 2026-01-06 17:01:54
+Command: "C:\xampp\mysql\bin\mysqldump.exe" --routines --triggers --events --single-transaction -h 127.0.0.1 -u root  admin_placement_db > "C:\xampp\htdocs\placementcell/backups/DATA/2026/01/placement_backup_06-01-2026.sql"
+
+[❌ ERROR] 2026-01-06 17:13:20
+Command: "C:\xampp\mysql\bin\mysqldump.exe" --routines --triggers --events --single-transaction -h 127.0.0.1 -u root  admin_placement_db > "C:\xampp\htdocs\placementcell/backups/DATA/2026/01/placement_backup_06-01-2026.sql"
+
+[❌ ERROR] 2026-01-14 02:48:20
+Command: "C:\xampp\mysql\bin\mysqldump.exe" --routines --triggers --events --single-transaction -h 127.0.0.1 -u root  admin_placement_db > "C:\xampp\htdocs\placementcell/backups/DATA/2026/01/placement_backup_14-01-2026.sql"
+
+[❌ ERROR] 2026-01-14 02:48:23
+Command: "C:\xampp\mysql\bin\mysqldump.exe" --routines --triggers --events --single-transaction -h 127.0.0.1 -u root  admin_placement_db > "C:\xampp\htdocs\placementcell/backups/DATA/2026/01/placement_backup_14-01-2026.sql"
+
+[❌ ERROR] 2026-01-14 02:58:36
+Command: "C:\xampp\mysql\bin\mysqldump.exe" --routines --triggers --events --single-transaction -h 127.0.0.1 -u root  admin_placement_db > "C:\xampp\htdocs\placementcell/backups/DATA/2026/01/placement_backup_14-01-2026.sql"
+
+[❌ ERROR] 2026-01-14 02:58:44
+Command: "C:\xampp\mysql\bin\mysqldump.exe" --routines --triggers --events --single-transaction -h 127.0.0.1 -u root  admin_placement_db > "C:\xampp\htdocs\placementcell/backups/DATA/2026/01/placement_backup_14-01-2026.sql"
+
+[❌ ERROR] 2026-01-14 02:58:52
+Command: "C:\xampp\mysql\bin\mysqldump.exe" --routines --triggers --events --single-transaction -h 127.0.0.1 -u root  admin_placement_db > "C:\xampp\htdocs\placementcell/backups/DATA/2026/01/placement_backup_14-01-2026.sql"
+
+[❌ ERROR] 2026-01-21 14:36:03
+Command: "C:\xampp\mysql\bin\mysqldump.exe" --routines --triggers --events --single-transaction -h 127.0.0.1 -u root  admin_placement_db > "C:\xampp\htdocs\placementcell/backups/DATA/2026/01/placement_backup_21-01-2026.sql"
+
+[❌ ERROR] 2026-01-21 22:36:35
+Command: "C:\xampp\mysql\bin\mysqldump.exe" --routines --triggers --events --single-transaction -h 127.0.0.1 -u root  admin_placement_db > "C:\xampp\htdocs\placementcell/backups/DATA/2026/01/placement_backup_21-01-2026.sql"
+
+[❌ ERROR] 2026-01-21 22:36:47
+Command: "C:\xampp\mysql\bin\mysqldump.exe" --routines --triggers --events --single-transaction -h 127.0.0.1 -u root  admin_placement_db > "C:\xampp\htdocs\placementcell/backups/DATA/2026/01/placement_backup_21-01-2026.sql"
+
+[❌ ERROR] 2026-01-21 22:43:45
+Command: "C:\xampp\mysql\bin\mysqldump.exe" --routines --triggers --events --single-transaction -h 127.0.0.1 -u root  admin_placement_db > "C:\xampp\htdocs\placementcell/backups/DATA/2026/01/placement_backup_21-01-2026.sql"
+
+[❌ ERROR] 2026-01-22 01:56:51
+Command: "C:\xampp\mysql\bin\mysqldump.exe" --routines --triggers --events --single-transaction -h 127.0.0.1 -u root  admin_placement_db > "C:\xampp\htdocs\placementcell/backups/DATA/2026/01/placement_backup_22-01-2026.sql"
+
+[❌ ERROR] 2026-01-22 14:08:37
+Command: "C:\xampp\mysql\bin\mysqldump.exe" --routines --triggers --events --single-transaction -h 127.0.0.1 -u root  admin_placement_db > "C:\xampp\htdocs\placementcell/backups/DATA/2026/01/placement_backup_22-01-2026.sql"
+
+[❌ ERROR] 2026-01-22 21:16:58
+Command: "C:\xampp\mysql\bin\mysqldump.exe" --routines --triggers --events --single-transaction -h 127.0.0.1 -u root  admin_placement_db > "C:\xampp\htdocs\placementcell/backups/DATA/2026/01/placement_backup_22-01-2026.sql"
+
+[❌ ERROR] 2026-01-22 21:33:10
+Command: "C:\xampp\mysql\bin\mysqldump.exe" --routines --triggers --events --single-transaction -h 127.0.0.1 -u root  admin_placement_db > "C:\xampp\htdocs\placementcell/backups/DATA/2026/01/placement_backup_22-01-2026.sql"
+
+[❌ ERROR] 2026-01-22 21:37:22
+Command: "C:\xampp\mysql\bin\mysqldump.exe" --routines --triggers --events --single-transaction -h 127.0.0.1 -u root  admin_placement_db > "C:\xampp\htdocs\placementcell/backups/DATA/2026/01/placement_backup_22-01-2026.sql"
+
+[❌ ERROR] 2026-01-22 22:35:48
+Command: "C:\xampp\mysql\bin\mysqldump.exe" --routines --triggers --events --single-transaction -h 127.0.0.1 -u root  admin_placement_db > "C:\xampp\htdocs\placementcell/backups/DATA/2026/01/placement_backup_22-01-2026.sql"
+
+[❌ ERROR] 2026-01-23 00:50:35
+Command: "C:\xampp\mysql\bin\mysqldump.exe" --routines --triggers --events --single-transaction -h 127.0.0.1 -u root  admin_placement_db > "C:\xampp\htdocs\placementcell/backups/DATA/2026/01/placement_backup_23-01-2026.sql"
+
+[❌ ERROR] 2026-01-23 07:59:14
+Command: "C:\xampp\mysql\bin\mysqldump.exe" --routines --triggers --events --single-transaction -h 127.0.0.1 -u root  admin_placement_db > "C:\xampp\htdocs\placementcell/backups/DATA/2026/01/placement_backup_23-01-2026.sql"
+
+[❌ ERROR] 2026-01-23 12:15:33
+Command: "C:\xampp\mysql\bin\mysqldump.exe" --routines --triggers --events --single-transaction -h 127.0.0.1 -u root  admin_placement_db > "C:\xampp\htdocs\placementcell/backups/DATA/2026/01/placement_backup_23-01-2026.sql"
+
+[❌ ERROR] 2026-01-23 12:15:33
+Command: "C:\xampp\mysql\bin\mysqldump.exe" --routines --triggers --events --single-transaction -h 127.0.0.1 -u root  admin_placement_db > "C:\xampp\htdocs\placementcell/backups/DATA/2026/01/placement_backup_23-01-2026.sql"
+
+[❌ ERROR] 2026-01-27 17:39:29
+Command: "C:\xampp\mysql\bin\mysqldump.exe" --routines --triggers --events --single-transaction -h 127.0.0.1 -u root  admin_placement_db > "C:\xampp\htdocs\placementcell/backups/DATA/2026/01/placement_backup_27-01-2026.sql"
+
+[❌ ERROR] 2026-01-27 22:14:29
+Command: "C:\xampp\mysql\bin\mysqldump.exe" --routines --triggers --events --single-transaction -h 127.0.0.1 -u root  admin_placement_db > "C:\xampp\htdocs\placementcell/backups/DATA/2026/01/placement_backup_27-01-2026.sql"
+
+[❌ ERROR] 2026-01-27 22:17:44
+Command: "C:\xampp\mysql\bin\mysqldump.exe" --routines --triggers --events --single-transaction -h 127.0.0.1 -u root  admin_placement_db > "C:\xampp\htdocs\placementcell/backups/DATA/2026/01/placement_backup_27-01-2026.sql"
+
+[❌ ERROR] 2026-01-28 00:41:34
+Command: "C:\xampp\mysql\bin\mysqldump.exe" --routines --triggers --events --single-transaction -h 127.0.0.1 -u root  admin_placement_db > "C:\xampp\htdocs\placementcell/backups/DATA/2026/01/placement_backup_28-01-2026.sql"
+
+[❌ ERROR] 2026-01-28 00:53:51
+Command: "C:\xampp\mysql\bin\mysqldump.exe" --routines --triggers --events --single-transaction -h 127.0.0.1 -u root  admin_placement_db > "C:\xampp\htdocs\placementcell/backups/DATA/2026/01/placement_backup_28-01-2026.sql"
+
+[❌ ERROR] 2026-01-28 00:55:53
+Command: "C:\xampp\mysql\bin\mysqldump.exe" --routines --triggers --events --single-transaction -h 127.0.0.1 -u root  admin_placement_db > "C:\xampp\htdocs\placementcell/backups/DATA/2026/01/placement_backup_28-01-2026.sql"
+
+[❌ ERROR] 2026-01-28 01:02:43
+Command: "C:\xampp\mysql\bin\mysqldump.exe" --routines --triggers --events --single-transaction -h 127.0.0.1 -u root  admin_placement_db > "C:\xampp\htdocs\placementcell/backups/DATA/2026/01/placement_backup_28-01-2026.sql"
+
+[❌ ERROR] 2026-01-28 21:51:00
+Command: "C:\xampp\mysql\bin\mysqldump.exe" --routines --triggers --events --single-transaction -h 127.0.0.1 -u root  admin_placement_db > "C:\xampp\htdocs\placementcell/backups/DATA/2026/01/placement_backup_28-01-2026.sql"
+
+[❌ ERROR] 2026-01-28 23:31:42
+Command: "C:\xampp\mysql\bin\mysqldump.exe" --routines --triggers --events --single-transaction -h 127.0.0.1 -u root  admin_placement_db > "C:\xampp\htdocs\placementcell/backups/DATA/2026/01/placement_backup_28-01-2026.sql"
+
+[❌ ERROR] 2026-01-28 23:53:45
+Command: "C:\xampp\mysql\bin\mysqldump.exe" --routines --triggers --events --single-transaction -h 127.0.0.1 -u root  admin_placement_db > "C:\xampp\htdocs\placementcell/backups/DATA/2026/01/placement_backup_28-01-2026.sql"
+
+[❌ ERROR] 2026-01-29 23:51:59
+Command: "C:\xampp\mysql\bin\mysqldump.exe" --routines --triggers --events --single-transaction -h 127.0.0.1 -u root  admin_placement_db > "C:\xampp\htdocs\placementcell/backups/DATA/2026/01/placement_backup_29-01-2026.sql"
+
+[❌ ERROR] 2026-01-30 12:30:36
+Command: "C:\xampp\mysql\bin\mysqldump.exe" --routines --triggers --events --single-transaction -h 127.0.0.1 -u root  admin_placement_db > "C:\xampp\htdocs\placementcell/backups/DATA/2026/01/placement_backup_30-01-2026.sql"
+
+[❌ ERROR] 2026-01-30 13:16:01
+Command: "C:\xampp\mysql\bin\mysqldump.exe" --routines --triggers --events --single-transaction -h 127.0.0.1 -u root  admin_placement_db > "C:\xampp\htdocs\placementcell/backups/DATA/2026/01/placement_backup_30-01-2026.sql"
+
+[❌ ERROR] 2026-01-30 13:26:08
+Command: "C:\xampp\mysql\bin\mysqldump.exe" --routines --triggers --events --single-transaction -h 127.0.0.1 -u root  admin_placement_db > "C:\xampp\htdocs\placementcell/backups/DATA/2026/01/placement_backup_30-01-2026.sql"
+

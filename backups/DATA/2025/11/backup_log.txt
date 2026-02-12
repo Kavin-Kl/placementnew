@@ -1,0 +1,408 @@
+[✅ SUCCESS] Dump completed at 2025-11-02 16:18:20
+File: C:\xamppp\htdocs\placement_cell_it/backups/DATA/2025/11/placement_backup_02-11-2025.sql
+
+[✅ SUCCESS] Dump completed at 2025-11-02 16:56:44
+File: C:\xamppp\htdocs\placement_cell_it/backups/DATA/2025/11/placement_backup_02-11-2025.sql
+
+[✅ SUCCESS] Dump completed at 2025-11-02 21:30:46
+File: C:\xamppp\htdocs\placement_cell_it/backups/DATA/2025/11/placement_backup_02-11-2025.sql
+
+[✅ SUCCESS] Dump completed at 2025-11-03 10:34:38
+File: C:\xampp\htdocs\placementcell/backups/DATA/2025/11/placement_backup_03-11-2025.sql
+
+[✅ SUCCESS] Dump completed at 2025-11-03 10:34:51
+File: C:\xampp\htdocs\placementcell/backups/DATA/2025/11/placement_backup_03-11-2025.sql
+
+[✅ SUCCESS] Dump completed at 2025-11-03 11:01:32
+File: C:\xampp\htdocs\placementcell/backups/DATA/2025/11/placement_backup_03-11-2025.sql
+
+[✅ SUCCESS] Dump completed at 2025-11-03 11:02:11
+File: C:\xampp\htdocs\placementcell/backups/DATA/2025/11/placement_backup_03-11-2025.sql
+
+[✅ SUCCESS] Dump completed at 2025-11-03 11:52:52
+File: C:\xampp\htdocs\placementcell/backups/DATA/2025/11/placement_backup_03-11-2025.sql
+
+[✅ SUCCESS] Dump completed at 2025-11-03 12:08:09
+File: C:\xampp\htdocs\placementcell/backups/DATA/2025/11/placement_backup_03-11-2025.sql
+
+[✅ SUCCESS] Dump completed at 2025-11-03 12:20:38
+File: C:\xampp\htdocs\placementcell/backups/DATA/2025/11/placement_backup_03-11-2025.sql
+
+[✅ SUCCESS] Dump completed at 2025-11-03 12:31:53
+File: C:\xampp\htdocs\placementcell/backups/DATA/2025/11/placement_backup_03-11-2025.sql
+
+[✅ SUCCESS] Dump completed at 2025-11-03 12:39:48
+File: C:\xampp\htdocs\placementcell/backups/DATA/2025/11/placement_backup_03-11-2025.sql
+
+[✅ SUCCESS] Dump completed at 2025-11-03 12:42:29
+File: C:\xampp\htdocs\placementcell/backups/DATA/2025/11/placement_backup_03-11-2025.sql
+
+[✅ SUCCESS] Dump completed at 2025-11-03 12:45:00
+File: C:\xampp\htdocs\placementcell/backups/DATA/2025/11/placement_backup_03-11-2025.sql
+
+[✅ SUCCESS] Dump completed at 2025-11-03 12:58:05
+File: C:\xampp\htdocs\placementcell/backups/DATA/2025/11/placement_backup_03-11-2025.sql
+
+[✅ SUCCESS] Dump completed at 2025-11-03 12:58:09
+File: C:\xampp\htdocs\placementcell/backups/DATA/2025/11/placement_backup_03-11-2025.sql
+
+[✅ SUCCESS] Dump completed at 2025-11-03 12:58:13
+File: C:\xampp\htdocs\placementcell/backups/DATA/2025/11/placement_backup_03-11-2025.sql
+
+[✅ SUCCESS] Dump completed at 2025-11-03 14:04:30
+File: C:\xampp\htdocs\placementcell/backups/DATA/2025/11/placement_backup_03-11-2025.sql
+
+[✅ SUCCESS] Dump completed at 2025-11-03 14:14:09
+File: C:\xampp\htdocs\placementcell/backups/DATA/2025/11/placement_backup_03-11-2025.sql
+
+[✅ SUCCESS] Dump completed at 2025-11-03 14:14:13
+File: C:\xampp\htdocs\placementcell/backups/DATA/2025/11/placement_backup_03-11-2025.sql
+
+[✅ SUCCESS] Dump completed at 2025-11-03 14:14:21
+File: C:\xampp\htdocs\placementcell/backups/DATA/2025/11/placement_backup_03-11-2025.sql
+
+[✅ SUCCESS] Dump completed at 2025-11-03 14:14:29
+File: C:\xampp\htdocs\placementcell/backups/DATA/2025/11/placement_backup_03-11-2025.sql
+
+[✅ SUCCESS] Dump completed at 2025-11-03 14:14:37
+File: C:\xampp\htdocs\placementcell/backups/DATA/2025/11/placement_backup_03-11-2025.sql
+
+[✅ SUCCESS] Dump completed at 2025-11-03 14:14:40
+File: C:\xampp\htdocs\placementcell/backups/DATA/2025/11/placement_backup_03-11-2025.sql
+
+[✅ SUCCESS] Dump completed at 2025-11-03 14:14:49
+File: C:\xampp\htdocs\placementcell/backups/DATA/2025/11/placement_backup_03-11-2025.sql
+
+[✅ SUCCESS] Dump completed at 2025-11-03 15:28:15
+File: C:\xampp\htdocs\placementcell/backups/DATA/2025/11/placement_backup_03-11-2025.sql
+
+[✅ SUCCESS] Dump completed at 2025-11-03 15:28:19
+File: C:\xampp\htdocs\placementcell/backups/DATA/2025/11/placement_backup_03-11-2025.sql
+
+[✅ SUCCESS] Dump completed at 2025-11-03 22:32:39
+File: C:\xampp\htdocs\placementcell/backups/DATA/2025/11/placement_backup_03-11-2025.sql
+
+[✅ SUCCESS] Dump completed at 2025-11-03 22:41:22
+File: C:\xampp\htdocs\placementcell/backups/DATA/2025/11/placement_backup_03-11-2025.sql
+
+[✅ SUCCESS] Dump completed at 2025-11-04 12:40:06
+File: C:\xampp\htdocs\placementcell/backups/DATA/2025/11/placement_backup_04-11-2025.sql
+
+[✅ SUCCESS] Dump completed at 2025-11-04 12:40:09
+File: C:\xampp\htdocs\placementcell/backups/DATA/2025/11/placement_backup_04-11-2025.sql
+
+[✅ SUCCESS] Dump completed at 2025-11-04 12:40:17
+File: C:\xampp\htdocs\placementcell/backups/DATA/2025/11/placement_backup_04-11-2025.sql
+
+[✅ SUCCESS] Dump completed at 2025-11-04 12:40:20
+File: C:\xampp\htdocs\placementcell/backups/DATA/2025/11/placement_backup_04-11-2025.sql
+
+[✅ SUCCESS] Dump completed at 2025-11-04 12:40:24
+File: C:\xampp\htdocs\placementcell/backups/DATA/2025/11/placement_backup_04-11-2025.sql
+
+[✅ SUCCESS] Dump completed at 2025-11-04 12:40:28
+File: C:\xampp\htdocs\placementcell/backups/DATA/2025/11/placement_backup_04-11-2025.sql
+
+[✅ SUCCESS] Dump completed at 2025-11-04 12:40:35
+File: C:\xampp\htdocs\placementcell/backups/DATA/2025/11/placement_backup_04-11-2025.sql
+
+[✅ SUCCESS] Dump completed at 2025-11-04 21:20:38
+File: C:\xampp\htdocs\placementcell/backups/DATA/2025/11/placement_backup_04-11-2025.sql
+
+[✅ SUCCESS] Dump completed at 2025-11-04 22:34:09
+File: C:\xampp\htdocs\placementcell/backups/DATA/2025/11/placement_backup_04-11-2025.sql
+
+[✅ SUCCESS] Dump completed at 2025-11-04 22:34:16
+File: C:\xampp\htdocs\placementcell/backups/DATA/2025/11/placement_backup_04-11-2025.sql
+
+[✅ SUCCESS] Dump completed at 2025-11-06 14:54:41
+File: C:\xampp\htdocs\placementcell/backups/DATA/2025/11/placement_backup_06-11-2025.sql
+
+[✅ SUCCESS] Dump completed at 2025-11-06 14:54:45
+File: C:\xampp\htdocs\placementcell/backups/DATA/2025/11/placement_backup_06-11-2025.sql
+
+[✅ SUCCESS] Dump completed at 2025-11-06 14:54:49
+File: C:\xampp\htdocs\placementcell/backups/DATA/2025/11/placement_backup_06-11-2025.sql
+
+[✅ SUCCESS] Dump completed at 2025-11-06 14:54:53
+File: C:\xampp\htdocs\placementcell/backups/DATA/2025/11/placement_backup_06-11-2025.sql
+
+[✅ SUCCESS] Dump completed at 2025-11-06 16:26:40
+File: C:\xampp\htdocs\placementcell/backups/DATA/2025/11/placement_backup_06-11-2025.sql
+
+[✅ SUCCESS] Dump completed at 2025-11-06 16:33:57
+File: C:\xampp\htdocs\placementcell/backups/DATA/2025/11/placement_backup_06-11-2025.sql
+
+[✅ SUCCESS] Dump completed at 2025-11-06 16:34:15
+File: C:\xampp\htdocs\placementcell/backups/DATA/2025/11/placement_backup_06-11-2025.sql
+
+[✅ SUCCESS] Dump completed at 2025-11-06 16:34:32
+File: C:\xampp\htdocs\placementcell/backups/DATA/2025/11/placement_backup_06-11-2025.sql
+
+[✅ SUCCESS] Dump completed at 2025-11-06 16:34:49
+File: C:\xampp\htdocs\placementcell/backups/DATA/2025/11/placement_backup_06-11-2025.sql
+
+[✅ SUCCESS] Dump completed at 2025-11-08 01:50:26
+File: C:\xampp\htdocs\placementcell/backups/DATA/2025/11/placement_backup_08-11-2025.sql
+
+[✅ SUCCESS] Dump completed at 2025-11-09 21:57:45
+File: C:\xampp\htdocs\placementcell/backups/DATA/2025/11/placement_backup_09-11-2025.sql
+
+[✅ SUCCESS] Dump completed at 2025-11-09 21:58:12
+File: C:\xampp\htdocs\placementcell/backups/DATA/2025/11/placement_backup_09-11-2025.sql
+
+[✅ SUCCESS] Dump completed at 2025-11-09 22:58:59
+File: C:\xampp\htdocs\placementcell/backups/DATA/2025/11/placement_backup_09-11-2025.sql
+
+[✅ SUCCESS] Dump completed at 2025-11-10 08:33:50
+File: C:\xampp\htdocs\placementcell/backups/DATA/2025/11/placement_backup_10-11-2025.sql
+
+[✅ SUCCESS] Dump completed at 2025-11-10 15:34:51
+File: C:\xampp\htdocs\placementcell/backups/DATA/2025/11/placement_backup_10-11-2025.sql
+
+[✅ SUCCESS] Dump completed at 2025-11-11 21:29:33
+File: C:\xampp\htdocs\placementcell/backups/DATA/2025/11/placement_backup_11-11-2025.sql
+
+[✅ SUCCESS] Dump completed at 2025-11-12 10:55:34
+File: C:\xampp\htdocs\placementcell/backups/DATA/2025/11/placement_backup_12-11-2025.sql
+
+[✅ SUCCESS] Dump completed at 2025-11-12 11:44:10
+File: C:\xampp\htdocs\placementcell/backups/DATA/2025/11/placement_backup_12-11-2025.sql
+
+[✅ SUCCESS] Dump completed at 2025-11-12 13:23:41
+File: C:\xampp\htdocs\placementcell/backups/DATA/2025/11/placement_backup_12-11-2025.sql
+
+[✅ SUCCESS] Dump completed at 2025-11-12 13:23:51
+File: C:\xampp\htdocs\placementcell/backups/DATA/2025/11/placement_backup_12-11-2025.sql
+
+[✅ SUCCESS] Dump completed at 2025-11-12 15:42:14
+File: C:\xampp\htdocs\placementcell/backups/DATA/2025/11/placement_backup_12-11-2025.sql
+
+[✅ SUCCESS] Dump completed at 2025-11-12 15:42:18
+File: C:\xampp\htdocs\placementcell/backups/DATA/2025/11/placement_backup_12-11-2025.sql
+
+[✅ SUCCESS] Dump completed at 2025-11-12 15:42:28
+File: C:\xampp\htdocs\placementcell/backups/DATA/2025/11/placement_backup_12-11-2025.sql
+
+[✅ SUCCESS] Dump completed at 2025-11-12 15:42:33
+File: C:\xampp\htdocs\placementcell/backups/DATA/2025/11/placement_backup_12-11-2025.sql
+
+[✅ SUCCESS] Dump completed at 2025-11-12 15:42:38
+File: C:\xampp\htdocs\placementcell/backups/DATA/2025/11/placement_backup_12-11-2025.sql
+
+[✅ SUCCESS] Dump completed at 2025-11-12 15:42:42
+File: C:\xampp\htdocs\placementcell/backups/DATA/2025/11/placement_backup_12-11-2025.sql
+
+[✅ SUCCESS] Dump completed at 2025-11-12 15:42:47
+File: C:\xampp\htdocs\placementcell/backups/DATA/2025/11/placement_backup_12-11-2025.sql
+
+[✅ SUCCESS] Dump completed at 2025-11-12 15:42:52
+File: C:\xampp\htdocs\placementcell/backups/DATA/2025/11/placement_backup_12-11-2025.sql
+
+[✅ SUCCESS] Dump completed at 2025-11-12 15:42:56
+File: C:\xampp\htdocs\placementcell/backups/DATA/2025/11/placement_backup_12-11-2025.sql
+
+[✅ SUCCESS] Dump completed at 2025-11-12 15:43:01
+File: C:\xampp\htdocs\placementcell/backups/DATA/2025/11/placement_backup_12-11-2025.sql
+
+[✅ SUCCESS] Dump completed at 2025-11-12 15:43:05
+File: C:\xampp\htdocs\placementcell/backups/DATA/2025/11/placement_backup_12-11-2025.sql
+
+[✅ SUCCESS] Dump completed at 2025-11-12 15:43:10
+File: C:\xampp\htdocs\placementcell/backups/DATA/2025/11/placement_backup_12-11-2025.sql
+
+[✅ SUCCESS] Dump completed at 2025-11-12 15:43:14
+File: C:\xampp\htdocs\placementcell/backups/DATA/2025/11/placement_backup_12-11-2025.sql
+
+[✅ SUCCESS] Dump completed at 2025-11-12 15:43:19
+File: C:\xampp\htdocs\placementcell/backups/DATA/2025/11/placement_backup_12-11-2025.sql
+
+[✅ SUCCESS] Dump completed at 2025-11-12 15:43:24
+File: C:\xampp\htdocs\placementcell/backups/DATA/2025/11/placement_backup_12-11-2025.sql
+
+[✅ SUCCESS] Dump completed at 2025-11-12 15:43:28
+File: C:\xampp\htdocs\placementcell/backups/DATA/2025/11/placement_backup_12-11-2025.sql
+
+[✅ SUCCESS] Dump completed at 2025-11-12 22:12:21
+File: C:\xampp\htdocs\placementcell/backups/DATA/2025/11/placement_backup_12-11-2025.sql
+
+[✅ SUCCESS] Dump completed at 2025-11-13 11:41:42
+File: C:\xampp\htdocs\placementcell/backups/DATA/2025/11/placement_backup_13-11-2025.sql
+
+[✅ SUCCESS] Dump completed at 2025-11-13 11:41:46
+File: C:\xampp\htdocs\placementcell/backups/DATA/2025/11/placement_backup_13-11-2025.sql
+
+[✅ SUCCESS] Dump completed at 2025-11-14 09:02:24
+File: C:\xampp\htdocs\placementcell/backups/DATA/2025/11/placement_backup_14-11-2025.sql
+
+[❌ ERROR] 2025-11-16 13:03:00
+Command: "C:\xampp\mysql\bin\mysqldump.exe" --routines --triggers --events --single-transaction -h localhost -u root  admin_placement_db > "C:\xampp\htdocs\placementcell/backups/DATA/2025/11/placement_backup_16-11-2025.sql"
+
+[❌ ERROR] 2025-11-16 13:03:04
+Command: "C:\xampp\mysql\bin\mysqldump.exe" --routines --triggers --events --single-transaction -h localhost -u root  admin_placement_db > "C:\xampp\htdocs\placementcell/backups/DATA/2025/11/placement_backup_16-11-2025.sql"
+
+[✅ SUCCESS] Dump completed at 2025-11-16 13:03:04
+File: C:\xampp\htdocs\placementcell/backups/DATA/2025/11/placement_backup_16-11-2025.sql
+
+[✅ SUCCESS] Dump completed at 2025-11-16 13:03:18
+File: C:\xampp\htdocs\placementcell/backups/DATA/2025/11/placement_backup_16-11-2025.sql
+
+[✅ SUCCESS] Dump completed at 2025-11-16 13:03:22
+File: C:\xampp\htdocs\placementcell/backups/DATA/2025/11/placement_backup_16-11-2025.sql
+
+[✅ SUCCESS] Dump completed at 2025-11-16 13:03:27
+File: C:\xampp\htdocs\placementcell/backups/DATA/2025/11/placement_backup_16-11-2025.sql
+
+[✅ SUCCESS] Dump completed at 2025-11-16 13:03:36
+File: C:\xampp\htdocs\placementcell/backups/DATA/2025/11/placement_backup_16-11-2025.sql
+
+[✅ SUCCESS] Dump completed at 2025-11-17 14:11:12
+File: C:\xampp\htdocs\placementcell/backups/DATA/2025/11/placement_backup_17-11-2025.sql
+
+[✅ SUCCESS] Dump completed at 2025-11-17 14:11:22
+File: C:\xampp\htdocs\placementcell/backups/DATA/2025/11/placement_backup_17-11-2025.sql
+
+[✅ SUCCESS] Dump completed at 2025-11-19 18:02:44
+File: C:\xampp\htdocs\placementcell/backups/DATA/2025/11/placement_backup_19-11-2025.sql
+
+[✅ SUCCESS] Dump completed at 2025-11-20 13:25:39
+File: C:\xampp\htdocs\placementcell/backups/DATA/2025/11/placement_backup_20-11-2025.sql
+
+[✅ SUCCESS] Dump completed at 2025-11-20 13:25:44
+File: C:\xampp\htdocs\placementcell/backups/DATA/2025/11/placement_backup_20-11-2025.sql
+
+[✅ SUCCESS] Dump completed at 2025-11-20 16:27:49
+File: C:\xampp\htdocs\placementcell/backups/DATA/2025/11/placement_backup_20-11-2025.sql
+
+[✅ SUCCESS] Dump completed at 2025-11-20 16:28:03
+File: C:\xampp\htdocs\placementcell/backups/DATA/2025/11/placement_backup_20-11-2025.sql
+
+[✅ SUCCESS] Dump completed at 2025-11-20 16:28:08
+File: C:\xampp\htdocs\placementcell/backups/DATA/2025/11/placement_backup_20-11-2025.sql
+
+[✅ SUCCESS] Dump completed at 2025-11-20 17:03:06
+File: C:\xampp\htdocs\placementcell/backups/DATA/2025/11/placement_backup_20-11-2025.sql
+
+[✅ SUCCESS] Dump completed at 2025-11-21 11:06:32
+File: C:\xampp\htdocs\placementcell/backups/DATA/2025/11/placement_backup_21-11-2025.sql
+
+[✅ SUCCESS] Dump completed at 2025-11-21 11:06:38
+File: C:\xampp\htdocs\placementcell/backups/DATA/2025/11/placement_backup_21-11-2025.sql
+
+[✅ SUCCESS] Dump completed at 2025-11-21 11:06:49
+File: C:\xampp\htdocs\placementcell/backups/DATA/2025/11/placement_backup_21-11-2025.sql
+
+[✅ SUCCESS] Dump completed at 2025-11-21 11:07:12
+File: C:\xampp\htdocs\placementcell/backups/DATA/2025/11/placement_backup_21-11-2025.sql
+
+[✅ SUCCESS] Dump completed at 2025-11-21 12:32:39
+File: C:\xampp\htdocs\placementcell/backups/DATA/2025/11/placement_backup_21-11-2025.sql
+
+[✅ SUCCESS] Dump completed at 2025-11-21 13:09:36
+File: C:\xampp\htdocs\placementcell/backups/DATA/2025/11/placement_backup_21-11-2025.sql
+
+[✅ SUCCESS] Dump completed at 2025-11-21 13:09:42
+File: C:\xampp\htdocs\placementcell/backups/DATA/2025/11/placement_backup_21-11-2025.sql
+
+[✅ SUCCESS] Dump completed at 2025-11-21 13:09:52
+File: C:\xampp\htdocs\placementcell/backups/DATA/2025/11/placement_backup_21-11-2025.sql
+
+[✅ SUCCESS] Dump completed at 2025-11-21 13:09:57
+File: C:\xampp\htdocs\placementcell/backups/DATA/2025/11/placement_backup_21-11-2025.sql
+
+[✅ SUCCESS] Dump completed at 2025-11-21 13:10:03
+File: C:\xampp\htdocs\placementcell/backups/DATA/2025/11/placement_backup_21-11-2025.sql
+
+[✅ SUCCESS] Dump completed at 2025-11-21 13:10:09
+File: C:\xampp\htdocs\placementcell/backups/DATA/2025/11/placement_backup_21-11-2025.sql
+
+[✅ SUCCESS] Dump completed at 2025-11-21 13:10:15
+File: C:\xampp\htdocs\placementcell/backups/DATA/2025/11/placement_backup_21-11-2025.sql
+
+[✅ SUCCESS] Dump completed at 2025-11-21 13:10:21
+File: C:\xampp\htdocs\placementcell/backups/DATA/2025/11/placement_backup_21-11-2025.sql
+
+[✅ SUCCESS] Dump completed at 2025-11-21 13:10:26
+File: C:\xampp\htdocs\placementcell/backups/DATA/2025/11/placement_backup_21-11-2025.sql
+
+[✅ SUCCESS] Dump completed at 2025-11-21 13:10:31
+File: C:\xampp\htdocs\placementcell/backups/DATA/2025/11/placement_backup_21-11-2025.sql
+
+[✅ SUCCESS] Dump completed at 2025-11-21 13:10:37
+File: C:\xampp\htdocs\placementcell/backups/DATA/2025/11/placement_backup_21-11-2025.sql
+
+[✅ SUCCESS] Dump completed at 2025-11-21 13:10:42
+File: C:\xampp\htdocs\placementcell/backups/DATA/2025/11/placement_backup_21-11-2025.sql
+
+[✅ SUCCESS] Dump completed at 2025-11-21 16:43:42
+File: C:\xampp\htdocs\placementcell/backups/DATA/2025/11/placement_backup_21-11-2025.sql
+
+[✅ SUCCESS] Dump completed at 2025-11-21 16:43:53
+File: C:\xampp\htdocs\placementcell/backups/DATA/2025/11/placement_backup_21-11-2025.sql
+
+[✅ SUCCESS] Dump completed at 2025-11-22 10:38:50
+File: C:\xampp\htdocs\placementcell/backups/DATA/2025/11/placement_backup_22-11-2025.sql
+
+[✅ SUCCESS] Dump completed at 2025-11-23 12:32:01
+File: C:\xampp\htdocs\placementcell/backups/DATA/2025/11/placement_backup_23-11-2025.sql
+
+[✅ SUCCESS] Dump completed at 2025-11-23 18:59:41
+File: C:\xampp\htdocs\placementcell/backups/DATA/2025/11/placement_backup_23-11-2025.sql
+
+[✅ SUCCESS] Dump completed at 2025-11-23 18:59:54
+File: C:\xampp\htdocs\placementcell/backups/DATA/2025/11/placement_backup_23-11-2025.sql
+
+[✅ SUCCESS] Dump completed at 2025-11-23 19:00:07
+File: C:\xampp\htdocs\placementcell/backups/DATA/2025/11/placement_backup_23-11-2025.sql
+
+[✅ SUCCESS] Dump completed at 2025-11-23 19:00:19
+File: C:\xampp\htdocs\placementcell/backups/DATA/2025/11/placement_backup_23-11-2025.sql
+
+[✅ SUCCESS] Dump completed at 2025-11-24 09:29:10
+File: C:\xampp\htdocs\placementcell/backups/DATA/2025/11/placement_backup_24-11-2025.sql
+
+[✅ SUCCESS] Dump completed at 2025-11-24 10:05:21
+File: C:\xampp\htdocs\placementcell/backups/DATA/2025/11/placement_backup_24-11-2025.sql
+
+[✅ SUCCESS] Dump completed at 2025-11-24 10:05:34
+File: C:\xampp\htdocs\placementcell/backups/DATA/2025/11/placement_backup_24-11-2025.sql
+
+[✅ SUCCESS] Dump completed at 2025-11-24 10:05:41
+File: C:\xampp\htdocs\placementcell/backups/DATA/2025/11/placement_backup_24-11-2025.sql
+
+[✅ SUCCESS] Dump completed at 2025-11-24 10:05:47
+File: C:\xampp\htdocs\placementcell/backups/DATA/2025/11/placement_backup_24-11-2025.sql
+
+[✅ SUCCESS] Dump completed at 2025-11-24 10:05:53
+File: C:\xampp\htdocs\placementcell/backups/DATA/2025/11/placement_backup_24-11-2025.sql
+
+[✅ SUCCESS] Dump completed at 2025-11-24 11:37:24
+File: C:\xampp\htdocs\placementcell/backups/DATA/2025/11/placement_backup_24-11-2025.sql
+
+[✅ SUCCESS] Dump completed at 2025-11-27 13:45:46
+File: C:\xampp\htdocs\placementcell/backups/DATA/2025/11/placement_backup_27-11-2025.sql
+
+[✅ SUCCESS] Dump completed at 2025-11-27 13:45:52
+File: C:\xampp\htdocs\placementcell/backups/DATA/2025/11/placement_backup_27-11-2025.sql
+
+[✅ SUCCESS] Dump completed at 2025-11-27 13:46:05
+File: C:\xampp\htdocs\placementcell/backups/DATA/2025/11/placement_backup_27-11-2025.sql
+
+[✅ SUCCESS] Dump completed at 2025-11-27 13:46:11
+File: C:\xampp\htdocs\placementcell/backups/DATA/2025/11/placement_backup_27-11-2025.sql
+
+[✅ SUCCESS] Dump completed at 2025-11-27 13:46:18
+File: C:\xampp\htdocs\placementcell/backups/DATA/2025/11/placement_backup_27-11-2025.sql
+
+[✅ SUCCESS] Dump completed at 2025-11-27 13:46:24
+File: C:\xampp\htdocs\placementcell/backups/DATA/2025/11/placement_backup_27-11-2025.sql
+
+[✅ SUCCESS] Dump completed at 2025-11-27 13:46:30
+File: C:\xampp\htdocs\placementcell/backups/DATA/2025/11/placement_backup_27-11-2025.sql
+
+[✅ SUCCESS] Dump completed at 2025-11-27 13:46:44
+File: C:\xampp\htdocs\placementcell/backups/DATA/2025/11/placement_backup_27-11-2025.sql
+
+[✅ SUCCESS] Dump completed at 2025-11-29 09:43:07
+File: C:\xampp\htdocs\placementcell/backups/DATA/2025/11/placement_backup_29-11-2025.sql
+
