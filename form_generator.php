@@ -630,8 +630,22 @@ if (!in_array($fileType, $allowedTypes)) {
 } else {
     $studentNameSanitized = preg_replace('/[^a-zA-Z0-9]/', '_', $fullName);
     $ext = pathinfo($_FILES["resume"]["name"], PATHINFO_EXTENSION);  // get original extension
-    $resumeName = $studentNameSanitized . "resume" . uniqid() . "." . $ext;
-    $targetPath = "uploads/" . $resumeName;
+    $namePrefix = $studentNameSanitized . "resume";
+    $resumeName = $namePrefix . uniqid() . "." . $ext;
+    $targetPath = "uploads/resumes/" . $resumeName;
+
+    // Create directory if it doesn't exist
+    if (!is_dir("uploads/resumes/")) {
+        mkdir("uploads/resumes/", 0755, true);
+    }
+
+    // Delete old resume files for this student
+    $old_files = glob("uploads/resumes/" . $namePrefix . "*");
+    foreach ($old_files as $old_file) {
+        if (file_exists($old_file)) {
+            unlink($old_file);
+        }
+    }
 
     if (move_uploaded_file($_FILES["resume"]["tmp_name"], $targetPath)) {
         $resumePath = $targetPath;

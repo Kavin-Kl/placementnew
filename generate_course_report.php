@@ -154,48 +154,53 @@ $cleaned_courses = array_map(function($c) {
   );
 }, $selectedCourses);
 
-// Students registered
-$sql = "
-  SELECT COUNT(*) as total 
-  FROM students 
-  WHERE LOWER(
-    TRIM(
-      REPLACE(
-        REPLACE(
+// Students registered - if ALL selected, count ALL students
+if ($course === 'ALL') {
+    $stmt = $conn->query("SELECT COUNT(*) as total FROM students");
+    $students_registered = $stmt->fetch_assoc()['total'];
+} else {
+    $sql = "
+      SELECT COUNT(*) as total
+      FROM students
+      WHERE LOWER(
+        TRIM(
           REPLACE(
             REPLACE(
               REPLACE(
                 REPLACE(
                   REPLACE(
                     REPLACE(
-                      REPLACE(course, '&', 'and'),
-                      '–', ''
+                      REPLACE(
+                        REPLACE(
+                          REPLACE(course, '&', 'and'),
+                          '–', ''
+                        ),
+                        '-', ''
+                      ),
+                      '(', ''
                     ),
-                    '-', ''
+                    ')', ''
                   ),
-                  '(', ''
+                  ' ', ''
                 ),
-                ')', ''
+                '.', ''
               ),
-              ' ', ''
+              '_', ''
             ),
-            '.', ''
-          ),
-          '_', ''
-        ),
-        ',', ''
-      )
-    )
-  ) IN ($placeholders)
-";
-$stmt = $conn->prepare($sql);
-if ($stmt) {
-    $stmt->bind_param($types, ...$cleaned_courses);
-    $stmt->execute();
-    $students_registered = $stmt->get_result()->fetch_assoc()['total'];
-} else {
-    error_log("Prepare failed for students_registered query: " . $conn->error);
-    $students_registered = 0;
+            ',', ''
+          )
+        )
+      ) IN ($placeholders)
+    ";
+    $stmt = $conn->prepare($sql);
+    if ($stmt) {
+        $stmt->bind_param($types, ...$cleaned_courses);
+        $stmt->execute();
+        $students_registered = $stmt->get_result()->fetch_assoc()['total'];
+    } else {
+        error_log("Prepare failed for students_registered query: " . $conn->error);
+        $students_registered = 0;
+    }
 }
 
 // Students placed

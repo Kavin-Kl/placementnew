@@ -102,6 +102,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_application'])
         if (!in_array(strtolower($file_extension), $allowed_extensions)) {
             $error = "Only PDF, DOC, and DOCX files are allowed.";
         } else {
+            // Delete old resume files for this student-drive-role combination
+            $old_files = glob($upload_dir . 'resume_' . $student_id . '_' . $drive_id . '_' . $role_id . '_*');
+            foreach ($old_files as $old_file) {
+                if (file_exists($old_file)) {
+                    unlink($old_file);
+                }
+            }
+
             $new_filename = 'resume_' . $student_id . '_' . $drive_id . '_' . $role_id . '_' . time() . '.' . $file_extension;
             $upload_path = $upload_dir . $new_filename;
 

@@ -1,4 +1,5 @@
 <?php
+ob_start(); // Start output buffering to allow header redirects
 session_start();
 
 if (!isset($_SESSION['admin_id'])) {
@@ -536,6 +537,11 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["csv_file"])) {
         exit;
     }
 
+    // Increase limits for large file processing - MUST be before file reading
+    set_time_limit(600); // 10 minutes
+    ini_set('memory_limit', '1024M'); // 1GB
+    ini_set('max_execution_time', '600');
+
     $dataRows = [];
     $header = [];
 
@@ -551,11 +557,15 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["csv_file"])) {
                 throw new Exception("Could not open CSV file for reading.");
             }
         } else {
-            // Load Excel file
+            // Load Excel file - optimized for speed
             try {
-                $spreadsheet = IOFactory::load($tmpPath);
+                $reader = IOFactory::createReaderForFile($tmpPath);
+                $reader->setReadDataOnly(true); // Skip formatting/styling - much faster!
+                $reader->setReadEmptyCells(false); // Skip empty cells
+
+                $spreadsheet = $reader->load($tmpPath);
                 $worksheet = $spreadsheet->getActiveSheet();
-                $rows = $worksheet->toArray();
+                $rows = $worksheet->toArray(null, false, false, false); // Raw values only
                 $header = array_shift($rows);
                 $dataRows = $rows;
             } catch (Exception $e) {
@@ -633,19 +643,53 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["csv_file"])) {
         $inserted = 0;
         $skipped = 0;
 
+        // OPTIMIZATION: Get all existing UPIDs - Process in BATCHES to avoid MySQL limit
+        $allUpids = array_map(function($row) use ($headerMap) {
+            return trim($row[$headerMap['upid']] ?? '');
+        }, $dataRows);
+        $allUpids = array_filter($allUpids); // Remove empty values
+
+        $existingUpids = [];
+        if (!empty($allUpids)) {
+            // Process in batches of 500 to avoid MySQL placeholder limit
+            $batchSize = 500;
+            $batches = array_chunk($allUpids, $batchSize);
+
+            foreach ($batches as $batch) {
+                $placeholders = implode(',', array_fill(0, count($batch), '?'));
+                $checkStmt = $conn->prepare("SELECT upid FROM students WHERE upid IN ($placeholders)");
+                if ($checkStmt) {
+                    $types = str_repeat('s', count($batch));
+                    $checkStmt->bind_param($types, ...$batch);
+                    $checkStmt->execute();
+                    $result = $checkStmt->get_result();
+                    while ($row = $result->fetch_assoc()) {
+                        $existingUpids[$row['upid']] = true;
+                    }
+                    $checkStmt->close();
+                }
+            }
+        }
+
+        // Prepare the insert statement ONCE
+        $stmt = $conn->prepare("INSERT INTO students
+            (upid, program_type, program, course, reg_no, student_name, email, phone_no, batch, year_of_passing, percentage, class)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+
+        $currentYear = date('Y');
+
         foreach ($dataRows as $data) {
-            $upid          = trim($data[$headerMap['upid']]);
-            $program_type  = trim($data[$headerMap['program_type']]);
-            $program       = trim($data[$headerMap['program']]);
-            $course        = trim($data[$headerMap['course']]);
-            $reg_no        = trim($data[$headerMap['reg_no']]);
-            $student_name  = trim($data[$headerMap['student_name']]);
-            $email         = trim($data[$headerMap['email']]);
-            $phone_no      = trim($data[$headerMap['phone_no']]);
-            $percentage    = isset($headerMap['percentage']) ? (float)$data[$headerMap['percentage']] : null;
+            $upid          = trim($data[$headerMap['upid']] ?? '');
+            $program_type  = trim($data[$headerMap['program_type']] ?? '');
+            $program       = trim($data[$headerMap['program']] ?? '');
+            $course        = trim($data[$headerMap['course']] ?? '');
+            $reg_no        = trim($data[$headerMap['reg_no']] ?? '');
+            $student_name  = trim($data[$headerMap['student_name']] ?? '');
+            $email         = trim($data[$headerMap['email']] ?? '');
+            $phone_no      = trim($data[$headerMap['phone_no']] ?? '');
+            $percentage    = isset($headerMap['percentage']) && !empty($data[$headerMap['percentage']]) ? (float)$data[$headerMap['percentage']] : null;
 
             // Calculate class based on year_of_passing
-            $currentYear = date('Y');
             $yearsRemaining = $yearOfPassing - $currentYear;
             $class = null;
             if ($yearsRemaining >= 3) {
@@ -663,23 +707,13 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["csv_file"])) {
                 continue;
             }
 
-            $check = $conn->prepare("SELECT 1 FROM students WHERE upid = ?");
-            if ($check) {
-                $check->bind_param("s", $upid);
-                $check->execute();
-                $check->store_result();
-                if ($check->num_rows > 0) {
-                    $skipped++;
-                    $check->close();
-                    continue;
-                }
-                $check->close();
+            // Check if UPID already exists (using in-memory array - MUCH faster!)
+            if (isset($existingUpids[$upid])) {
+                $skipped++;
+                continue;
             }
 
-            $stmt = $conn->prepare("INSERT INTO students
-                (upid, program_type, program, course, reg_no, student_name, email, phone_no, batch, year_of_passing, percentage, class)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-
+            // Insert the student
             if ($stmt) {
                 $stmt->bind_param("sssssssssiss",
                     $upid, $program_type, $program, $course,
@@ -689,13 +723,16 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["csv_file"])) {
 
                 if ($stmt->execute()) {
                     $inserted++;
+                    $existingUpids[$upid] = true; // Mark as inserted to avoid duplicates in same file
                 } else {
                     error_log("Insert failed for UPID $upid: " . $stmt->error);
                     $skipped++;
                 }
-
-                $stmt->close();
             }
+        }
+
+        if ($stmt) {
+            $stmt->close();
         }
 
         $_SESSION['import_message'] = "Import completed. Inserted: $inserted rows.";
@@ -706,6 +743,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["csv_file"])) {
         $_SESSION['import_status'] = "error";
     }
 
+    ob_end_clean(); // Clear any output buffer
     header("Location: internship_registered_students.php");
     exit;
 }
@@ -1445,13 +1483,23 @@ function validateAndSubmit() {
     const pattern = /\d{4}-\d{4}/; // Matches "2022-2024"
 
     if (!pattern.test(filename)) {
-      alert("Filename must include batch year in format YYYY-YYYY (e.g., students_2023-2026.xlsx)");
+      alert("Filename must include batch year in format YYYY-YYYY (e.g., internship_students_2023-2026.xlsx)");
       input.value = ""; // Clear the file input
       return false;
     }
 
+    // Show loading indicator
+    const modal = document.getElementById("ipt_importPopup");
+    const modalContent = modal.querySelector(".ipt_modal-content");
+    modalContent.innerHTML = '<div style="text-align:center; padding:40px;"><i class="fas fa-spinner fa-spin" style="font-size:48px; color:#007bff;"></i><p style="margin-top:20px; font-size:16px;">Importing file... Please wait.</p></div>';
+
     // Valid filename, submit the form
     input.form.submit();
+
+    // Force reload after 5 seconds if redirect doesn't work
+    setTimeout(function() {
+        window.location.href = 'internship_registered_students.php';
+    }, 5000);
   }
 
   function validateFilename() {

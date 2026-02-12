@@ -225,19 +225,10 @@ if (isset($_SESSION['selected_academic_year'])) {
     $graduation_year = isset($parts[1]) ? intval($parts[1]) : null;
 }
 
-// Top Dashboard Boxes (filtered by year)
-if ($graduation_year) {
-    $total_students = $conn->query("SELECT COUNT(*) AS count FROM students WHERE year_of_passing = $graduation_year")->fetch_assoc()['count'];
-    $total_companies = $conn->query("SELECT COUNT(DISTINCT company_name) AS count FROM drives WHERE academic_year = '{$_SESSION['selected_academic_year']}'")->fetch_assoc()['count'];
-    $placed_students_query = "SELECT COUNT(DISTINCT ps.place_id) AS count FROM placed_students ps
-                              INNER JOIN students s ON ps.student_id = s.student_id
-                              WHERE s.year_of_passing = $graduation_year";
-    $placed_students = $conn->query($placed_students_query)->fetch_assoc()['count'];
-} else {
-    $total_students = $conn->query("SELECT COUNT(*) AS count FROM students")->fetch_assoc()['count'];
-    $total_companies = $conn->query("SELECT COUNT(DISTINCT company_name) AS count FROM drives")->fetch_assoc()['count'];
-    $placed_students = $conn->query("SELECT COUNT(DISTINCT place_id) AS count FROM placed_students")->fetch_assoc()['count'];
-}
+// Top Dashboard Boxes - Show ALL students regardless of year (consistent with statistics page)
+$total_students = $conn->query("SELECT COUNT(*) AS count FROM students")->fetch_assoc()['count'];
+$total_companies = $conn->query("SELECT COUNT(DISTINCT company_name) AS count FROM drives")->fetch_assoc()['count'];
+$placed_students = $conn->query("SELECT COUNT(DISTINCT place_id) AS count FROM placed_students")->fetch_assoc()['count'];
 
 function getCompanyProgress($status) {
     $status = strtolower($status);

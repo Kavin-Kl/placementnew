@@ -1,4 +1,5 @@
 <?php
+ob_start(); // Start output buffering to allow header redirects
 session_start();
 
 if (!isset($_SESSION['admin_id'])) {
@@ -7,6 +8,238 @@ if (!isset($_SESSION['admin_id'])) {
 }
 
 include("config.php");
+
+// === HANDLE CSV IMPORT FIRST (before any output) ===
+if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["csv_file"])) {
+    require 'vendor/autoload.php';
+
+    // Increase limits for large file processing - MUST be before file reading
+    set_time_limit(600); // 10 minutes
+    ini_set('memory_limit', '2048M'); // 2GB
+    ini_set('max_execution_time', '600');
+
+    $file = $_FILES["csv_file"];
+    $fileName = $file["name"];
+    $tmpPath = $file["tmp_name"];
+    $fileExt = strtolower(pathinfo($fileName, PATHINFO_EXTENSION));
+
+    // Check for file upload errors
+    if ($file['error'] !== UPLOAD_ERR_OK) {
+        $_SESSION['import_message'] = "File upload failed with error code: " . $file['error'];
+        $_SESSION['import_status'] = "error";
+        header("Location: vantage_registered_students.php");
+        exit;
+    }
+
+    if (preg_match('/(\d{4})-(\d{4})/', $fileName, $matches)) {
+        $batchYear = $matches[0];
+        $yearOfPassing = (int) $matches[2];
+    } else {
+        $_SESSION['import_message'] = "Filename must include batch year in format YYYY-YYYY (e.g., students_2023-2026).";
+        $_SESSION['import_status'] = "error";
+        header("Location: vantage_registered_students.php");
+        exit;
+    }
+
+    $allowedTypes = ['csv', 'xls', 'xlsx'];
+    if (!in_array($fileExt, $allowedTypes)) {
+        $_SESSION['import_message'] = "Invalid file type. Only .CSV, .XLS and .XLSX are allowed.";
+        $_SESSION['import_status'] = "error";
+        header("Location: vantage_registered_students.php");
+        exit;
+    }
+
+    $dataRows = [];
+    $header = [];
+
+    try {
+        if ($fileExt === 'csv') {
+            if (($handle = fopen($tmpPath, "r")) !== false) {
+                $header = fgetcsv($handle);
+                while (($row = fgetcsv($handle, 1000, ",")) !== false) {
+                    $dataRows[] = $row;
+                }
+                fclose($handle);
+            }
+        } else {
+            // Load Excel file with error handling - optimized for speed
+            try {
+                $reader = \PhpOffice\PhpSpreadsheet\IOFactory::createReaderForFile($tmpPath);
+                $reader->setReadDataOnly(true); // Skip formatting/styling - much faster!
+                $reader->setReadEmptyCells(false); // Skip empty cells
+
+                $spreadsheet = $reader->load($tmpPath);
+                $worksheet = $spreadsheet->getActiveSheet();
+                $rows = $worksheet->toArray(null, false, false, false); // Raw values only
+                $header = array_shift($rows);
+                $dataRows = $rows;
+            } catch (Exception $e) {
+                $_SESSION['import_message'] = "Failed to read Excel file: " . $e->getMessage();
+                $_SESSION['import_status'] = "error";
+                header("Location: vantage_registered_students.php");
+                exit;
+            }
+        }
+
+        // Map headers to internal field names
+        $headerPatterns = [
+            'upid'          => ['placement id', 'upid', 'placement key id', 'Placement Id', 'Placement ID'],
+            'program_type'  => ['program type', 'Program Type'],
+            'program'       => ['program', 'Program'],
+            'course'        => ['course', 'Course'],
+            'reg_no'        => ['Student Register Number', 'Register Number', 'Register number', 'Register No', 'reg no', 'register no', 'regno', 'regno:', 'reg no:', 'register no:'],
+            'student_name'  => ['Student Name', 'name', 'student name', 'Student name', 'student'],
+            'email'         => ['Student Mail ID', 'Student Email ID', 'Student Email', 'Student email', 'email', 'mail', 'mail id', 'email address', 'email id'],
+            'phone_no'      => ['Student Phone No', 'Student Mobile No', 'student phone no', 'student mobile no', 'phone', 'mobile', 'mobile no', 'mobile number', 'phone number', 'phone no.', 'mobile no.'],
+            'percentage'    => ['percentage', 'Percentage', 'percent', 'score', 'grade', 'cgpa'],
+        ];
+
+        $expectedColumns = array_keys($headerPatterns);
+        $headerMap = [];
+
+        foreach ($header as $index => $colName) {
+            $normalized = strtolower(trim($colName));
+            $normalized = preg_replace('/[^a-z0-9]/', '', $normalized);
+
+            foreach ($headerPatterns as $field => $patterns) {
+                foreach ($patterns as $pattern) {
+                    $normPattern = preg_replace('/[^a-z0-9]/', '', strtolower($pattern));
+                    if ($normalized === $normPattern) {
+                        $headerMap[$field] = $index;
+                        break 2;
+                    }
+                }
+            }
+        }
+
+        // Friendly display names for each expected column
+        $columnDisplayNames = [
+            'upid'          => 'Placement ID',
+            'program_type'  => 'Program Type',
+            'program'       => 'Program',
+            'course'        => 'Course',
+            'reg_no'        => 'Registration Number',
+            'student_name'  => 'Student Name',
+            'email'         => 'Email',
+            'phone_no'      => 'Phone Number',
+            'percentage'    => 'Percentage'
+        ];
+
+        // Check for missing required columns
+        $missingColumns = [];
+
+        foreach ($expectedColumns as $col) {
+            if (!isset($headerMap[$col])) {
+                $missingColumns[] = $col;
+            }
+        }
+
+        if (!empty($missingColumns)) {
+            // Convert to readable names
+            $readableNames = array_map(function($col) use ($columnDisplayNames) {
+                return $columnDisplayNames[$col] ?? $col;
+            }, $missingColumns);
+
+            $_SESSION['import_message'] = "Missing required column(s): " . implode(', ', $readableNames);
+            $_SESSION['import_status'] = "error";
+            header("Location: vantage_registered_students.php");
+            exit;
+        }
+
+
+        $inserted = 0;
+        $skipped = 0;
+
+        // OPTIMIZATION: Get all existing UPIDs - Process in BATCHES to avoid MySQL limit
+        $allUpids = array_map(function($row) use ($headerMap) {
+            return trim($row[$headerMap['upid']] ?? '');
+        }, $dataRows);
+        $allUpids = array_filter($allUpids); // Remove empty values
+
+        $existingUpids = [];
+        if (!empty($allUpids)) {
+            // Process in batches of 500 to avoid MySQL placeholder limit
+            $batchSize = 500;
+            $batches = array_chunk($allUpids, $batchSize);
+
+            foreach ($batches as $batch) {
+                $placeholders = implode(',', array_fill(0, count($batch), '?'));
+                $checkStmt = $conn->prepare("SELECT upid FROM students WHERE upid IN ($placeholders)");
+                if ($checkStmt) {
+                    $types = str_repeat('s', count($batch));
+                    $checkStmt->bind_param($types, ...$batch);
+                    $checkStmt->execute();
+                    $result = $checkStmt->get_result();
+                    while ($row = $result->fetch_assoc()) {
+                        $existingUpids[$row['upid']] = true;
+                    }
+                    $checkStmt->close();
+                }
+            }
+        }
+
+        // Prepare the insert statement ONCE
+        $stmt = $conn->prepare("INSERT INTO students
+            (upid, program_type, program, course, reg_no, student_name, email, phone_no, batch, year_of_passing, percentage, vantage_participant)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'yes')");
+
+        foreach ($dataRows as $data) {
+            $upid          = trim($data[$headerMap['upid']] ?? '');
+            $program_type  = trim($data[$headerMap['program_type']] ?? '');
+            $program       = trim($data[$headerMap['program']] ?? '');
+            $course        = trim($data[$headerMap['course']] ?? '');
+            $reg_no        = trim($data[$headerMap['reg_no']] ?? '');
+            $student_name  = trim($data[$headerMap['student_name']] ?? '');
+            $email         = trim($data[$headerMap['email']] ?? '');
+            $phone_no      = trim($data[$headerMap['phone_no']] ?? '');
+            $percentage    = isset($headerMap['percentage']) && !empty($data[$headerMap['percentage']]) ? (float)$data[$headerMap['percentage']] : null;
+
+            if (empty($upid) || empty($reg_no) || empty($student_name) || empty($email)) {
+                $skipped++;
+                continue;
+            }
+
+            // Check if UPID already exists (using in-memory array - MUCH faster!)
+            if (isset($existingUpids[$upid])) {
+                $skipped++;
+                continue;
+            }
+
+            // Insert the student
+            if ($stmt) {
+                $stmt->bind_param("sssssssssis",
+                    $upid, $program_type, $program, $course,
+                    $reg_no, $student_name, $email, $phone_no,
+                    $batchYear, $yearOfPassing, $percentage
+                );
+
+                if ($stmt->execute()) {
+                    $inserted++;
+                    $existingUpids[$upid] = true; // Mark as inserted to avoid duplicates in same file
+                } else {
+                    error_log("Insert failed for UPID $upid: " . $stmt->error);
+                    $skipped++;
+                }
+            }
+        }
+
+        if ($stmt) {
+            $stmt->close();
+        }
+
+        $_SESSION['import_message'] = "Import completed. Inserted: $inserted rows.";
+        $_SESSION['import_status'] = "success";
+
+    } catch (Exception $e) {
+        $_SESSION['import_message'] = "Error during import: " . $e->getMessage();
+        $_SESSION['import_status'] = "error";
+    }
+
+    ob_end_clean(); // Clear any output buffer
+    header("Location: vantage_registered_students.php");
+    exit;
+}
+
 require 'vendor/autoload.php';
 use PhpOffice\PhpSpreadsheet\IOFactory;
 
@@ -35,6 +268,8 @@ function build_filters(&$types, &$params) {
     $params = [];
 
     // Add academic year filter (from header.php year selector)
+    // DISABLED: Show all vantage students regardless of year
+    /*
     if (isset($_SESSION['selected_academic_year'])) {
         $parts = explode('-', $_SESSION['selected_academic_year']);
         $graduation_year = isset($parts[1]) ? intval($parts[1]) : null;
@@ -44,6 +279,7 @@ function build_filters(&$types, &$params) {
             $types .= "i";
         }
     }
+    */
 
     $fields = [
         "upid", "program_type", "program", "course", "reg_no", "batch", "year_of_passing", "placed_status",
@@ -481,185 +717,6 @@ if (!empty($_SESSION['import_message'])) {
     unset($_SESSION['import_message']);
     unset($_SESSION['import_status']);
 }
-
-// === Handle CSV Import ===
-if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["csv_file"])) {
-    $file = $_FILES["csv_file"];
-    $fileName = $file["name"];
-    $tmpPath = $file["tmp_name"];
-    $fileExt = strtolower(pathinfo($fileName, PATHINFO_EXTENSION));
-
-    if (preg_match('/(\d{4})-(\d{4})/', $fileName, $matches)) {
-        $batchYear = $matches[0];
-        $yearOfPassing = (int) $matches[2];
-    } else {
-        $_SESSION['import_message'] = "Filename must include batch year in format YYYY-YYYY (e.g., students_2023-2026).";
-        $_SESSION['import_status'] = "error";
-        header("Location: vantage_registered_students");
-        exit;
-    }
-
-    $allowedTypes = ['csv', 'xls', 'xlsx'];
-    if (!in_array($fileExt, $allowedTypes)) {
-        $_SESSION['import_message'] = "Invalid file type. Only .CSV, .XLS and .XLSX are allowed.";
-        $_SESSION['import_status'] = "error";
-        header("Location: vantage_registered_students");
-        exit;
-    }
-
-    $dataRows = [];
-    $header = [];
-
-    try {
-        if ($fileExt === 'csv') {
-            if (($handle = fopen($tmpPath, "r")) !== false) {
-                $header = fgetcsv($handle);
-                while (($row = fgetcsv($handle, 1000, ",")) !== false) {
-                    $dataRows[] = $row;
-                }
-                fclose($handle);
-            }
-        } else {
-            $spreadsheet = IOFactory::load($tmpPath);
-            $worksheet = $spreadsheet->getActiveSheet();
-            $rows = $worksheet->toArray();
-            $header = array_shift($rows);
-            $dataRows = $rows;
-        }
-
-        // Map headers to internal field names
-        $headerPatterns = [
-            'upid'          => ['placement id', 'upid', 'placement key id', 'Placement Id', 'Placement ID'],
-            'program_type'  => ['program type', 'Program Type'],
-            'program'       => ['program', 'Program'],
-            'course'        => ['course', 'Course'],
-            'reg_no'        => ['Student Register Number', 'Register Number', 'Register number', 'Register No', 'reg no', 'register no', 'regno', 'regno:', 'reg no:', 'register no:'],
-            'student_name'  => ['Student Name', 'name', 'student name', 'Student name', 'student'],
-            'email'         => ['Student Mail ID', 'Student Email ID', 'Student Email', 'Student email', 'email', 'mail', 'mail id', 'email address', 'email id'],
-            'phone_no'      => ['Student Phone No', 'Student Mobile No', 'student phone no', 'student mobile no', 'phone', 'mobile', 'mobile no', 'mobile number', 'phone number', 'phone no.', 'mobile no.'],
-            'percentage'    => ['percentage', 'Percentage', 'percent', 'score', 'grade', 'cgpa'],
-        ];
-
-
-        $expectedColumns = array_keys($headerPatterns);
-        $headerMap = [];
-
-        foreach ($header as $index => $colName) {
-            $normalized = strtolower(trim($colName));
-            $normalized = preg_replace('/[^a-z0-9]/', '', $normalized);
-
-            foreach ($headerPatterns as $field => $patterns) {
-                foreach ($patterns as $pattern) {
-                    $normPattern = preg_replace('/[^a-z0-9]/', '', strtolower($pattern));
-                    if ($normalized === $normPattern) {
-                        $headerMap[$field] = $index;
-                        break 2;
-                    }
-                }
-            }
-        }
-
-        // Friendly display names for each expected column
-        $columnDisplayNames = [
-            'upid'          => 'Placement ID',
-            'program_type'  => 'Program Type',
-            'program'       => 'Program',
-            'course'        => 'Course',
-            'reg_no'        => 'Registration Number',
-            'student_name'  => 'Student Name',
-            'email'         => 'Email',
-            'phone_no'      => 'Phone Number',
-            'percentage'    => 'Percentage'
-        ];
-
-        // Check for missing required columns
-        $missingColumns = [];
-
-        foreach ($expectedColumns as $col) {
-            if (!isset($headerMap[$col])) {
-                $missingColumns[] = $col;
-            }
-        }
-
-        if (!empty($missingColumns)) {
-            // Convert to readable names
-            $readableNames = array_map(function($col) use ($columnDisplayNames) {
-                return $columnDisplayNames[$col] ?? $col;
-            }, $missingColumns);
-
-            $_SESSION['import_message'] = "Missing required column(s): " . implode(', ', $readableNames);
-            $_SESSION['import_status'] = "error";
-            header("Location: vantage_registered_students.php");
-            exit;
-        }
-
-
-        $inserted = 0;
-        $skipped = 0;
-
-        foreach ($dataRows as $data) {
-            $upid          = trim($data[$headerMap['upid']]);
-            $program_type  = trim($data[$headerMap['program_type']]);
-            $program       = trim($data[$headerMap['program']]);
-            $course        = trim($data[$headerMap['course']]);
-            $reg_no        = trim($data[$headerMap['reg_no']]);
-            $student_name  = trim($data[$headerMap['student_name']]);
-            $email         = trim($data[$headerMap['email']]);
-            $phone_no      = trim($data[$headerMap['phone_no']]);
-            $percentage    = isset($headerMap['percentage']) ? (float)$data[$headerMap['percentage']] : null;
-
-            if (empty($upid) || empty($reg_no) || empty($student_name) || empty($email)) {
-                $skipped++;
-                continue;
-            }
-
-            $check = $conn->prepare("SELECT 1 FROM students WHERE upid = ?");
-            if ($check) {
-                $check->bind_param("s", $upid);
-                $check->execute();
-                $check->store_result();
-                if ($check->num_rows > 0) {
-                    $skipped++;
-                    $check->close();
-                    continue;
-                }
-                $check->close();
-            }
-
-            $stmt = $conn->prepare("INSERT INTO students
-                (upid, program_type, program, course, reg_no, student_name, email, phone_no, batch, year_of_passing, percentage, vantage_participant)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'yes')");
-
-            if ($stmt) {
-                $stmt->bind_param("sssssssssis",
-                    $upid, $program_type, $program, $course,
-                    $reg_no, $student_name, $email, $phone_no,
-                    $batchYear, $yearOfPassing, $percentage
-                );
-
-                if ($stmt->execute()) {
-                    $inserted++;
-                } else {
-                    error_log("Insert failed for UPID $upid: " . $stmt->error);
-                    $skipped++;
-                }
-
-                $stmt->close();
-            }
-        }
-
-        $_SESSION['import_message'] = "Import completed. Inserted: $inserted rows.";
-        $_SESSION['import_status'] = "success";
-
-    } catch (Exception $e) {
-        $_SESSION['import_message'] = "Error during import: " . $e->getMessage();
-        $_SESSION['import_status'] = "error";
-    }
-
-    header("Location: vantage_registered_students");
-    exit;
-}
-
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['export_all'])) {
     // Disable any output
@@ -1110,6 +1167,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
       <?= $messageHtml ?>
     </div>
   <?php endif; ?>
+
 <div class="table-responsive" style="max-height: 500px; overflow-y: auto;">
   <!-- Bulk Action Controls -->
   <div style="margin-bottom: 15px; display: flex; align-items: center; gap: 10px;">
@@ -1395,17 +1453,23 @@ function validateAndSubmit() {
     const pattern = /\d{4}-\d{4}/; // Matches "2022-2024"
 
     if (!pattern.test(filename)) {
-    // Use a hidden form to trigger server-side error handling
-    const form = input.form;
-    const messageField = document.createElement("input");
-    messageField.type = "hidden";
-    messageField.name = "invalid_filename";
-    messageField.value = "1";
-    form.appendChild(messageField);
-    form.submit();
-    return false;
-  }
+        alert('Error: Filename must include batch year in format YYYY-YYYY (e.g., vantage_students_2023-2026.xlsx)');
+        input.value = ''; // Reset file input
+        return false;
+    }
+
+    // Show loading indicator
+    const modal = document.getElementById("ipt_importPopup");
+    const modalContent = modal.querySelector(".ipt_modal-content");
+    modalContent.innerHTML = '<div style="text-align:center; padding:40px;"><i class="fas fa-spinner fa-spin" style="font-size:48px; color:#007bff;"></i><p style="margin-top:20px; font-size:16px;">Importing file... Please wait.</p></div>';
+
+    // Submit the form
     input.form.submit();
+
+    // Force reload after 5 seconds if redirect doesn't work
+    setTimeout(function() {
+        window.location.href = 'vantage_registered_students.php';
+    }, 5000);
   }
 
   function validateFilename() {

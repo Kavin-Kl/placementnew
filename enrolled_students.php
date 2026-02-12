@@ -122,14 +122,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_application'],
             $errorField = "❌ Only PDF, DOC, and DOCX files are allowed for Resume.";
         } else {
             $ext = pathinfo($_FILES['resume']['name'], PATHINFO_EXTENSION);
-            $resumeName = preg_replace("/[^a-zA-Z0-9_-]/", "_", $studentData['Name'] ?? 'student') . "_resume_" . uniqid() . "." . $ext;
-            $targetPath = "uploads/" . $resumeName;
+            $namePrefix = preg_replace("/[^a-zA-Z0-9_-]/", "_", $studentData['Name'] ?? 'student') . "_resume_";
+            $resumeName = $namePrefix . uniqid() . "." . $ext;
+            $targetPath = "uploads/resumes/" . $resumeName;
+
+            // Create directory if it doesn't exist
+            if (!is_dir("uploads/resumes/")) {
+                mkdir("uploads/resumes/", 0755, true);
+            }
+
+            // Delete ALL old resume files for this student (not just the one in existingStudentData)
+            $old_files = glob("uploads/resumes/" . $namePrefix . "*");
+            foreach ($old_files as $old_file) {
+                if (file_exists($old_file)) {
+                    unlink($old_file);
+                }
+            }
 
             if (move_uploaded_file($_FILES['resume']['tmp_name'], $targetPath)) {
-                // Delete old resume if exists
-                if (!empty($existingStudentData['Resume']) && $existingStudentData['Resume'] !== $targetPath && file_exists($existingStudentData['Resume'])) {
-                    unlink($existingStudentData['Resume']);
-                }
                 $studentData['Resume'] = $targetPath;
             } else {
                 error_log("Failed to move uploaded Resume file: " . $_FILES['resume']['name']);

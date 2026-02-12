@@ -157,7 +157,11 @@ if (isset($_POST['offer_letter_received']) && $_POST['offer_letter_received'] ==
         $field_errors['uploaded_offer_letter'] = "Offer Letter(s) are required if marked as received.";
     } else {
         $offer_letter_paths = [];
-        $upload_dir = "uploads/";
+        $upload_dir = "uploads/resumes/";
+        // Create directory if it doesn't exist
+        if (!is_dir($upload_dir)) {
+            mkdir($upload_dir, 0755, true);
+        }
         $max_file_size = 10 * 1024 * 1024; // 10MB
         $uploaded_files = $_FILES["uploaded_offer_letter"];
         
@@ -300,7 +304,11 @@ if (isset($_POST['offer_letter_received']) && $_POST['offer_letter_received'] ==
         $field_errors['uploaded_offer_letter'] = "Offer Letter(s) are required if marked as received.";
     } else {
         $offer_letter_paths = [];
-        $upload_dir = "uploads/";
+        $upload_dir = "uploads/resumes/";
+        // Create directory if it doesn't exist
+        if (!is_dir($upload_dir)) {
+            mkdir($upload_dir, 0755, true);
+        }
         $max_file_size = 10 * 1024 * 1024; // 10MB
         $uploaded_files = $_FILES["uploaded_offer_letter"];
         

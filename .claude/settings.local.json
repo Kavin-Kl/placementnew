@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(php:*)",
+      "Bash(/c/xampp/php/php.exe:*)",
+      "Bash(tasklist:*)",
+      "Bash(mysql:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

@@ -197,6 +197,221 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['ajax_row'], $_GET['plac
 // include_once __DIR__ . '/sync_placed_students.php';
 // sync_placed_students($conn);
 
+// === Handle Excel/CSV Import for Placed Students ===
+if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["csv_file_placed"])) {
+    require 'vendor/autoload.php';
+
+    $file = $_FILES["csv_file_placed"];
+    $fileName = $file["name"];
+    $tmpPath = $file["tmp_name"];
+    $fileExt = strtolower(pathinfo($fileName, PATHINFO_EXTENSION));
+
+    $allowedTypes = ['csv', 'xls', 'xlsx'];
+    if (!in_array($fileExt, $allowedTypes)) {
+        $_SESSION['import_message'] = "Invalid file type. Only .CSV, .XLS and .XLSX are allowed.";
+        $_SESSION['import_status'] = "error";
+        header("Location: internship_placed_students.php");
+        exit;
+    }
+
+    $dataRows = [];
+    $header = [];
+
+    try {
+        if ($fileExt === 'csv') {
+            if (($handle = fopen($tmpPath, "r")) !== false) {
+                $header = fgetcsv($handle);
+                while (($row = fgetcsv($handle, 1000, ",")) !== false) {
+                    $dataRows[] = $row;
+                }
+                fclose($handle);
+            }
+        } else {
+            $spreadsheet = \PhpOffice\PhpSpreadsheet\IOFactory::load($tmpPath);
+            $worksheet = $spreadsheet->getActiveSheet();
+            $rows = $worksheet->toArray();
+            $header = array_shift($rows);
+            $dataRows = $rows;
+        }
+
+        // Map headers to internal field names
+        $headerPatterns = [
+            'upid'          => ['placement id', 'upid', 'placement key id', 'Placement Id', 'Placement ID'],
+            'program_type'  => ['program type', 'Program Type'],
+            'program'       => ['program', 'Program'],
+            'course'        => ['course', 'Course'],
+            'reg_no'        => ['Student Register Number', 'Register Number', 'Register number', 'Register No', 'reg no', 'register no', 'regno', 'regno:', 'reg no:', 'register no:'],
+            'student_name'  => ['Student Name', 'name', 'student name', 'Student name', 'student'],
+            'email'         => ['Student Mail ID', 'Student Email ID', 'Student Email', 'Student email', 'email', 'mail', 'mail id', 'email address', 'email id'],
+            'phone_no'      => ['Student Phone No', 'Student Mobile No', 'student phone no', 'student mobile no', 'phone', 'mobile', 'mobile no', 'mobile number', 'phone number', 'phone no.', 'mobile no.'],
+            'percentage'    => ['percentage', 'Percentage', 'percent', 'score', 'grade', 'cgpa'],
+            'offer_type'    => ['Job Offer Type', 'offer type', 'Offer Type', 'offer'],
+            'drive_no'      => ['Company Drive No', 'drive no', 'Drive No', 'Drive Number', 'drive number'],
+            'company_name'  => ['Company Name', 'company', 'Company'],
+            'role'          => ['Designation', 'designation', 'Role', 'role', 'Job Role', 'job role'],
+            'ctc'           => ['Company CTC', 'ctc', 'CTC', 'salary'],
+            'stipend'       => ['Company Stipend', 'stipend', 'Stipend'],
+        ];
+
+        $expectedColumns = array_keys($headerPatterns);
+        $headerMap = [];
+
+        foreach ($header as $index => $colName) {
+            $normalized = strtolower(trim($colName));
+            $normalized = preg_replace('/[^a-z0-9]/', '', $normalized);
+
+            foreach ($headerPatterns as $field => $patterns) {
+                foreach ($patterns as $pattern) {
+                    $normPattern = preg_replace('/[^a-z0-9]/', '', strtolower($pattern));
+                    if ($normalized === $normPattern) {
+                        $headerMap[$field] = $index;
+                        break 2;
+                    }
+                }
+            }
+        }
+
+        // Friendly display names for each expected column
+        $columnDisplayNames = [
+            'upid'          => 'Placement ID',
+            'program_type'  => 'Program Type',
+            'program'       => 'Program',
+            'course'        => 'Course',
+            'reg_no'        => 'Registration Number',
+            'student_name'  => 'Student Name',
+            'email'         => 'Email',
+            'phone_no'      => 'Phone Number',
+            'percentage'    => 'Percentage',
+            'offer_type'    => 'Job Offer Type',
+            'drive_no'      => 'Company Drive No',
+            'company_name'  => 'Company Name',
+            'role'          => 'Designation',
+            'ctc'           => 'CTC',
+            'stipend'       => 'Stipend'
+        ];
+
+        // Check for missing required columns
+        $missingColumns = [];
+
+        foreach ($expectedColumns as $col) {
+            if (!isset($headerMap[$col])) {
+                $missingColumns[] = $col;
+            }
+        }
+
+        if (!empty($missingColumns)) {
+            // Convert to readable names
+            $readableNames = array_map(function($col) use ($columnDisplayNames) {
+                return $columnDisplayNames[$col] ?? $col;
+            }, $missingColumns);
+
+            $_SESSION['import_message'] = "Missing required column(s): " . implode(', ', $readableNames);
+            $_SESSION['import_status'] = "error";
+            header("Location: internship_placed_students.php");
+            exit;
+        }
+
+        $inserted = 0;
+        $skipped = 0;
+
+        foreach ($dataRows as $data) {
+            $upid          = trim($data[$headerMap['upid']] ?? '');
+            $program_type  = trim($data[$headerMap['program_type']] ?? '');
+            $program       = trim($data[$headerMap['program']] ?? '');
+            $course        = trim($data[$headerMap['course']] ?? '');
+            $reg_no        = trim($data[$headerMap['reg_no']] ?? '');
+            $student_name  = trim($data[$headerMap['student_name']] ?? '');
+            $email         = trim($data[$headerMap['email']] ?? '');
+            $phone_no      = trim($data[$headerMap['phone_no']] ?? '');
+            $percentage    = isset($headerMap['percentage']) && !empty($data[$headerMap['percentage']]) ? (float)$data[$headerMap['percentage']] : null;
+            $offer_type    = trim($data[$headerMap['offer_type']] ?? 'Internship'); // Default to Internship
+            $drive_no      = trim($data[$headerMap['drive_no']] ?? '');
+            $company_name  = trim($data[$headerMap['company_name']] ?? '');
+            $role          = trim($data[$headerMap['role']] ?? '');
+            $ctc           = trim($data[$headerMap['ctc']] ?? '');
+            $stipend       = trim($data[$headerMap['stipend']] ?? '');
+
+            // Force offer_type to Internship for internship placements
+            if (empty($offer_type) || !in_array($offer_type, ['Internship', 'Internship + PPO'])) {
+                $offer_type = 'Internship';
+            }
+
+            if (empty($upid) || empty($reg_no) || empty($student_name) || empty($email)) {
+                $skipped++;
+                continue;
+            }
+
+            // Check if student exists in students table
+            $checkStudent = $conn->prepare("SELECT student_id FROM students WHERE upid = ?");
+            $student_id = null;
+            if ($checkStudent) {
+                $checkStudent->bind_param("s", $upid);
+                $checkStudent->execute();
+                $checkStudent->store_result();
+                if ($checkStudent->num_rows > 0) {
+                    $checkStudent->bind_result($student_id);
+                    $checkStudent->fetch();
+                }
+                $checkStudent->close();
+            }
+
+            // If student doesn't exist, skip this record
+            if (!$student_id) {
+                $skipped++;
+                error_log("Skipping placement record - student with UPID '$upid' not found in students table");
+                continue;
+            }
+
+            // Check if placement record already exists
+            $checkPlaced = $conn->prepare("SELECT 1 FROM placed_students WHERE student_id = ? AND drive_no = ?");
+            if ($checkPlaced) {
+                $checkPlaced->bind_param("is", $student_id, $drive_no);
+                $checkPlaced->execute();
+                $checkPlaced->store_result();
+                if ($checkPlaced->num_rows > 0) {
+                    $skipped++;
+                    $checkPlaced->close();
+                    continue;
+                }
+                $checkPlaced->close();
+            }
+
+            // Insert placement record
+            $stmt = $conn->prepare("INSERT INTO placed_students
+                (student_id, upid, program_type, program, course, reg_no, student_name, email, phone_no, percentage,
+                 offer_type, drive_no, company_name, role, ctc, stipend)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+
+            if ($stmt) {
+                $stmt->bind_param("issssssssdssssss",
+                    $student_id, $upid, $program_type, $program, $course,
+                    $reg_no, $student_name, $email, $phone_no, $percentage,
+                    $offer_type, $drive_no, $company_name, $role, $ctc, $stipend
+                );
+
+                if ($stmt->execute()) {
+                    $inserted++;
+                } else {
+                    error_log("Insert failed for UPID $upid: " . $stmt->error);
+                    $skipped++;
+                }
+
+                $stmt->close();
+            }
+        }
+
+        $_SESSION['import_message'] = "Import completed. Inserted: $inserted rows. Skipped: $skipped rows.";
+        $_SESSION['import_status'] = "success";
+
+    } catch (Exception $e) {
+        $_SESSION['import_message'] = "Error during import: " . $e->getMessage();
+        $_SESSION['import_status'] = "error";
+    }
+
+    header("Location: internship_placed_students.php");
+    exit;
+}
+
 //filter ajax
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_filter']) && $_POST['ajax_filter'] === "1") {
     $where = [];
@@ -264,12 +479,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_filter']) && $_P
         $types .= 'd';
     }
 
-    $sql = "SELECT ps.* FROM placed_students ps
+    $sql = "SELECT DISTINCT ps.* FROM placed_students ps
             LEFT JOIN students s ON ps.student_id = s.student_id
-            WHERE ps.offer_type = 'Internship'";
+            WHERE ps.offer_type = 'Internship'
+              AND ps.program IS NOT NULL
+              AND ps.program != ''";
     if (!empty($where)) {
         $sql .= " AND " . implode(" AND ", $where);
     }
+    $sql .= " GROUP BY ps.student_id, ps.drive_no";
 
     $stmt = $conn->prepare($sql);
     if (!$stmt) {
@@ -297,6 +515,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_filter']) && $_P
     echo "</tbody>";
     exit;
 }
+
+// Display message if available
+$messageHtml = '';
+if (!empty($_SESSION['import_message'])) {
+    $type = $_SESSION['import_status'] ?? 'success';
+
+    switch ($type) {
+        case 'error':
+            $class = 'msg-error';
+            break;
+        case 'warning':
+            $class = 'msg-warning';
+            break;
+        default:
+            $class = 'msg-success';
+    }
+
+    $messageHtml = "<div class='$class'>" . htmlspecialchars($_SESSION['import_message']) . "</div>";
+
+    unset($_SESSION['import_message']);
+    unset($_SESSION['import_status']);
+}
 ?>
 
 <!DOCTYPE html>
@@ -321,6 +561,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_filter']) && $_P
   <h2 class="headings">Internship Placed Students</h2>
   <p style="margin-bottom: 10px;">View the complete list of internship placed students with placement information.</p>
 </div>
+
+<!-- Import Message Display -->
+<?php if ($messageHtml): ?>
+    <?= $messageHtml ?>
+<?php endif; ?>
 
 <!-- TOP Bar -->
 <div class="top-bar">
@@ -598,7 +843,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_filter']) && $_P
     </thead>
     <tbody id="tableBody">
       <?php
-      $defaultQuery = $conn->query("SELECT ps.* FROM placed_students ps WHERE ps.offer_type = 'Internship' ORDER BY ps.place_id DESC");
+      $defaultQuery = $conn->query("
+        SELECT DISTINCT ps.*
+        FROM placed_students ps
+        WHERE ps.offer_type = 'Internship'
+          AND ps.program IS NOT NULL
+          AND ps.program != ''
+        GROUP BY ps.student_id, ps.drive_no
+        ORDER BY ps.place_id DESC
+      ");
       $sl_no = 1;
       while ($row = $defaultQuery->fetch_assoc()) {
           echo render_student_row($row, $sl_no++);
