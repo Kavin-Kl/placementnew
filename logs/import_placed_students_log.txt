@@ -170,3 +170,25 @@ Detailed skip reasons (first 20):</span>
 === FINAL DATABASE STATS ===</span>
 [2026-02-16 21:32:53] <span class='success'>✓ Total Unique Students Placed: 210</span>
 [2026-02-16 21:32:53] <span class='success'>✓ Total Placement Records: 210</span>
+[2026-02-16 22:20:14] <span class='warning'>=== RESET & IMPORT STARTED ===</span>
+[2026-02-16 22:20:14] User: 7
+[2026-02-16 22:20:14] <span class='warning'>STEP 1: Clearing existing placed_students table...</span>
+[2026-02-16 22:20:14] <span class='success'>✓ Successfully deleted all existing records</span>
+[2026-02-16 22:20:14] <span class='info'>Deleted rows: 115</span>
+[2026-02-16 22:20:14] <span class='info'>STEP 2: Starting import of all records...</span>
+[2026-02-16 22:20:14] <span class='info'>File: C:/Users/Kavin/Downloads/placement_backup_all (1).xlsx</span>
+[2026-02-16 22:20:14] <span class='info'>File size: 1027 KB</span>
+[2026-02-16 22:20:33] <span class='success'>Excel file loaded successfully</span>
+[2026-02-16 22:20:33] <span class='info'>Total students in file: 212</span>
+[2026-02-16 22:20:35] <span class='success'>=== IMPORT COMPLETED ===</span>
+[2026-02-16 22:20:35] <span class='success'>✓ Inserted: 210 students</span>
+[2026-02-16 22:20:35] <span class='warning'>⚠ Skipped: 2 students</span>
+[2026-02-16 22:20:35] <span class='error'>  - Students not found: 2</span>
+[2026-02-16 22:20:35] <span class='warning'>
+Detailed skip reasons (first 20):</span>
+[2026-02-16 22:20:35] <span class='warning'>Row 38: Student with UPID 'MCCPLC_Reg_727' not found</span>
+[2026-02-16 22:20:35] <span class='warning'>Row 51: Student with UPID 'MCC25PLC_MS235101 _2026' not found</span>
+[2026-02-16 22:20:35] <span class='info'>
+=== FINAL DATABASE STATS ===</span>
+[2026-02-16 22:20:35] <span class='success'>✓ Total Unique Students Placed: 210</span>
+[2026-02-16 22:20:35] <span class='success'>✓ Total Placement Records: 210</span>
