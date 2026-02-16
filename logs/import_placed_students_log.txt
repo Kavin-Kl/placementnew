@@ -1,0 +1,172 @@
+[2026-02-16 20:42:29] === PLACED STUDENTS IMPORT STARTED ===
+[2026-02-16 20:42:29] User: 7
+[2026-02-16 20:42:29] <span class='info'>File found: C:/Users/Kavin/Downloads/placement_backup_all (1).xlsx</span>
+[2026-02-16 20:42:29] <span class='info'>File size: 1027 KB</span>
+[2026-02-16 20:42:29] <span class='info'>Loading Excel file...</span>
+[2026-02-16 20:42:47] <span class='success'>Excel file loaded successfully</span>
+[2026-02-16 20:42:47] <span class='info'>Total students in file: 212</span>
+[2026-02-16 20:42:47] <span class='info'>Headers: Sl No, Placement_id, program_type, program, course, reg_no, student_name, email, phone_no, drive_no, company_name, role, ctc, stipend, offer_letter_accepted, offer_letter_received, joining_status, comment, filled_on_off_form, Application_type</span>
+[2026-02-16 20:42:47] <span class='info'>Starting import process...</span>
+[2026-02-16 20:42:47] <span class='info'>Found 227 existing placements in database</span>
+[2026-02-16 20:47:50] === PLACED STUDENTS IMPORT STARTED ===
+[2026-02-16 20:47:50] User: 7
+[2026-02-16 20:47:50] <span class='info'>File found: C:/Users/Kavin/Downloads/placement_backup_all (1).xlsx</span>
+[2026-02-16 20:47:50] <span class='info'>File size: 1027 KB</span>
+[2026-02-16 20:47:50] <span class='info'>Loading Excel file...</span>
+[2026-02-16 20:48:06] <span class='success'>Excel file loaded successfully</span>
+[2026-02-16 20:48:06] <span class='info'>Total students in file: 212</span>
+[2026-02-16 20:48:06] <span class='info'>Headers: Sl No, Placement_id, program_type, program, course, reg_no, student_name, email, phone_no, drive_no, company_name, role, ctc, stipend, offer_letter_accepted, offer_letter_received, joining_status, comment, filled_on_off_form, Application_type</span>
+[2026-02-16 20:48:06] <span class='info'>Starting import process...</span>
+[2026-02-16 20:48:06] <span class='info'>Found 227 existing placements in database</span>
+[2026-02-16 20:49:52] === PLACED STUDENTS IMPORT STARTED ===
+[2026-02-16 20:49:52] User: 7
+[2026-02-16 20:49:52] <span class='info'>File found: C:/Users/Kavin/Downloads/placement_backup_all (1).xlsx</span>
+[2026-02-16 20:49:52] <span class='info'>File size: 1027 KB</span>
+[2026-02-16 20:49:52] <span class='info'>Loading Excel file...</span>
+[2026-02-16 20:50:06] <span class='success'>Excel file loaded successfully</span>
+[2026-02-16 20:50:06] <span class='info'>Total students in file: 212</span>
+[2026-02-16 20:50:06] <span class='info'>Headers: Sl No, Placement_id, program_type, program, course, reg_no, student_name, email, phone_no, drive_no, company_name, role, ctc, stipend, offer_letter_accepted, offer_letter_received, joining_status, comment, filled_on_off_form, Application_type</span>
+[2026-02-16 20:50:06] <span class='info'>Starting import process...</span>
+[2026-02-16 20:50:06] <span class='info'>Found 227 existing placements in database</span>
+[2026-02-16 20:50:06] <span class='success'>=== IMPORT COMPLETED ===</span>
+[2026-02-16 20:50:06] <span class='success'>Inserted: 6 students</span>
+[2026-02-16 20:50:06] <span class='warning'>Skipped: 206 students</span>
+[2026-02-16 20:50:06] <span class='warning'>  - Duplicates: 157</span>
+[2026-02-16 20:50:06] <span class='error'>  - Students not found: 2</span>
+[2026-02-16 20:50:06] <span class='error'>  - Roles not found: 47</span>
+[2026-02-16 20:50:06] <span class='warning'>
+Detailed skip reasons (first 20):</span>
+[2026-02-16 20:50:06] <span class='warning'>Row 38: Student with UPID 'MCCPLC_Reg_727' not found</span>
+[2026-02-16 20:50:06] <span class='warning'>Row 51: Student with UPID 'MCC25PLC_MS235101 _2026' not found</span>
+[2026-02-16 20:50:06] <span class='warning'>Row 67: Role 'Tax Core' not found for drive 'EY GDS'</span>
+[2026-02-16 20:50:06] <span class='warning'>Row 68: Role 'Tax Core' not found for drive 'EY GDS'</span>
+[2026-02-16 20:50:06] <span class='warning'>Row 69: Role 'Tax Core' not found for drive 'EY GDS'</span>
+[2026-02-16 20:50:06] <span class='warning'>Row 70: Role 'Tax Core' not found for drive 'EY GDS'</span>
+[2026-02-16 20:50:06] <span class='warning'>Row 71: Role 'Tax Core' not found for drive 'EY GDS'</span>
+[2026-02-16 20:50:06] <span class='warning'>Row 72: Role 'Tax Core' not found for drive 'EY GDS'</span>
+[2026-02-16 20:50:06] <span class='warning'>Row 73: Role 'Tax Core' not found for drive 'EY GDS'</span>
+[2026-02-16 20:50:06] <span class='warning'>Row 74: Role 'Tax Core' not found for drive 'EY GDS'</span>
+[2026-02-16 20:50:06] <span class='warning'>Row 75: Role 'Tax Core' not found for drive 'EY GDS'</span>
+[2026-02-16 20:50:06] <span class='warning'>Row 76: Role 'Tax Core' not found for drive 'EY GDS'</span>
+[2026-02-16 20:50:06] <span class='warning'>Row 77: Role 'Tax Core' not found for drive 'EY GDS'</span>
+[2026-02-16 20:50:06] <span class='warning'>Row 78: Role 'Tax Core' not found for drive 'EY GDS'</span>
+[2026-02-16 20:50:06] <span class='warning'>Row 80: Role 'Assurance Core Audit' not found for drive 'EY GDS'</span>
+[2026-02-16 20:50:06] <span class='warning'>Row 81: Role 'Assurance Core Audit' not found for drive 'EY GDS'</span>
+[2026-02-16 20:50:06] <span class='warning'>Row 82: Role 'Assurance Core Audit' not found for drive 'EY GDS'</span>
+[2026-02-16 20:50:06] <span class='warning'>Row 83: Role 'Assurance Core Audit' not found for drive 'EY GDS'</span>
+[2026-02-16 20:50:06] <span class='warning'>Row 84: Role 'Assurance Core Audit' not found for drive 'EY GDS'</span>
+[2026-02-16 20:50:06] <span class='warning'>Row 85: Role 'Assurance Core Audit' not found for drive 'EY GDS'</span>
+[2026-02-16 20:50:06] <span class='warning'>... and 29 more</span>
+[2026-02-16 20:50:06] <span class='info'>
+Updated Database Stats:</span>
+[2026-02-16 20:50:06] <span class='info'>Total Unique Students Placed: 163</span>
+[2026-02-16 20:50:06] <span class='info'>Total Offers: 320</span>
+[2026-02-16 20:52:56] === PLACED STUDENTS IMPORT STARTED ===
+[2026-02-16 20:52:56] User: 7
+[2026-02-16 20:52:56] <span class='info'>File found: C:/Users/Kavin/Downloads/placement_backup_all (1).xlsx</span>
+[2026-02-16 20:52:56] <span class='info'>File size: 1027 KB</span>
+[2026-02-16 20:52:56] <span class='info'>Loading Excel file...</span>
+[2026-02-16 20:53:13] <span class='success'>Excel file loaded successfully</span>
+[2026-02-16 20:53:13] <span class='info'>Total students in file: 212</span>
+[2026-02-16 20:53:13] <span class='info'>Headers: Sl No, Placement_id, program_type, program, course, reg_no, student_name, email, phone_no, drive_no, company_name, role, ctc, stipend, offer_letter_accepted, offer_letter_received, joining_status, comment, filled_on_off_form, Application_type</span>
+[2026-02-16 20:53:13] <span class='info'>Starting import process...</span>
+[2026-02-16 20:53:13] <span class='info'>Skip duplicates mode: DISABLED - Will import all records</span>
+[2026-02-16 20:53:13] <span class='warning'>Duplicate check disabled - will import all records</span>
+[2026-02-16 20:53:14] <span class='success'>=== IMPORT COMPLETED ===</span>
+[2026-02-16 20:53:14] <span class='success'>Inserted: 126 students</span>
+[2026-02-16 20:53:14] <span class='warning'>Skipped: 86 students</span>
+[2026-02-16 20:53:14] <span class='error'>  - Students not found: 2</span>
+[2026-02-16 20:53:14] <span class='error'>  - Drives not found: 15</span>
+[2026-02-16 20:53:14] <span class='error'>  - Roles not found: 69</span>
+[2026-02-16 20:53:14] <span class='warning'>
+Detailed skip reasons (first 20):</span>
+[2026-02-16 20:53:14] <span class='warning'>Row 24: Drive not found for 'Bambinos.live - Drive 1'</span>
+[2026-02-16 20:53:14] <span class='warning'>Row 25: Drive not found for 'Bambinos.live - Drive 1'</span>
+[2026-02-16 20:53:14] <span class='warning'>Row 26: Drive not found for 'Bambinos.live - Drive 1'</span>
+[2026-02-16 20:53:14] <span class='warning'>Row 27: Drive not found for 'Bambinos.live - Drive 1'</span>
+[2026-02-16 20:53:14] <span class='warning'>Row 28: Drive not found for 'Bambinos.live - Drive 1'</span>
+[2026-02-16 20:53:14] <span class='warning'>Row 29: Drive not found for 'Bambinos.live - Drive 1'</span>
+[2026-02-16 20:53:14] <span class='warning'>Row 30: Drive not found for 'Bambinos.live - Drive 1'</span>
+[2026-02-16 20:53:14] <span class='warning'>Row 31: Drive not found for 'Bambinos.live - Drive 1'</span>
+[2026-02-16 20:53:14] <span class='warning'>Row 32: Drive not found for 'Bambinos.live - Drive 1'</span>
+[2026-02-16 20:53:14] <span class='warning'>Row 36: Role 'GRCS FS - Analyst' not found for drive 'KPMG India'</span>
+[2026-02-16 20:53:14] <span class='warning'>Row 37: Role 'GRCS FS - Analyst' not found for drive 'KPMG India'</span>
+[2026-02-16 20:53:14] <span class='warning'>Row 38: Student with UPID 'MCCPLC_Reg_727' not found</span>
+[2026-02-16 20:53:14] <span class='warning'>Row 40: Role 'Intern - Commercial Learning Services Writer' not found for drive 'Eli Lilly'</span>
+[2026-02-16 20:53:14] <span class='warning'>Row 41: Role 'Intern - Commercial Learning Services Writer' not found for drive 'Eli Lilly'</span>
+[2026-02-16 20:53:14] <span class='warning'>Row 42: Role 'Intern - Commercial Learning Services Writer' not found for drive 'Eli Lilly'</span>
+[2026-02-16 20:53:14] <span class='warning'>Row 43: Role 'Intern - Commercial Learning Services Writer' not found for drive 'Eli Lilly'</span>
+[2026-02-16 20:53:14] <span class='warning'>Row 44: Role 'Intern - Commercial Learning Services Writer' not found for drive 'Eli Lilly'</span>
+[2026-02-16 20:53:14] <span class='warning'>Row 51: Student with UPID 'MCC25PLC_MS235101 _2026' not found</span>
+[2026-02-16 20:53:14] <span class='warning'>Row 67: Role 'Tax Core' not found for drive 'EY GDS'</span>
+[2026-02-16 20:53:14] <span class='warning'>Row 68: Role 'Tax Core' not found for drive 'EY GDS'</span>
+[2026-02-16 20:53:14] <span class='warning'>... and 66 more</span>
+[2026-02-16 20:53:14] <span class='info'>
+Updated Database Stats:</span>
+[2026-02-16 20:53:14] <span class='info'>Total Unique Students Placed: 163</span>
+[2026-02-16 20:53:14] <span class='info'>Total Offers: 440</span>
+[2026-02-16 20:57:36] <span class='warning'>=== RESET & IMPORT STARTED ===</span>
+[2026-02-16 20:57:36] User: 7
+[2026-02-16 20:57:36] <span class='warning'>STEP 1: Clearing existing placed_students table...</span>
+[2026-02-16 20:57:36] <span class='success'>✓ Successfully deleted all existing records</span>
+[2026-02-16 20:57:36] <span class='info'>Deleted rows: 440</span>
+[2026-02-16 20:57:36] <span class='info'>STEP 2: Starting import of all records...</span>
+[2026-02-16 20:57:36] <span class='info'>File: C:/Users/Kavin/Downloads/placement_backup_all (1).xlsx</span>
+[2026-02-16 20:57:36] <span class='info'>File size: 1027 KB</span>
+[2026-02-16 20:57:57] <span class='success'>Excel file loaded successfully</span>
+[2026-02-16 20:57:57] <span class='info'>Total students in file: 212</span>
+[2026-02-16 20:57:58] <span class='success'>=== IMPORT COMPLETED ===</span>
+[2026-02-16 20:57:58] <span class='success'>✓ Inserted: 126 students</span>
+[2026-02-16 20:57:58] <span class='warning'>⚠ Skipped: 86 students</span>
+[2026-02-16 20:57:58] <span class='error'>  - Students not found: 2</span>
+[2026-02-16 20:57:58] <span class='error'>  - Drives not found: 15</span>
+[2026-02-16 20:57:58] <span class='error'>  - Roles not found: 69</span>
+[2026-02-16 20:57:58] <span class='warning'>
+Detailed skip reasons (first 20):</span>
+[2026-02-16 20:57:58] <span class='warning'>Row 24: Drive not found for 'Bambinos.live - Drive 1'</span>
+[2026-02-16 20:57:58] <span class='warning'>Row 25: Drive not found for 'Bambinos.live - Drive 1'</span>
+[2026-02-16 20:57:58] <span class='warning'>Row 26: Drive not found for 'Bambinos.live - Drive 1'</span>
+[2026-02-16 20:57:58] <span class='warning'>Row 27: Drive not found for 'Bambinos.live - Drive 1'</span>
+[2026-02-16 20:57:58] <span class='warning'>Row 28: Drive not found for 'Bambinos.live - Drive 1'</span>
+[2026-02-16 20:57:58] <span class='warning'>Row 29: Drive not found for 'Bambinos.live - Drive 1'</span>
+[2026-02-16 20:57:58] <span class='warning'>Row 30: Drive not found for 'Bambinos.live - Drive 1'</span>
+[2026-02-16 20:57:58] <span class='warning'>Row 31: Drive not found for 'Bambinos.live - Drive 1'</span>
+[2026-02-16 20:57:58] <span class='warning'>Row 32: Drive not found for 'Bambinos.live - Drive 1'</span>
+[2026-02-16 20:57:58] <span class='warning'>Row 36: Role 'GRCS FS - Analyst' not found for drive 'KPMG India'</span>
+[2026-02-16 20:57:58] <span class='warning'>Row 37: Role 'GRCS FS - Analyst' not found for drive 'KPMG India'</span>
+[2026-02-16 20:57:58] <span class='warning'>Row 38: Student with UPID 'MCCPLC_Reg_727' not found</span>
+[2026-02-16 20:57:58] <span class='warning'>Row 40: Role 'Intern - Commercial Learning Services Writer' not found for drive 'Eli Lilly'</span>
+[2026-02-16 20:57:58] <span class='warning'>Row 41: Role 'Intern - Commercial Learning Services Writer' not found for drive 'Eli Lilly'</span>
+[2026-02-16 20:57:58] <span class='warning'>Row 42: Role 'Intern - Commercial Learning Services Writer' not found for drive 'Eli Lilly'</span>
+[2026-02-16 20:57:58] <span class='warning'>Row 43: Role 'Intern - Commercial Learning Services Writer' not found for drive 'Eli Lilly'</span>
+[2026-02-16 20:57:58] <span class='warning'>Row 44: Role 'Intern - Commercial Learning Services Writer' not found for drive 'Eli Lilly'</span>
+[2026-02-16 20:57:58] <span class='warning'>Row 51: Student with UPID 'MCC25PLC_MS235101 _2026' not found</span>
+[2026-02-16 20:57:58] <span class='warning'>Row 67: Role 'Tax Core' not found for drive 'EY GDS'</span>
+[2026-02-16 20:57:58] <span class='warning'>Row 68: Role 'Tax Core' not found for drive 'EY GDS'</span>
+[2026-02-16 20:57:58] <span class='warning'>... and 66 more</span>
+[2026-02-16 20:57:58] <span class='info'>
+=== FINAL DATABASE STATS ===</span>
+[2026-02-16 20:57:58] <span class='success'>✓ Total Unique Students Placed: 126</span>
+[2026-02-16 20:57:58] <span class='success'>✓ Total Placement Records: 126</span>
+[2026-02-16 21:32:36] <span class='warning'>=== RESET & IMPORT STARTED ===</span>
+[2026-02-16 21:32:36] User: 7
+[2026-02-16 21:32:36] <span class='warning'>STEP 1: Clearing existing placed_students table...</span>
+[2026-02-16 21:32:36] <span class='success'>✓ Successfully deleted all existing records</span>
+[2026-02-16 21:32:36] <span class='info'>Deleted rows: 115</span>
+[2026-02-16 21:32:36] <span class='info'>STEP 2: Starting import of all records...</span>
+[2026-02-16 21:32:36] <span class='info'>File: C:/Users/Kavin/Downloads/placement_backup_all (1).xlsx</span>
+[2026-02-16 21:32:36] <span class='info'>File size: 1027 KB</span>
+[2026-02-16 21:32:52] <span class='success'>Excel file loaded successfully</span>
+[2026-02-16 21:32:52] <span class='info'>Total students in file: 212</span>
+[2026-02-16 21:32:53] <span class='success'>=== IMPORT COMPLETED ===</span>
+[2026-02-16 21:32:53] <span class='success'>✓ Inserted: 210 students</span>
+[2026-02-16 21:32:53] <span class='warning'>⚠ Skipped: 2 students</span>
+[2026-02-16 21:32:53] <span class='error'>  - Students not found: 2</span>
+[2026-02-16 21:32:53] <span class='warning'>
+Detailed skip reasons (first 20):</span>
+[2026-02-16 21:32:53] <span class='warning'>Row 38: Student with UPID 'MCCPLC_Reg_727' not found</span>
+[2026-02-16 21:32:53] <span class='warning'>Row 51: Student with UPID 'MCC25PLC_MS235101 _2026' not found</span>
+[2026-02-16 21:32:53] <span class='info'>
+=== FINAL DATABASE STATS ===</span>
+[2026-02-16 21:32:53] <span class='success'>✓ Total Unique Students Placed: 210</span>
+[2026-02-16 21:32:53] <span class='success'>✓ Total Placement Records: 210</span>

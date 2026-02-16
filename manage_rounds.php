@@ -516,6 +516,25 @@ require 'header.php';
 
         <div class="col-md-8">
             <?php if ($selected_drive && count($applications) > 0): ?>
+                <!-- Search Box for Students -->
+                <div class="student-search-bar" style="background: white; border-radius: 12px; padding: 15px; margin-bottom: 15px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                    <div class="d-flex align-items-center gap-2">
+                        <i class='bx bx-search' style="font-size: 20px; color: #650000;"></i>
+                        <input type="text"
+                               id="studentSearchInput"
+                               class="form-control"
+                               placeholder="Search students by name, UPID, email, or course..."
+                               onkeyup="filterStudents()"
+                               style="border: 1px solid #ddd; border-radius: 8px; padding: 10px 15px;">
+                        <button type="button" class="btn btn-outline-secondary" onclick="clearStudentSearch()" id="clearSearchBtn" style="display: none;">
+                            <i class='bx bx-x'></i> Clear
+                        </button>
+                    </div>
+                    <div id="searchResultsCount" style="margin-top: 10px; color: #666; font-size: 14px; display: none;">
+                        <i class='bx bx-info-circle'></i> <span id="resultsText"></span>
+                    </div>
+                </div>
+
                 <!-- Bulk Actions Bar -->
                 <div class="bulk-actions-bar" style="background: white; border-radius: 12px; padding: 15px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
                     <div class="d-flex justify-content-between align-items-center">
@@ -855,6 +874,57 @@ window.onclick = function(event) {
     if (event.target.classList.contains('modal')) {
         event.target.style.display = 'none';
     }
+}
+
+// Student Search Filter Functions
+function filterStudents() {
+    const searchInput = document.getElementById('studentSearchInput');
+    const searchValue = searchInput.value.toLowerCase().trim();
+    const clearBtn = document.getElementById('clearSearchBtn');
+    const resultsCount = document.getElementById('searchResultsCount');
+    const resultsText = document.getElementById('resultsText');
+
+    // Show/hide clear button
+    clearBtn.style.display = searchValue ? 'block' : 'none';
+
+    const applicationCards = document.querySelectorAll('.application-card');
+    let visibleCount = 0;
+    let totalCount = applicationCards.length;
+
+    applicationCards.forEach(card => {
+        // Get student information from the card
+        const studentName = card.querySelector('.student-header h5').textContent.toLowerCase();
+        const studentInfo = card.querySelector('.student-header small').textContent.toLowerCase();
+
+        // Check if search value matches any field
+        const matches = searchValue === '' ||
+                       studentName.includes(searchValue) ||
+                       studentInfo.includes(searchValue);
+
+        // Show/hide the card
+        if (matches) {
+            card.style.display = 'block';
+            visibleCount++;
+        } else {
+            card.style.display = 'none';
+        }
+    });
+
+    // Update results count
+    if (searchValue) {
+        resultsCount.style.display = 'block';
+        resultsText.textContent = `Showing ${visibleCount} of ${totalCount} students`;
+    } else {
+        resultsCount.style.display = 'none';
+    }
+
+    // Update selected count after filtering
+    updateSelectedCount();
+}
+
+function clearStudentSearch() {
+    document.getElementById('studentSearchInput').value = '';
+    filterStudents();
 }
 
 // Bulk Operations Functions

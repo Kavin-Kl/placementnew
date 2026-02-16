@@ -487,10 +487,18 @@ if (!empty($_SESSION['import_message'])) {
             $class = 'msg-success';
     }
 
-    $messageHtml = "<div class='$class'>" . htmlspecialchars($_SESSION['import_message']) . "</div>";
+    $messageHtml = "<div class='$class'>" . htmlspecialchars($_SESSION['import_message']);
+
+    // Add detailed skip information if available
+    if (!empty($_SESSION['import_details'])) {
+        $messageHtml .= "<br><small style='font-size:0.85em; opacity:0.9;'>Details: " . htmlspecialchars($_SESSION['import_details']) . "</small>";
+    }
+
+    $messageHtml .= "</div>";
 
     unset($_SESSION['import_message']);
     unset($_SESSION['import_status']);
+    unset($_SESSION['import_details']);
 }
 
 // === Handle CSV Import ===
@@ -642,6 +650,12 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["csv_file"])) {
 
         $inserted = 0;
         $skipped = 0;
+        $skipReasons = [
+            'empty_fields' => 0,
+            'duplicates' => 0,
+            'errors' => 0
+        ];
+        $skippedDetails = [];
 
         // OPTIMIZATION: Get all existing UPIDs - Process in BATCHES to avoid MySQL limit
         $allUpids = array_map(function($row) use ($headerMap) {
@@ -677,6 +691,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["csv_file"])) {
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
 
         $currentYear = date('Y');
+        $rowNumber = 2; // Start at 2 (row 1 is header in Excel)
 
         foreach ($dataRows as $data) {
             $upid          = trim($data[$headerMap['upid']] ?? '');
@@ -702,14 +717,27 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["csv_file"])) {
                 $class = 'Final Year';
             }
 
+            // Validation: Check for empty required fields
             if (empty($upid) || empty($reg_no) || empty($student_name) || empty($email)) {
                 $skipped++;
+                $skipReasons['empty_fields']++;
+                $missingFields = [];
+                if (empty($upid)) $missingFields[] = 'Placement ID';
+                if (empty($reg_no)) $missingFields[] = 'Register Number';
+                if (empty($student_name)) $missingFields[] = 'Student Name';
+                if (empty($email)) $missingFields[] = 'Email';
+
+                $skippedDetails[] = "Row $rowNumber: Missing required fields - " . implode(', ', $missingFields);
+                $rowNumber++;
                 continue;
             }
 
             // Check if UPID already exists (using in-memory array - MUCH faster!)
             if (isset($existingUpids[$upid])) {
                 $skipped++;
+                $skipReasons['duplicates']++;
+                $skippedDetails[] = "Row $rowNumber: Duplicate UPID '$upid' already exists in database";
+                $rowNumber++;
                 continue;
             }
 
@@ -727,16 +755,47 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["csv_file"])) {
                 } else {
                     error_log("Insert failed for UPID $upid: " . $stmt->error);
                     $skipped++;
+                    $skipReasons['errors']++;
+                    $skippedDetails[] = "Row $rowNumber: Database error for UPID '$upid'";
                 }
             }
+            $rowNumber++;
         }
 
         if ($stmt) {
             $stmt->close();
         }
 
-        $_SESSION['import_message'] = "Import completed. Inserted: $inserted rows.";
-        $_SESSION['import_status'] = "success";
+        // Build detailed message
+        $message = "Import completed. Inserted: $inserted rows";
+
+        if ($skipped > 0) {
+            $message .= ", Skipped: $skipped rows";
+            $details = [];
+            if ($skipReasons['duplicates'] > 0) {
+                $details[] = "{$skipReasons['duplicates']} duplicates";
+            }
+            if ($skipReasons['empty_fields'] > 0) {
+                $details[] = "{$skipReasons['empty_fields']} with missing fields";
+            }
+            if ($skipReasons['errors'] > 0) {
+                $details[] = "{$skipReasons['errors']} with errors";
+            }
+            if (!empty($details)) {
+                $message .= " (" . implode(', ', $details) . ")";
+            }
+        }
+
+        $_SESSION['import_message'] = $message;
+
+        // Store detailed skip info for debugging (limit to first 10 issues)
+        if (!empty($skippedDetails) && count($skippedDetails) <= 10) {
+            $_SESSION['import_details'] = implode('; ', array_slice($skippedDetails, 0, 10));
+        } elseif (!empty($skippedDetails)) {
+            $_SESSION['import_details'] = implode('; ', array_slice($skippedDetails, 0, 10)) . "; ... and " . (count($skippedDetails) - 10) . " more issues";
+        }
+
+        $_SESSION['import_status'] = ($inserted > 0) ? "success" : ($skipped > 0 ? "warning" : "success");
 
     } catch (Exception $e) {
         $_SESSION['import_message'] = "Error during import: " . $e->getMessage();

@@ -136,22 +136,23 @@ $data = [];
 // sync_placed_students($conn);
 
 $sql = "
-SELECT 
+SELECT
   d.*,
   drv.drive_no AS drive_number,
   drv.open_date AS opening_date,
-  dr.close_date AS closing_date,
+  MIN(dr.close_date) AS closing_date,
   drv.created_by,
   (
-    SELECT COUNT(*) 
-    FROM placed_students ps 
-    WHERE 
-      ps.company_name = d.company_name 
-      AND ps.role_id = d.role_id
+    SELECT COUNT(DISTINCT student_id)
+    FROM placed_students ps
+    WHERE
+      ps.company_name = d.company_name
+      AND ps.role = d.role
   ) AS hired_count
 FROM drive_data d
 LEFT JOIN drives drv ON d.company_name = drv.company_name AND d.drive_no = drv.drive_no
 LEFT JOIN drive_roles dr ON drv.drive_id = dr.drive_id AND TRIM(d.role) = TRIM(dr.designation_name)
+GROUP BY d.id
 ORDER BY d.company_name ASC, d.id ASC
 ";
 
@@ -165,14 +166,14 @@ while ($row = $result->fetch_assoc()) {
     }
 
     // Calculate actual hired count from placed_students table
+    // Match by company_name and role instead of IDs (since drive_id/role_id may be NULL in drive_data)
     $hiredCountSql = "
-        SELECT COUNT(DISTINCT ps.student_id) as count
-        FROM placed_students ps
-        INNER JOIN drive_data dd ON ps.drive_id = dd.drive_id AND ps.role_id = dd.role_id
-        WHERE dd.id = ?
+        SELECT COUNT(DISTINCT student_id) as count
+        FROM placed_students
+        WHERE company_name = ? AND role = ?
     ";
     $hiredStmt = $conn->prepare($hiredCountSql);
-    $hiredStmt->bind_param("i", $row['id']);
+    $hiredStmt->bind_param("ss", $row['company_name'], $row['role']);
     $hiredStmt->execute();
     $hiredResult = $hiredStmt->get_result();
     $actualHired = $hiredResult->fetch_assoc()['count'] ?? 0;

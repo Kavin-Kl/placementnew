@@ -228,7 +228,56 @@ if (isset($_SESSION['selected_academic_year'])) {
 // Top Dashboard Boxes - Show ALL students regardless of year (consistent with statistics page)
 $total_students = $conn->query("SELECT COUNT(*) AS count FROM students")->fetch_assoc()['count'];
 $total_companies = $conn->query("SELECT COUNT(DISTINCT company_name) AS count FROM drives")->fetch_assoc()['count'];
-$placed_students = $conn->query("SELECT COUNT(DISTINCT place_id) AS count FROM placed_students")->fetch_assoc()['count'];
+
+// Get placed students breakdown - Count total placement records (excluding internships)
+$placed_students_query = "
+    SELECT
+        COUNT(ps.place_id) as total,
+        COUNT(CASE WHEN s.vantage_participant = 'yes' THEN ps.place_id END) as vantage,
+        COUNT(CASE WHEN s.vantage_participant != 'yes' OR s.vantage_participant IS NULL THEN ps.place_id END) as final_year
+    FROM placed_students ps
+    LEFT JOIN students s ON ps.student_id = s.student_id
+    WHERE ps.offer_type != 'Internship' OR ps.offer_type IS NULL
+";
+$placed_result = $conn->query($placed_students_query)->fetch_assoc();
+$placed_students = $placed_result['total'];
+$vantage_placed = $placed_result['vantage'];
+$final_year_placed = $placed_result['final_year'];
+
+// Get internship placed students breakdown - Count total placement records (offer_type = 'Internship')
+$internship_placed_query = "
+    SELECT
+        COUNT(ps.place_id) as total,
+        COUNT(CASE WHEN s.vantage_participant = 'yes' THEN ps.place_id END) as vantage,
+        COUNT(CASE WHEN s.vantage_participant != 'yes' OR s.vantage_participant IS NULL THEN ps.place_id END) as final_year
+    FROM placed_students ps
+    LEFT JOIN students s ON ps.student_id = s.student_id
+    WHERE ps.offer_type = 'Internship'
+";
+$internship_result = $conn->query($internship_placed_query);
+if ($internship_result) {
+    $internship_data = $internship_result->fetch_assoc();
+    $internship_placed = $internship_data['total'];
+    $internship_vantage_placed = $internship_data['vantage'];
+    $internship_final_year_placed = $internship_data['final_year'];
+} else {
+    $internship_placed = 0;
+    $internship_vantage_placed = 0;
+    $internship_final_year_placed = 0;
+}
+
+// Get registered students breakdown
+$registered_students_query = "
+    SELECT
+        COUNT(student_id) as total,
+        COUNT(CASE WHEN vantage_participant = 'yes' THEN student_id END) as vantage,
+        COUNT(CASE WHEN vantage_participant != 'yes' OR vantage_participant IS NULL THEN student_id END) as final_year
+    FROM students
+";
+$registered_result = $conn->query($registered_students_query)->fetch_assoc();
+$registered_total = $registered_result['total'];
+$registered_vantage = $registered_result['vantage'];
+$registered_final_year = $registered_result['final_year'];
 
 function getCompanyProgress($status) {
     $status = strtolower($status);
@@ -260,14 +309,17 @@ function getCompanyProgress($status) {
 <p>List of all the current, upcoming, finished placement drives.</p>
 <div class="p-4">
 
-  <!-- Top Three Boxes -->
-  <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+  <!-- Top Dashboard Boxes -->
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
     <!-- Total Students -->
     <div class="bg-[#650000] text-white rounded-md p-4 flex justify-between items-center">
       <div>
-        <div class="text-sm">Total Students</div>
-        <div class="text-2xl font-bold"><?= $total_students ?></div>
-        <div class="text-green-300 text-xs mt-1">Up from yesterday</div>
+        <div class="text-sm">Registered Students</div>
+        <div class="text-2xl font-bold"><?= $registered_total ?></div>
+        <div class="text-red-300 text-xs mt-1">
+          Final Year: <?= $registered_final_year ?> | Vantage: <?= $registered_vantage ?>
+        </div>
+        <div class="text-red-300 text-xs mt-1" style="opacity: 0.7;">Updated daily</div>
       </div>
       <div class="text-4xl opacity-80 text-white">
         <i class="fas fa-user-graduate"></i>
@@ -291,10 +343,28 @@ function getCompanyProgress($status) {
       <div>
         <div class="text-sm">Placed Students</div>
         <div class="text-2xl font-bold"><?= $placed_students ?></div>
-        <div class="text-red-300 text-xs mt-1">Updated daily</div>
+        <div class="text-red-300 text-xs mt-1">
+          Final Year: <?= $final_year_placed ?> | Vantage: <?= $vantage_placed ?>
+        </div>
+        <div class="text-red-300 text-xs mt-1" style="opacity: 0.7;">Updated daily</div>
       </div>
       <div class="text-4xl opacity-80 text-white">
         <i class="bi bi-briefcase"></i></i>
+      </div>
+    </div>
+
+    <!-- Internship Placed Students -->
+    <div class="bg-[#650000] text-white rounded-md p-4 flex justify-between items-center">
+      <div>
+        <div class="text-sm">Internship Placed</div>
+        <div class="text-2xl font-bold"><?= $internship_placed ?></div>
+        <div class="text-red-300 text-xs mt-1">
+          Final Year: <?= $internship_final_year_placed ?> | Vantage: <?= $internship_vantage_placed ?>
+        </div>
+        <div class="text-red-300 text-xs mt-1" style="opacity: 0.7;">Updated daily</div>
+      </div>
+      <div class="text-4xl opacity-80 text-white">
+        <i class="fas fa-laptop-code"></i>
       </div>
     </div>
   </div>

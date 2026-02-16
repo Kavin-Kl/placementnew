@@ -13,6 +13,21 @@ include("config.php");
 if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["csv_file"])) {
     require 'vendor/autoload.php';
 
+    // Setup logging
+    $logFile = __DIR__ . '/logs/import_log.txt';
+    if (!file_exists(__DIR__ . '/logs')) {
+        mkdir(__DIR__ . '/logs', 0777, true);
+    }
+
+    function logImport($message) {
+        global $logFile;
+        $timestamp = date('Y-m-d H:i:s');
+        file_put_contents($logFile, "[$timestamp] $message\n", FILE_APPEND);
+    }
+
+    logImport("=== IMPORT STARTED ===");
+    logImport("User: " . ($_SESSION['admin_id'] ?? 'Unknown'));
+
     // Increase limits for large file processing - MUST be before file reading
     set_time_limit(600); // 10 minutes
     ini_set('memory_limit', '2048M'); // 2GB
@@ -22,19 +37,30 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["csv_file"])) {
     $fileName = $file["name"];
     $tmpPath = $file["tmp_name"];
     $fileExt = strtolower(pathinfo($fileName, PATHINFO_EXTENSION));
+    $fileSize = $file["size"];
+
+    logImport("File received: $fileName (Size: " . round($fileSize/1024, 2) . " KB, Type: $fileExt)");
+    logImport("Temp path: $tmpPath");
 
     // Check for file upload errors
     if ($file['error'] !== UPLOAD_ERR_OK) {
-        $_SESSION['import_message'] = "File upload failed with error code: " . $file['error'];
+        $errorMsg = "File upload failed with error code: " . $file['error'];
+        logImport("ERROR: $errorMsg");
+        $_SESSION['import_message'] = $errorMsg;
         $_SESSION['import_status'] = "error";
         header("Location: vantage_registered_students.php");
         exit;
     }
 
+    logImport("File upload successful, checking filename format...");
+
     if (preg_match('/(\d{4})-(\d{4})/', $fileName, $matches)) {
         $batchYear = $matches[0];
         $yearOfPassing = (int) $matches[2];
+        logImport("Batch year extracted: $batchYear (Year of Passing: $yearOfPassing)");
     } else {
+        $errorMsg = "Filename must include batch year in format YYYY-YYYY (e.g., students_2023-2026). Current filename: $fileName";
+        logImport("ERROR: $errorMsg");
         $_SESSION['import_message'] = "Filename must include batch year in format YYYY-YYYY (e.g., students_2023-2026).";
         $_SESSION['import_status'] = "error";
         header("Location: vantage_registered_students.php");
@@ -43,16 +69,22 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["csv_file"])) {
 
     $allowedTypes = ['csv', 'xls', 'xlsx'];
     if (!in_array($fileExt, $allowedTypes)) {
+        $errorMsg = "Invalid file type '$fileExt'. Only .CSV, .XLS and .XLSX are allowed.";
+        logImport("ERROR: $errorMsg");
         $_SESSION['import_message'] = "Invalid file type. Only .CSV, .XLS and .XLSX are allowed.";
         $_SESSION['import_status'] = "error";
         header("Location: vantage_registered_students.php");
         exit;
     }
 
+    logImport("File type validation passed");
+
     $dataRows = [];
     $header = [];
 
     try {
+        logImport("Starting file parsing...");
+
         if ($fileExt === 'csv') {
             if (($handle = fopen($tmpPath, "r")) !== false) {
                 $header = fgetcsv($handle);
@@ -60,20 +92,37 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["csv_file"])) {
                     $dataRows[] = $row;
                 }
                 fclose($handle);
+                logImport("CSV file parsed successfully: " . count($dataRows) . " data rows found");
+            } else {
+                throw new Exception("Failed to open CSV file");
             }
         } else {
             // Load Excel file with error handling - optimized for speed
             try {
+                logImport("Creating Excel reader...");
                 $reader = \PhpOffice\PhpSpreadsheet\IOFactory::createReaderForFile($tmpPath);
                 $reader->setReadDataOnly(true); // Skip formatting/styling - much faster!
                 $reader->setReadEmptyCells(false); // Skip empty cells
 
+                logImport("Loading Excel file...");
                 $spreadsheet = $reader->load($tmpPath);
                 $worksheet = $spreadsheet->getActiveSheet();
                 $rows = $worksheet->toArray(null, false, false, false); // Raw values only
                 $header = array_shift($rows);
                 $dataRows = $rows;
+
+                // Remove empty rows
+                $dataRows = array_filter($dataRows, function($row) {
+                    return !empty(array_filter($row));
+                });
+
+                logImport("Excel file parsed successfully: " . count($dataRows) . " data rows found");
+                logImport("Headers found: " . implode(', ', $header));
+
             } catch (Exception $e) {
+                $errorMsg = "Failed to read Excel file: " . $e->getMessage();
+                logImport("ERROR: $errorMsg");
+                logImport("Stack trace: " . $e->getTraceAsString());
                 $_SESSION['import_message'] = "Failed to read Excel file: " . $e->getMessage();
                 $_SESSION['import_status'] = "error";
                 header("Location: vantage_registered_students.php");
@@ -97,6 +146,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["csv_file"])) {
         $expectedColumns = array_keys($headerPatterns);
         $headerMap = [];
 
+        logImport("Starting header mapping...");
+
         foreach ($header as $index => $colName) {
             $normalized = strtolower(trim($colName));
             $normalized = preg_replace('/[^a-z0-9]/', '', $normalized);
@@ -106,11 +157,14 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["csv_file"])) {
                     $normPattern = preg_replace('/[^a-z0-9]/', '', strtolower($pattern));
                     if ($normalized === $normPattern) {
                         $headerMap[$field] = $index;
+                        logImport("Mapped column '$colName' (index $index) to field '$field'");
                         break 2;
                     }
                 }
             }
         }
+
+        logImport("Header mapping completed. Mapped fields: " . implode(', ', array_keys($headerMap)));
 
         // Friendly display names for each expected column
         $columnDisplayNames = [
@@ -140,15 +194,26 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["csv_file"])) {
                 return $columnDisplayNames[$col] ?? $col;
             }, $missingColumns);
 
+            $errorMsg = "Missing required column(s): " . implode(', ', $readableNames);
+            logImport("ERROR: $errorMsg");
+            logImport("Available headers in file: " . implode(', ', $header));
             $_SESSION['import_message'] = "Missing required column(s): " . implode(', ', $readableNames);
             $_SESSION['import_status'] = "error";
             header("Location: vantage_registered_students.php");
             exit;
         }
 
+        logImport("All required columns found. Starting data validation and insertion...");
+
 
         $inserted = 0;
         $skipped = 0;
+        $skipReasons = [
+            'empty_fields' => 0,
+            'duplicates' => 0,
+            'errors' => 0
+        ];
+        $skippedDetails = [];
 
         // OPTIMIZATION: Get all existing UPIDs - Process in BATCHES to avoid MySQL limit
         $allUpids = array_map(function($row) use ($headerMap) {
@@ -156,13 +221,15 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["csv_file"])) {
         }, $dataRows);
         $allUpids = array_filter($allUpids); // Remove empty values
 
+        logImport("Checking for existing UPIDs in database (total to check: " . count($allUpids) . ")...");
+
         $existingUpids = [];
         if (!empty($allUpids)) {
             // Process in batches of 500 to avoid MySQL placeholder limit
             $batchSize = 500;
             $batches = array_chunk($allUpids, $batchSize);
 
-            foreach ($batches as $batch) {
+            foreach ($batches as $batchIndex => $batch) {
                 $placeholders = implode(',', array_fill(0, count($batch), '?'));
                 $checkStmt = $conn->prepare("SELECT upid FROM students WHERE upid IN ($placeholders)");
                 if ($checkStmt) {
@@ -176,6 +243,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["csv_file"])) {
                     $checkStmt->close();
                 }
             }
+
+            logImport("Found " . count($existingUpids) . " existing UPIDs in database");
         }
 
         // Prepare the insert statement ONCE
@@ -183,6 +252,18 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["csv_file"])) {
             (upid, program_type, program, course, reg_no, student_name, email, phone_no, batch, year_of_passing, percentage, vantage_participant)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'yes')");
 
+        if (!$stmt) {
+            $errorMsg = "Failed to prepare insert statement: " . $conn->error;
+            logImport("ERROR: $errorMsg");
+            $_SESSION['import_message'] = "Database error: Failed to prepare insert statement";
+            $_SESSION['import_status'] = "error";
+            header("Location: vantage_registered_students.php");
+            exit;
+        }
+
+        logImport("Starting row-by-row processing...");
+
+        $rowNumber = 2; // Start at 2 (row 1 is header in Excel)
         foreach ($dataRows as $data) {
             $upid          = trim($data[$headerMap['upid']] ?? '');
             $program_type  = trim($data[$headerMap['program_type']] ?? '');
@@ -194,14 +275,27 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["csv_file"])) {
             $phone_no      = trim($data[$headerMap['phone_no']] ?? '');
             $percentage    = isset($headerMap['percentage']) && !empty($data[$headerMap['percentage']]) ? (float)$data[$headerMap['percentage']] : null;
 
+            // Validation: Check for empty required fields
             if (empty($upid) || empty($reg_no) || empty($student_name) || empty($email)) {
                 $skipped++;
+                $skipReasons['empty_fields']++;
+                $missingFields = [];
+                if (empty($upid)) $missingFields[] = 'Placement ID';
+                if (empty($reg_no)) $missingFields[] = 'Register Number';
+                if (empty($student_name)) $missingFields[] = 'Student Name';
+                if (empty($email)) $missingFields[] = 'Email';
+
+                $skippedDetails[] = "Row $rowNumber: Missing required fields - " . implode(', ', $missingFields);
+                $rowNumber++;
                 continue;
             }
 
             // Check if UPID already exists (using in-memory array - MUCH faster!)
             if (isset($existingUpids[$upid])) {
                 $skipped++;
+                $skipReasons['duplicates']++;
+                $skippedDetails[] = "Row $rowNumber: Duplicate UPID '$upid' already exists in database";
+                $rowNumber++;
                 continue;
             }
 
@@ -219,18 +313,57 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["csv_file"])) {
                 } else {
                     error_log("Insert failed for UPID $upid: " . $stmt->error);
                     $skipped++;
+                    $skipReasons['errors']++;
+                    $skippedDetails[] = "Row $rowNumber: Database error for UPID '$upid'";
                 }
             }
+            $rowNumber++;
         }
 
         if ($stmt) {
             $stmt->close();
         }
 
-        $_SESSION['import_message'] = "Import completed. Inserted: $inserted rows.";
-        $_SESSION['import_status'] = "success";
+        logImport("Data processing completed");
+        logImport("Results: Inserted=$inserted, Skipped=$skipped (Duplicates={$skipReasons['duplicates']}, Empty Fields={$skipReasons['empty_fields']}, Errors={$skipReasons['errors']})");
+
+        // Build detailed message
+        $message = "Import completed. Inserted: $inserted rows";
+
+        if ($skipped > 0) {
+            $message .= ", Skipped: $skipped rows";
+            $details = [];
+            if ($skipReasons['duplicates'] > 0) {
+                $details[] = "{$skipReasons['duplicates']} duplicates";
+            }
+            if ($skipReasons['empty_fields'] > 0) {
+                $details[] = "{$skipReasons['empty_fields']} with missing fields";
+            }
+            if ($skipReasons['errors'] > 0) {
+                $details[] = "{$skipReasons['errors']} with errors";
+            }
+            if (!empty($details)) {
+                $message .= " (" . implode(', ', $details) . ")";
+            }
+        }
+
+        $_SESSION['import_message'] = $message;
+
+        // Store detailed skip info for debugging (limit to first 10 issues)
+        if (!empty($skippedDetails) && count($skippedDetails) <= 10) {
+            $_SESSION['import_details'] = implode('; ', array_slice($skippedDetails, 0, 10));
+        } elseif (!empty($skippedDetails)) {
+            $_SESSION['import_details'] = implode('; ', array_slice($skippedDetails, 0, 10)) . "; ... and " . (count($skippedDetails) - 10) . " more issues";
+        }
+
+        $_SESSION['import_status'] = ($inserted > 0) ? "success" : ($skipped > 0 ? "warning" : "success");
+
+        logImport("=== IMPORT COMPLETED SUCCESSFULLY ===");
 
     } catch (Exception $e) {
+        $errorMsg = "Error during import: " . $e->getMessage();
+        logImport("ERROR: $errorMsg");
+        logImport("Stack trace: " . $e->getTraceAsString());
         $_SESSION['import_message'] = "Error during import: " . $e->getMessage();
         $_SESSION['import_status'] = "error";
     }
@@ -712,10 +845,21 @@ if (!empty($_SESSION['import_message'])) {
             $class = 'msg-success';
     }
 
-    $messageHtml = "<div class='$class'>" . htmlspecialchars($_SESSION['import_message']) . "</div>";
+    $messageHtml = "<div class='$class'>" . htmlspecialchars($_SESSION['import_message']);
+
+    // Add detailed skip information if available
+    if (!empty($_SESSION['import_details'])) {
+        $messageHtml .= "<br><small style='font-size:0.85em; opacity:0.9;'>Details: " . htmlspecialchars($_SESSION['import_details']) . "</small>";
+    }
+
+    // Add link to view full logs
+    $messageHtml .= "<br><small style='font-size:0.85em;'><a href='view_import_logs.php' style='color: inherit; text-decoration: underline;'>View full import logs →</a></small>";
+
+    $messageHtml .= "</div>";
 
     unset($_SESSION['import_message']);
     unset($_SESSION['import_status']);
+    unset($_SESSION['import_details']);
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['export_all'])) {

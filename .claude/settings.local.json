@@ -1,10 +1,8 @@
 {
   "permissions": {
     "allow": [
-      "Bash(php:*)",
-      "Bash(/c/xampp/php/php.exe:*)",
-      "Bash(tasklist:*)",
-      "Bash(mysql:*)"
+      "Bash(\"C:\\xampp\\php\\php.exe\" C:xampphtdocsplacementcellreimport_all_212.php)",
+      "Bash(\"C:\\xampp\\php\\php.exe\" \"C:\\xampp\\htdocs\\placementcell\\reimport_all_212.php\")"
     ],
     "deny": [],
     "ask": []

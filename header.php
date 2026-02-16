@@ -620,15 +620,27 @@ ul, ol {
         // Get available years from drives table
         $years_query = "SELECT DISTINCT academic_year FROM drives WHERE academic_year IS NOT NULL ORDER BY academic_year DESC";
         $years_result = $conn->query($years_query);
-        $available_years = [];
+        $db_years = [];
         if ($years_result) {
             while ($row = $years_result->fetch_assoc()) {
-                $available_years[] = $row['academic_year'];
+                $db_years[] = $row['academic_year'];
             }
         }
-        if (empty($available_years)) {
-            $available_years[] = '2025-2026';
-        }
+
+        // Define a comprehensive list of years (past, present, and future)
+        $predefined_years = [
+            '2027-2028',
+            '2026-2027',
+            '2025-2026',
+            '2024-2025',
+            '2023-2024'
+        ];
+
+        // Merge database years with predefined years and remove duplicates
+        $available_years = array_unique(array_merge($predefined_years, $db_years));
+
+        // Sort years in descending order
+        rsort($available_years);
         ?>
         <div class="year-selector-wrapper" style="padding: 15px 10px; background: #f8f9fa; border-bottom: 2px solid #650000; margin-bottom: 10px;">
             <form method="POST" id="yearSelectorForm" style="display: flex; flex-direction: column; gap: 5px;">
@@ -734,6 +746,14 @@ ul, ol {
                     <span class="links_name">Vantage Placed Students</span>
                 </a>
                 <span class="tooltip">Vantage Placed</span>
+            </li>
+
+            <li>
+                <a href="admin_student_progress.php" class="<?= $currentPage === 'admin_student_progress.php' ? 'active' : '' ?>">
+                    <i class="bi bi-search"></i>
+                    <span class="links_name">Student Progress Lookup</span>
+                </a>
+                <span class="tooltip">Student Progress Lookup</span>
             </li>
 
             <li>
