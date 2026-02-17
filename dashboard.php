@@ -212,11 +212,12 @@ while ($drive = $drives_result->fetch_assoc()) {
     }
 }
 // Sync placed students once per page load
-include_once __DIR__ . '/sync_placed_students.php';
-$sync_result = sync_placed_students($conn);
-if (!empty($sync_result['errors'])) {
-    error_log("Sync errors: " . implode(", ", $sync_result['errors']));
-}
+// DISABLED: Import from Excel already has complete data
+// include_once __DIR__ . '/sync_placed_students.php';
+// $sync_result = sync_placed_students($conn);
+// if (!empty($sync_result['errors'])) {
+//     error_log("Sync errors: " . implode(", ", $sync_result['errors']));
+// }
 
 // Extract graduation year from academic year (e.g., "2025-2026" → 2026)
 $graduation_year = null;

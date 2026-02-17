@@ -2,7 +2,8 @@
   "permissions": {
     "allow": [
       "Bash(\"C:\\xampp\\php\\php.exe\" C:xampphtdocsplacementcellreimport_all_212.php)",
-      "Bash(\"C:\\xampp\\php\\php.exe\" \"C:\\xampp\\htdocs\\placementcell\\reimport_all_212.php\")"
+      "Bash(\"C:\\xampp\\php\\php.exe\" \"C:\\xampp\\htdocs\\placementcell\\reimport_all_212.php\")",
+      "Bash(\"C:\\xampp\\mysql\\bin\\mysql.exe\" -u root -e \"SELECT COUNT(*) as count FROM placed_students\" placementcelldb)"
     ],
     "deny": [],
     "ask": []
