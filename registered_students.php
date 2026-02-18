@@ -485,15 +485,39 @@ if (!empty($_SESSION['import_message'])) {
 
 // === Handle CSV Import ===
 if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["csv_file"])) {
+    // Setup logging
+    $logFile = __DIR__ . '/logs/import_log_registered.txt';
+    if (!file_exists(__DIR__ . '/logs')) {
+        mkdir(__DIR__ . '/logs', 0777, true);
+    }
+
+    function logImportReg($message) {
+        global $logFile;
+        $timestamp = date('Y-m-d H:i:s');
+        file_put_contents($logFile, "[$timestamp] $message\n", FILE_APPEND);
+        error_log("[Registered Import] $message");
+    }
+
+    logImportReg("=== IMPORT STARTED ===");
+    logImportReg("User: " . ($_SESSION['admin_id'] ?? 'Unknown'));
+
+    set_time_limit(600);
+    ini_set('memory_limit', '2048M');
+    ini_set('max_execution_time', '600');
+
     $file = $_FILES["csv_file"];
     $fileName = $file["name"];
     $tmpPath = $file["tmp_name"];
     $fileExt = strtolower(pathinfo($fileName, PATHINFO_EXTENSION));
 
+    logImportReg("File received: $fileName (Size: " . round($file["size"]/1024, 2) . " KB)");
+
     if (preg_match('/(\d{4})-(\d{4})/', $fileName, $matches)) {
         $batchYear = $matches[0];
         $yearOfPassing = (int) $matches[2];
+        logImportReg("Batch year extracted: $batchYear");
     } else {
+        logImportReg("ERROR: Invalid filename format");
         $_SESSION['import_message'] = "Filename must include batch year in format YYYY-YYYY (e.g., students_2023-2026).";
         $_SESSION['import_status'] = "error";
         header("Location: registered_students");
@@ -649,12 +673,28 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["csv_file"])) {
             }
         }
 
-        $_SESSION['import_message'] = "Import completed. Inserted: $inserted rows.";
-        $_SESSION['import_status'] = "success";
+        $message = "Import completed. Inserted: $inserted rows";
+        if ($skipped > 0) {
+            $message .= ", Skipped: $skipped rows";
+        }
+        $_SESSION['import_message'] = $message;
+        $_SESSION['import_status'] = ($inserted > 0) ? "success" : "warning";
+
+        logImportReg("=== IMPORT COMPLETED ===");
+        logImportReg("Results: Inserted=$inserted, Skipped=$skipped");
 
     } catch (Exception $e) {
+        logImportReg("ERROR: " . $e->getMessage());
+        logImportReg("Stack trace: " . $e->getTraceAsString());
         $_SESSION['import_message'] = "Error during import: " . $e->getMessage();
         $_SESSION['import_status'] = "error";
+    }
+
+    // Ensure a message is always set
+    if (empty($_SESSION['import_message'])) {
+        $_SESSION['import_message'] = "Import process completed but no results recorded. Check logs for details.";
+        $_SESSION['import_status'] = "warning";
+        logImportReg("WARNING: No import message was set!");
     }
 
     header("Location: registered_students");

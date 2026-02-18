@@ -503,7 +503,29 @@ if (!empty($_SESSION['import_message'])) {
 
 // === Handle CSV Import ===
 if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["csv_file"])) {
+    // Setup logging
+    $logFile = __DIR__ . '/logs/import_log_internship.txt';
+    if (!file_exists(__DIR__ . '/logs')) {
+        mkdir(__DIR__ . '/logs', 0777, true);
+    }
+
+    function logImportInt($message) {
+        global $logFile;
+        $timestamp = date('Y-m-d H:i:s');
+        file_put_contents($logFile, "[$timestamp] $message\n", FILE_APPEND);
+        error_log("[Internship Import] $message");
+    }
+
+    logImportInt("=== IMPORT STARTED ===");
+    logImportInt("User: " . ($_SESSION['admin_id'] ?? 'Unknown'));
+
+    set_time_limit(600);
+    ini_set('memory_limit', '2048M');
+    ini_set('max_execution_time', '600');
+
     $file = $_FILES["csv_file"];
+
+    logImportInt("File received: " . $file["name"] . " (Size: " . round($file["size"]/1024, 2) . " KB)");
 
     // Check for upload errors
     if ($file["error"] !== UPLOAD_ERR_OK) {
@@ -517,6 +539,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["csv_file"])) {
             UPLOAD_ERR_EXTENSION => 'File upload stopped by PHP extension'
         ];
         $errorMsg = $uploadErrors[$file["error"]] ?? 'Unknown upload error';
+        logImportInt("ERROR: Upload failed - " . $errorMsg);
         $_SESSION['import_message'] = "Upload failed: " . $errorMsg;
         $_SESSION['import_status'] = "error";
         header("Location: internship_registered_students.php");
@@ -526,6 +549,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["csv_file"])) {
     $fileName = $file["name"];
     $tmpPath = $file["tmp_name"];
     $fileExt = strtolower(pathinfo($fileName, PATHINFO_EXTENSION));
+
+    logImportInt("File upload successful, validating filename...");
 
     if (preg_match('/(\d{4})-(\d{4})/', $fileName, $matches)) {
         $batchYear = $matches[0];
@@ -797,9 +822,21 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["csv_file"])) {
 
         $_SESSION['import_status'] = ($inserted > 0) ? "success" : ($skipped > 0 ? "warning" : "success");
 
+        logImportInt("=== IMPORT COMPLETED ===");
+        logImportInt("Results: Inserted=$inserted, Skipped=$skipped");
+
     } catch (Exception $e) {
+        logImportInt("ERROR: " . $e->getMessage());
+        logImportInt("Stack trace: " . $e->getTraceAsString());
         $_SESSION['import_message'] = "Error during import: " . $e->getMessage();
         $_SESSION['import_status'] = "error";
+    }
+
+    // Ensure a message is always set
+    if (empty($_SESSION['import_message'])) {
+        $_SESSION['import_message'] = "Import process completed but no results recorded. Check logs for details.";
+        $_SESSION['import_status'] = "warning";
+        logImportInt("WARNING: No import message was set!");
     }
 
     ob_end_clean(); // Clear any output buffer
@@ -1547,18 +1584,19 @@ function validateAndSubmit() {
       return false;
     }
 
-    // Show loading indicator
-    const modal = document.getElementById("ipt_importPopup");
-    const modalContent = modal.querySelector(".ipt_modal-content");
-    modalContent.innerHTML = '<div style="text-align:center; padding:40px;"><i class="fas fa-spinner fa-spin" style="font-size:48px; color:#007bff;"></i><p style="margin-top:20px; font-size:16px;">Importing file... Please wait.</p></div>';
+    // CRITICAL FIX: Submit the form BEFORE changing the modal content
+    // If we change the modal content first, the form gets disconnected from DOM
 
-    // Valid filename, submit the form
+    // Submit the form FIRST
     input.form.submit();
 
-    // Force reload after 5 seconds if redirect doesn't work
-    setTimeout(function() {
-        window.location.href = 'internship_registered_students.php';
-    }, 5000);
+    // THEN show loading indicator (after submit is already triggered)
+    const modal = document.getElementById("ipt_importPopup");
+    const modalContent = modal.querySelector(".ipt_modal-content");
+    modalContent.innerHTML = '<div style="text-align:center; padding:40px;"><i class="fas fa-spinner fa-spin" style="font-size:48px; color:#007bff;"></i><p style="margin-top:20px; font-size:16px;">Importing file... This may take a minute for large files. Please wait.</p></div>';
+
+    // NO FORCED TIMEOUT - Let server-side redirect handle it
+    // The import will complete and redirect when done
   }
 
   function validateFilename() {

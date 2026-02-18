@@ -3,7 +3,14 @@
     "allow": [
       "Bash(\"C:\\xampp\\php\\php.exe\" C:xampphtdocsplacementcellreimport_all_212.php)",
       "Bash(\"C:\\xampp\\php\\php.exe\" \"C:\\xampp\\htdocs\\placementcell\\reimport_all_212.php\")",
-      "Bash(\"C:\\xampp\\mysql\\bin\\mysql.exe\" -u root -e \"SELECT COUNT(*) as count FROM placed_students\" placementcelldb)"
+      "Bash(\"C:\\xampp\\mysql\\bin\\mysql.exe\" -u root -e \"SELECT COUNT(*) as count FROM placed_students\" placementcelldb)",
+      "Bash(\"C:\\xampp\\php\\php.exe\" \"C:\\xampp\\htdocs\\placementcell\\test_vantage_import.php\")",
+      "Bash(\"C:\\xampp\\php\\php.exe\" \"C:\\xampp\\htdocs\\placementcell\\test_direct_import.php\")",
+      "Bash(\"C:\\xampp\\php\\php.exe\" \"C:\\xampp\\htdocs\\placementcell\\check_upload_config.php\")",
+      "Bash(cat:*)",
+      "Bash(NUL)",
+      "Bash(\"C:\\xampp\\mysql\\bin\\mysql.exe\" -u root --port=3308 -e \"SELECT COUNT(*) as total_students, COUNT(CASE WHEN vantage_participant = ''yes'' THEN 1 END) as vantage_students FROM students\" admin_placement_db)",
+      "Bash(\"C:\\xampp\\mysql\\bin\\mysql.exe\":*)"
     ],
     "deny": [],
     "ask": []

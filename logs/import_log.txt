@@ -1,0 +1,51 @@
+[2026-02-18 08:16:21] === IMPORT STARTED ===
+[2026-02-18 08:16:21] User: 1
+[2026-02-18 08:16:21] File received: Vantage_Registered_List_2025-2026.xlsx (Size: 43.26 KB, Type: xlsx)
+[2026-02-18 08:16:21] Temp path: C:/Users/Kavin/Downloads/Vantage_Registered_List_2025-2026.xlsx
+[2026-02-18 08:16:21] File upload successful, checking filename format...
+[2026-02-18 08:16:21] Batch year extracted: 2025-2026 (Year of Passing: 2026)
+[2026-02-18 08:16:21] === TEST COMPLETED - CODE IS FUNCTIONAL ===
+[2026-02-18 09:00:39] === IMPORT STARTED ===
+[2026-02-18 09:00:39] User: 7
+[2026-02-18 09:00:39] REQUEST_METHOD: POST
+[2026-02-18 09:00:39] FILES array: Array
+(
+    [csv_file] => Array
+        (
+            [name] => Vantage_Registered_List_2025-2026.xlsx
+            [type] => application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
+            [tmp_name] => C:\xampp\tmp\phpE4AF.tmp
+            [error] => 0
+            [size] => 44301
+        )
+
+)
+
+[2026-02-18 09:00:39] File received: Vantage_Registered_List_2025-2026.xlsx (Size: 43.26 KB, Type: xlsx)
+[2026-02-18 09:00:39] Temp path: C:\xampp\tmp\phpE4AF.tmp
+[2026-02-18 09:00:39] File upload successful, checking filename format...
+[2026-02-18 09:00:39] Batch year extracted: 2025-2026 (Year of Passing: 2026)
+[2026-02-18 09:00:39] File type validation passed
+[2026-02-18 09:00:39] Starting file parsing...
+[2026-02-18 09:00:39] Creating Excel reader...
+[2026-02-18 09:00:40] Loading Excel file...
+[2026-02-18 09:00:45] Excel file parsed successfully: 384 data rows found
+[2026-02-18 09:00:45] Headers found: Sl No, Placement ID, Register Number, Student Name, Program Type, Program, Course, Student Mail ID, Student Mobile No, Batch, Year of passing, Percentage
+[2026-02-18 09:00:45] Starting header mapping...
+[2026-02-18 09:00:45] Mapped column 'Placement ID' (index 1) to field 'upid'
+[2026-02-18 09:00:45] Mapped column 'Register Number' (index 2) to field 'reg_no'
+[2026-02-18 09:00:45] Mapped column 'Student Name' (index 3) to field 'student_name'
+[2026-02-18 09:00:45] Mapped column 'Program Type' (index 4) to field 'program_type'
+[2026-02-18 09:00:45] Mapped column 'Program' (index 5) to field 'program'
+[2026-02-18 09:00:45] Mapped column 'Course' (index 6) to field 'course'
+[2026-02-18 09:00:45] Mapped column 'Student Mail ID' (index 7) to field 'email'
+[2026-02-18 09:00:45] Mapped column 'Student Mobile No' (index 8) to field 'phone_no'
+[2026-02-18 09:00:45] Mapped column 'Percentage' (index 11) to field 'percentage'
+[2026-02-18 09:00:46] Header mapping completed. Mapped fields: upid, reg_no, student_name, program_type, program, course, email, phone_no, percentage
+[2026-02-18 09:00:46] All required columns found. Starting data validation and insertion...
+[2026-02-18 09:00:46] Checking for existing UPIDs in database (total to check: 384)...
+[2026-02-18 09:00:46] Found 0 existing UPIDs in database
+[2026-02-18 09:00:46] Starting row-by-row processing...
+[2026-02-18 09:00:47] Data processing completed
+[2026-02-18 09:00:47] Results: Inserted=374, Skipped=10 (Duplicates=10, Empty Fields=0, Errors=0)
+[2026-02-18 09:00:47] === IMPORT COMPLETED SUCCESSFULLY ===

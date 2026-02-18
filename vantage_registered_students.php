@@ -23,10 +23,14 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["csv_file"])) {
         global $logFile;
         $timestamp = date('Y-m-d H:i:s');
         file_put_contents($logFile, "[$timestamp] $message\n", FILE_APPEND);
+        // Also log to error log for debugging
+        error_log("[Vantage Import] $message");
     }
 
     logImport("=== IMPORT STARTED ===");
     logImport("User: " . ($_SESSION['admin_id'] ?? 'Unknown'));
+    logImport("REQUEST_METHOD: " . $_SERVER["REQUEST_METHOD"]);
+    logImport("FILES array: " . print_r($_FILES, true));
 
     // Increase limits for large file processing - MUST be before file reading
     set_time_limit(600); // 10 minutes
@@ -368,7 +372,15 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["csv_file"])) {
         $_SESSION['import_status'] = "error";
     }
 
-    ob_end_clean(); // Clear any output buffer
+    // Ensure a message is always set
+    if (empty($_SESSION['import_message'])) {
+        $_SESSION['import_message'] = "Import process completed but no results recorded. Check logs for details.";
+        $_SESSION['import_status'] = "warning";
+        logImport("WARNING: No import message was set!");
+    }
+
+    // Clean output buffer and redirect
+    ob_end_clean();
     header("Location: vantage_registered_students.php");
     exit;
 }
@@ -1589,12 +1601,24 @@ function closeExportModal() {
 
 // import excel sheets
 function validateAndSubmit() {
+    console.log("validateAndSubmit() called");
+
     const input = document.getElementById("csv_file");
     const file = input.files[0];
-    if (!file) return;
+
+    console.log("Input element:", input);
+    console.log("File selected:", file);
+
+    if (!file) {
+        console.log("No file selected, returning");
+        return;
+    }
 
     const filename = file.name;
     const pattern = /\d{4}-\d{4}/; // Matches "2022-2024"
+
+    console.log("Filename:", filename);
+    console.log("Pattern test result:", pattern.test(filename));
 
     if (!pattern.test(filename)) {
         alert('Error: Filename must include batch year in format YYYY-YYYY (e.g., vantage_students_2023-2026.xlsx)');
@@ -1602,18 +1626,25 @@ function validateAndSubmit() {
         return false;
     }
 
-    // Show loading indicator
-    const modal = document.getElementById("ipt_importPopup");
-    const modalContent = modal.querySelector(".ipt_modal-content");
-    modalContent.innerHTML = '<div style="text-align:center; padding:40px;"><i class="fas fa-spinner fa-spin" style="font-size:48px; color:#007bff;"></i><p style="margin-top:20px; font-size:16px;">Importing file... Please wait.</p></div>';
+    console.log("Validation passed, submitting form FIRST before changing UI");
 
-    // Submit the form
+    // CRITICAL FIX: Submit the form BEFORE changing the modal content
+    // If we change the modal content first, the form gets disconnected from DOM
+    console.log("About to submit form");
+    console.log("Form element:", input.form);
+
+    // Submit the form FIRST
     input.form.submit();
 
-    // Force reload after 5 seconds if redirect doesn't work
-    setTimeout(function() {
-        window.location.href = 'vantage_registered_students.php';
-    }, 5000);
+    console.log("Form submitted successfully!");
+
+    // THEN show loading indicator (after submit is already triggered)
+    const modal = document.getElementById("ipt_importPopup");
+    const modalContent = modal.querySelector(".ipt_modal-content");
+    modalContent.innerHTML = '<div style="text-align:center; padding:40px;"><i class="fas fa-spinner fa-spin" style="font-size:48px; color:#007bff;"></i><p style="margin-top:20px; font-size:16px;">Importing file... This may take a minute for large files. Please wait.</p></div>';
+
+    // NO FORCED TIMEOUT - Let server-side redirect handle it
+    // The import will complete and redirect when done
   }
 
   function validateFilename() {

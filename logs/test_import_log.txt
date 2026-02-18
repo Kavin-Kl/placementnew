@@ -1,0 +1,32 @@
+[2026-02-18 08:07:23] === TEST IMPORT STARTED ===
+[2026-02-18 08:07:23] File found: C:/Users/Kavin/Downloads/Vantage_Registered_List_2025-2026.xlsx
+[2026-02-18 08:07:23] File size: 43.26 KB
+[2026-02-18 08:07:23] File extension: xlsx
+[2026-02-18 08:07:23] Batch year extracted: 2025-2026 (Year of Passing: 2026)
+[2026-02-18 08:07:23] Creating Excel reader...
+[2026-02-18 08:07:23] Loading Excel file...
+[2026-02-18 08:07:23] Excel file parsed successfully: 384 data rows found
+[2026-02-18 08:07:23] Headers found: Sl No, Placement ID, Register Number, Student Name, Program Type, Program, Course, Student Mail ID, Student Mobile No, Batch, Year of passing, Percentage
+[2026-02-18 08:07:23] Mapped column 'Placement ID' (index 1) to field 'upid'
+[2026-02-18 08:07:23] Mapped column 'Register Number' (index 2) to field 'reg_no'
+[2026-02-18 08:07:23] Mapped column 'Student Name' (index 3) to field 'student_name'
+[2026-02-18 08:07:23] Mapped column 'Program Type' (index 4) to field 'program_type'
+[2026-02-18 08:07:23] Mapped column 'Program' (index 5) to field 'program'
+[2026-02-18 08:07:23] Mapped column 'Course' (index 6) to field 'course'
+[2026-02-18 08:07:23] Mapped column 'Student Mail ID' (index 7) to field 'email'
+[2026-02-18 08:07:23] Mapped column 'Student Mobile No' (index 8) to field 'phone_no'
+[2026-02-18 08:07:23] Mapped column 'Percentage' (index 11) to field 'percentage'
+[2026-02-18 08:07:23] Header mapping completed. Mapped fields: upid, reg_no, student_name, program_type, program, course, email, phone_no, percentage
+[2026-02-18 08:07:23] All required columns found. Starting data validation...
+[2026-02-18 08:07:23] Row 2: UPID=MCC25VAN1001, RegNo=MB247106, Name=KEERAT GUJRAL, Email=keerat.10017@gmail.com
+[2026-02-18 08:07:23]   -> UPID is new, can be inserted
+[2026-02-18 08:07:23] Row 3: UPID=MCC25VAN1002, RegNo=MB247606, Name=AMIT MANDAL A, Email=amit0220iii@gmail.com
+[2026-02-18 08:07:24]   -> UPID is new, can be inserted
+[2026-02-18 08:07:24] Row 4: UPID=MCC25VAN1003, RegNo=MC242027, Name=ANJALI GUPTA, Email=anjalianjugupta16@gmail.com
+[2026-02-18 08:07:24]   -> UPID is new, can be inserted
+[2026-02-18 08:07:24] Row 5: UPID=MCC25VAN1004, RegNo=MC242060, Name=CHARVI S JAIN, Email=charvijain153@gmail.com
+[2026-02-18 08:07:24]   -> UPID is new, can be inserted
+[2026-02-18 08:07:24] Row 6: UPID=MCC25VAN1006, RegNo=MB247658, Name=VINODINI.A, Email=vinodinicutie@gmail.com
+[2026-02-18 08:07:24]   -> UPID is new, can be inserted
+[2026-02-18 08:07:24] === TEST COMPLETED SUCCESSFULLY ===
+[2026-02-18 08:07:24] Total rows to import: 384
