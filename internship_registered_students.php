@@ -1571,24 +1571,42 @@ function closeExportModal() {
 
 // import excel sheets
 function validateAndSubmit() {
+    console.log("validateAndSubmit() called");
+
     const input = document.getElementById("csv_file");
     const file = input.files[0];
-    if (!file) return;
+
+    console.log("Input element:", input);
+    console.log("File selected:", file);
+
+    if (!file) {
+        console.log("No file selected, returning");
+        return;
+    }
 
     const filename = file.name;
     const pattern = /\d{4}-\d{4}/; // Matches "2022-2024"
 
+    console.log("Filename:", filename);
+    console.log("Pattern test result:", pattern.test(filename));
+
     if (!pattern.test(filename)) {
-      alert("Filename must include batch year in format YYYY-YYYY (e.g., internship_students_2023-2026.xlsx)");
-      input.value = ""; // Clear the file input
-      return false;
+        alert('Error: Filename must include batch year in format YYYY-YYYY (e.g., internship_students_2023-2026.xlsx)');
+        input.value = ''; // Reset file input
+        return false;
     }
+
+    console.log("Validation passed, submitting form FIRST before changing UI");
 
     // CRITICAL FIX: Submit the form BEFORE changing the modal content
     // If we change the modal content first, the form gets disconnected from DOM
+    console.log("About to submit form");
+    console.log("Form element:", input.form);
 
     // Submit the form FIRST
     input.form.submit();
+
+    console.log("Form submitted successfully!");
 
     // THEN show loading indicator (after submit is already triggered)
     const modal = document.getElementById("ipt_importPopup");

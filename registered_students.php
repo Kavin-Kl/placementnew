@@ -1428,25 +1428,49 @@ function closeExportModal() {
 
 // import excel sheets
 function validateAndSubmit() {
+    console.log("validateAndSubmit() called");
+
     const input = document.getElementById("csv_file");
     const file = input.files[0];
-    if (!file) return;
+
+    console.log("Input element:", input);
+    console.log("File selected:", file);
+
+    if (!file) {
+        console.log("No file selected, returning");
+        return;
+    }
 
     const filename = file.name;
     const pattern = /\d{4}-\d{4}/; // Matches "2022-2024"
 
+    console.log("Filename:", filename);
+    console.log("Pattern test result:", pattern.test(filename));
+
     if (!pattern.test(filename)) {
-    // Use a hidden form to trigger server-side error handling
-    const form = input.form;
-    const messageField = document.createElement("input");
-    messageField.type = "hidden";
-    messageField.name = "invalid_filename";
-    messageField.value = "1";
-    form.appendChild(messageField);
-    form.submit();
-    return false;
-  }
+        alert('Error: Filename must include batch year in format YYYY-YYYY (e.g., students_2023-2026.xlsx)');
+        input.value = ''; // Reset file input
+        return false;
+    }
+
+    console.log("Validation passed, submitting form FIRST before changing UI");
+
+    // CRITICAL FIX: Submit the form BEFORE changing the modal content
+    // If we change the modal content first, the form gets disconnected from DOM
+    console.log("About to submit form");
+    console.log("Form element:", input.form);
+
+    // Submit the form FIRST
     input.form.submit();
+
+    console.log("Form submitted successfully!");
+
+    // THEN show loading indicator (after submit is already triggered)
+    const modal = document.getElementById("ipt_importPopup");
+    const modalContent = modal.querySelector(".ipt_modal-content");
+    modalContent.innerHTML = '<div style="text-align:center; padding:40px;"><i class="fas fa-spinner fa-spin" style="font-size:48px; color:#007bff;"></i><p style="margin-top:20px; font-size:16px;">Importing file... This may take a minute for large files. Please wait.</p></div>';
+
+    // NO FORCED TIMEOUT - Let server-side redirect handle it
   }
 
   function validateFilename() {
