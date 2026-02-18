@@ -29,9 +29,9 @@ if (isset($_GET['student_id']) && !empty($_GET['student_id'])) {
     if ($result->num_rows > 0) {
         $student_data = $result->fetch_assoc();
 
-        // Fetch applications
+        // Fetch applications - Using DISTINCT to prevent any potential duplicates
         $app_stmt = $conn->prepare("
-            SELECT
+            SELECT DISTINCT
                 a.application_id,
                 a.drive_id,
                 a.role_id,
@@ -49,14 +49,27 @@ if (isset($_GET['student_id']) && !empty($_GET['student_id'])) {
             INNER JOIN drives d ON a.drive_id = d.drive_id
             LEFT JOIN drive_roles dr ON a.role_id = dr.role_id
             WHERE a.student_id = ?
+            GROUP BY a.application_id
             ORDER BY a.applied_at DESC
         ");
         $app_stmt->bind_param("i", $student_data['student_id']);
         $app_stmt->execute();
-        $applications = $app_stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        $result = $app_stmt->get_result();
+
+        // Manually fetch to ensure uniqueness by application_id
+        $applications = [];
+        $seen_ids = [];
+        while ($row = $result->fetch_assoc()) {
+            // Only add if we haven't seen this application_id before
+            if (!in_array($row['application_id'], $seen_ids)) {
+                $applications[] = $row;
+                $seen_ids[] = $row['application_id'];
+            }
+        }
 
         // Fetch rounds for each application
-        foreach ($applications as &$app) {
+        $apps_with_rounds = [];
+        foreach ($applications as $app) {
             $rounds_stmt = $conn->prepare("
                 SELECT * FROM application_rounds
                 WHERE application_id = ?
@@ -65,7 +78,9 @@ if (isset($_GET['student_id']) && !empty($_GET['student_id'])) {
             $rounds_stmt->bind_param("i", $app['application_id']);
             $rounds_stmt->execute();
             $app['rounds'] = $rounds_stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+            $apps_with_rounds[] = $app;
         }
+        $applications = $apps_with_rounds;
     } else {
         $error_message = "No student found with ID/UPID/Email: " . htmlspecialchars($student_id);
     }

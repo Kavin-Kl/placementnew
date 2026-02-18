@@ -83,7 +83,7 @@ $companies_status_breakdown = [
 ];
 
 $companies = [];
-// ✅ Count UG Off-Campus Placed
+// ✅ Count UG Off-Campus Placed - EXCLUDING VANTAGE
 $ug_offcampus_placed = 0;
 if (!empty($UG_COURSES)) {
     // Define cleaned UG course list first
@@ -103,6 +103,7 @@ if (!empty($UG_COURSES)) {
         WHERE LOWER(TRIM(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(course, '&', 'and'),'–',''),'-',''),'(',''),')',''),' ',''),'.',''),'_',''),',','')))
         IN ($placeholders)
         AND LOWER(Offcampus_selection) = 'placed'
+        AND (vantage_participant != 'yes' OR vantage_participant IS NULL)
     ");
     if ($stmt) {
         $stmt->bind_param($types, ...$cleaned_ug);
@@ -114,7 +115,7 @@ if (!empty($UG_COURSES)) {
     }
 }
 
-// ✅ Count PG Off-Campus Placed
+// ✅ Count PG Off-Campus Placed - EXCLUDING VANTAGE
 $pg_offcampus_placed = 0;
 if (!empty($PG_COURSES)) {
     // Define cleaned PG course list first
@@ -134,6 +135,7 @@ if (!empty($PG_COURSES)) {
         WHERE LOWER(TRIM(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(course, '&', 'and'),'–',''),'-',''),'(',''),')',''),' ',''),'.',''),'_',''),',','')))
         IN ($placeholders)
         AND LOWER(Offcampus_selection) = 'placed'
+        AND (vantage_participant != 'yes' OR vantage_participant IS NULL)
     ");
     if ($stmt) {
         $stmt->bind_param($types, ...$cleaned_pg);
@@ -154,9 +156,9 @@ $cleaned_courses = array_map(function($c) {
   );
 }, $selectedCourses);
 
-// Students registered - if ALL selected, count ALL students
+// Students registered - if ALL selected, count ALL students (EXCLUDING VANTAGE)
 if ($course === 'ALL') {
-    $stmt = $conn->query("SELECT COUNT(*) as total FROM students");
+    $stmt = $conn->query("SELECT COUNT(*) as total FROM students WHERE (vantage_participant != 'yes' OR vantage_participant IS NULL)");
     $students_registered = $stmt->fetch_assoc()['total'];
 } else {
     $sql = "
@@ -191,6 +193,7 @@ if ($course === 'ALL') {
           )
         )
       ) IN ($placeholders)
+      AND (vantage_participant != 'yes' OR vantage_participant IS NULL)
     ";
     $stmt = $conn->prepare($sql);
     if ($stmt) {
@@ -204,10 +207,11 @@ if ($course === 'ALL') {
 }
 
 // Students placed
-// Students placed (using same normalization as students_registered)
+// Students placed (using same normalization as students_registered) - EXCLUDING VANTAGE
 $stmt = $conn->prepare("
-  SELECT COUNT(DISTINCT upid) as total
-  FROM applications
+  SELECT COUNT(DISTINCT a.upid) as total
+  FROM applications a
+  INNER JOIN students s ON a.student_id = s.student_id
   WHERE LOWER(
     TRIM(
       REPLACE(
@@ -218,7 +222,7 @@ $stmt = $conn->prepare("
                 REPLACE(
                   REPLACE(
                     REPLACE(
-                      REPLACE(course, '&', 'and'),
+                      REPLACE(a.course, '&', 'and'),
                       '–', ''
                     ),
                     '-', ''
@@ -237,7 +241,8 @@ $stmt = $conn->prepare("
       )
     )
   ) IN ($placeholders)
-  AND LOWER(status) = 'placed'
+  AND LOWER(a.status) = 'placed'
+  AND (s.vantage_participant != 'yes' OR s.vantage_participant IS NULL)
 ");
 if ($stmt) {
     $stmt->bind_param($types, ...$cleaned_courses);
@@ -249,10 +254,11 @@ if ($stmt) {
 }
 
 
-// Students defaulted
+// Students defaulted - EXCLUDING VANTAGE
 $stmt = $conn->prepare("
-  SELECT COUNT(DISTINCT upid) as total
-  FROM applications
+  SELECT COUNT(DISTINCT a.upid) as total
+  FROM applications a
+  INNER JOIN students s ON a.student_id = s.student_id
   WHERE LOWER(
     TRIM(
       REPLACE(
@@ -263,7 +269,7 @@ $stmt = $conn->prepare("
                 REPLACE(
                   REPLACE(
                     REPLACE(
-                      REPLACE(course, '&', 'and'),
+                      REPLACE(a.course, '&', 'and'),
                       '–', ''
                     ),
                     '-', ''
@@ -282,7 +288,8 @@ $stmt = $conn->prepare("
       )
     )
   ) IN ($placeholders)
-  AND LOWER(status) = 'blocked'
+  AND LOWER(a.status) = 'blocked'
+  AND (s.vantage_participant != 'yes' OR s.vantage_participant IS NULL)
 ");
 if ($stmt) {
     $stmt->bind_param($types, ...$cleaned_courses);
@@ -296,13 +303,14 @@ if ($stmt) {
 
 $students_not_placed = $students_registered - $students_placed - $students_defaulted;
 $placement_percentage = $students_registered > 0 ? round(($students_placed / $students_registered) * 100) : 0;
-// ✅ Count of students placed off-campus
+// ✅ Count of students placed off-campus - EXCLUDING VANTAGE
 $stmt = $conn->prepare("
   SELECT COUNT(*) AS total
   FROM students
   WHERE LOWER(TRIM(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(course, '&', 'and'),'–',''),'-',''),'(',''),')',''),' ',''),'.',''),'_',''),',','')))
   IN ($placeholders)
   AND LOWER(Offcampus_selection) = 'placed'
+  AND (vantage_participant != 'yes' OR vantage_participant IS NULL)
 ");
 if ($stmt) {
     $stmt->bind_param($types, ...$cleaned_courses);
@@ -560,6 +568,7 @@ if (!empty($UG_COURSES)) {
       )
     )
   ) IN ($placeholders)
+  AND (vantage_participant != 'yes' OR vantage_participant IS NULL)
 ");
 
     if ($stmt) {
@@ -570,8 +579,9 @@ if (!empty($UG_COURSES)) {
         error_log("Prepare failed for UG registered query: " . $conn->error);
         $ug_registered = 0;
     }
-    $stmt = $conn->prepare("SELECT COUNT(DISTINCT upid) as total
-FROM applications
+    $stmt = $conn->prepare("SELECT COUNT(DISTINCT a.upid) as total
+FROM applications a
+INNER JOIN students s ON a.student_id = s.student_id
 WHERE LOWER(
   TRIM(
     REPLACE(
@@ -582,7 +592,7 @@ WHERE LOWER(
               REPLACE(
                 REPLACE(
                   REPLACE(
-                    REPLACE(course, '&', 'and'),
+                    REPLACE(a.course, '&', 'and'),
                     '–', ''
                   ),
                   '-', ''
@@ -601,7 +611,8 @@ WHERE LOWER(
     )
   )
 ) IN ($placeholders)
-AND LOWER(status) = 'placed'
+AND LOWER(a.status) = 'placed'
+AND (s.vantage_participant != 'yes' OR s.vantage_participant IS NULL)
 ");
     if ($stmt) {
         $stmt->bind_param($types, ...$cleaned_ug);
@@ -655,6 +666,7 @@ if (!empty($PG_COURSES)) {
       )
     )
   ) IN ($placeholders)
+  AND (vantage_participant != 'yes' OR vantage_participant IS NULL)
 ");
 
     if ($stmt) {
@@ -665,8 +677,9 @@ if (!empty($PG_COURSES)) {
         error_log("Prepare failed for PG registered query: " . $conn->error);
         $pg_registered = 0;
     }
-    $stmt = $conn->prepare("SELECT COUNT(DISTINCT upid) as total
-FROM applications
+    $stmt = $conn->prepare("SELECT COUNT(DISTINCT a.upid) as total
+FROM applications a
+INNER JOIN students s ON a.student_id = s.student_id
 WHERE LOWER(
   TRIM(
     REPLACE(
@@ -677,7 +690,7 @@ WHERE LOWER(
               REPLACE(
                 REPLACE(
                   REPLACE(
-                    REPLACE(course, '&', 'and'),
+                    REPLACE(a.course, '&', 'and'),
                     '–', ''
                   ),
                   '-', ''
@@ -696,7 +709,8 @@ WHERE LOWER(
     )
   )
 ) IN ($placeholders)
-AND LOWER(status) = 'placed'
+AND LOWER(a.status) = 'placed'
+AND (s.vantage_participant != 'yes' OR s.vantage_participant IS NULL)
 ");
     if ($stmt) {
         $stmt->bind_param($types, ...$cleaned_pg);
