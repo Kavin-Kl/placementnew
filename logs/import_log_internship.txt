@@ -1,0 +1,42 @@
+[2026-02-18 19:02:06] === IMPORT STARTED ===
+[2026-02-18 19:02:06] User: 7
+[2026-02-18 19:02:06] File received: Registration_2025-2026.xlsx (Size: 9.78 KB)
+[2026-02-18 19:02:06] File upload successful, validating filename...
+[2026-02-18 19:02:07] === IMPORT COMPLETED ===
+[2026-02-18 19:02:07] Results: Inserted=7, Skipped=0
+[2026-02-18 19:02:25] === IMPORT STARTED ===
+[2026-02-18 19:02:25] User: 7
+[2026-02-18 19:02:25] File received: Vantage_Registered_List_2025-2026.xlsx (Size: 43.52 KB)
+[2026-02-18 19:02:25] File upload successful, validating filename...
+[2026-02-18 19:02:25] === IMPORT COMPLETED ===
+[2026-02-18 19:02:25] Results: Inserted=0, Skipped=380
+[2026-02-18 19:14:41] === IMPORT STARTED ===
+[2026-02-18 19:14:41] User: 7
+[2026-02-18 19:14:41] File received: Registration_2025-2026.xlsx (Size: 9.78 KB)
+[2026-02-18 19:14:41] File upload successful, validating filename...
+[2026-02-18 19:14:41] === IMPORT COMPLETED ===
+[2026-02-18 19:14:41] Results: Inserted=0, Skipped=7
+[2026-02-18 19:15:00] === IMPORT STARTED ===
+[2026-02-18 19:15:00] User: 7
+[2026-02-18 19:15:00] File received: Registration_2025-2026.xlsx (Size: 9.78 KB)
+[2026-02-18 19:15:00] File upload successful, validating filename...
+[2026-02-18 19:15:01] === IMPORT COMPLETED ===
+[2026-02-18 19:15:01] Results: Inserted=0, Skipped=7
+[2026-02-18 20:06:02] === IMPORT STARTED ===
+[2026-02-18 20:06:02] User: 7
+[2026-02-18 20:06:02] File received: Registration_2025-2026.xlsx (Size: 9.78 KB)
+[2026-02-18 20:06:02] File upload successful, validating filename...
+[2026-02-18 20:06:02] === IMPORT COMPLETED ===
+[2026-02-18 20:06:02] Results: Inserted=0, Skipped=7
+[2026-02-18 22:34:18] === IMPORT STARTED ===
+[2026-02-18 22:34:18] User: 7
+[2026-02-18 22:34:18] File received: Registration_2025-2026.xlsx (Size: 9.78 KB)
+[2026-02-18 22:34:18] File upload successful, validating filename...
+[2026-02-18 22:34:20] === IMPORT COMPLETED ===
+[2026-02-18 22:34:20] Results: Inserted=0, Skipped=7
+[2026-02-18 22:38:32] === IMPORT STARTED ===
+[2026-02-18 22:38:32] User: 7
+[2026-02-18 22:38:32] File received: Test_Internship_Registration_2026-2027.xlsx (Size: 6.41 KB)
+[2026-02-18 22:38:32] File upload successful, validating filename...
+[2026-02-18 22:38:32] === IMPORT COMPLETED ===
+[2026-02-18 22:38:32] Results: Inserted=3, Skipped=0

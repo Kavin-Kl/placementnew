@@ -24,7 +24,7 @@ function render_student_row($row, $sl_no = '') {
         <td><?= htmlspecialchars($row['student_name']) ?></td>
         <td><?= htmlspecialchars($row['email']) ?></td>
         <td><?= htmlspecialchars($row['phone_no']) ?></td>
-        <td><?= htmlspecialchars($row['percentage']) ?></td>
+        <td><?= htmlspecialchars($row['percentage'] ?? '') ?></td>
         <td><?= htmlspecialchars($row['offer_type']) ?></td>
         <td><?= htmlspecialchars($row['drive_no']) ?></td>
         <td><?= htmlspecialchars($row['company_name']) ?></td>
@@ -199,12 +199,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['ajax_row'], $_GET['plac
 
 // === Handle Excel/CSV Import for Placed Students ===
 if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["csv_file_placed"])) {
+    error_log("[PLACED IMPORT] === IMPORT STARTED ===");
+    error_log("[PLACED IMPORT] POST data: " . print_r($_POST, true));
+    error_log("[PLACED IMPORT] FILES data: " . print_r($_FILES, true));
+
     require 'vendor/autoload.php';
 
     $file = $_FILES["csv_file_placed"];
     $fileName = $file["name"];
     $tmpPath = $file["tmp_name"];
     $fileExt = strtolower(pathinfo($fileName, PATHINFO_EXTENSION));
+
+    error_log("[PLACED IMPORT] File: $fileName, Size: " . $file["size"] . " bytes");
 
     $allowedTypes = ['csv', 'xls', 'xlsx'];
     if (!in_array($fileExt, $allowedTypes)) {
@@ -360,6 +366,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["csv_file_placed"])) 
             }
 
             // Check if student exists in students table
+            error_log("[PLACED IMPORT] Row $rowNumber: Checking student with UPID '$upid'");
             $checkStudent = $conn->prepare("SELECT student_id FROM students WHERE upid = ?");
             $student_id = null;
             if ($checkStudent) {
@@ -369,6 +376,9 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["csv_file_placed"])) 
                 if ($checkStudent->num_rows > 0) {
                     $checkStudent->bind_result($student_id);
                     $checkStudent->fetch();
+                    error_log("[PLACED IMPORT] Found student_id: $student_id for UPID '$upid'");
+                } else {
+                    error_log("[PLACED IMPORT] NO ROWS FOUND for UPID '$upid'");
                 }
                 $checkStudent->close();
             }
@@ -378,12 +388,13 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["csv_file_placed"])) 
                 $skipped++;
                 $skipReasons['student_not_found']++;
                 $skippedDetails[] = "Row $rowNumber: Student with UPID '$upid' not found in database";
-                error_log("Skipping placement record - student with UPID '$upid' not found in students table");
+                error_log("[PLACED IMPORT] Skipping placement record - student with UPID '$upid' not found in students table");
                 $rowNumber++;
                 continue;
             }
 
             // Check if placement record already exists
+            error_log("[PLACED IMPORT] Checking for duplicate: student_id=$student_id, drive_no='$drive_no'");
             $checkPlaced = $conn->prepare("SELECT 1 FROM placed_students WHERE student_id = ? AND drive_no = ?");
             if ($checkPlaced) {
                 $checkPlaced->bind_param("is", $student_id, $drive_no);
@@ -393,30 +404,34 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["csv_file_placed"])) 
                     $skipped++;
                     $skipReasons['duplicates']++;
                     $skippedDetails[] = "Row $rowNumber: Duplicate placement record for UPID '$upid' with drive_no '$drive_no'";
+                    error_log("[PLACED IMPORT] DUPLICATE found, skipping");
                     $checkPlaced->close();
                     $rowNumber++;
                     continue;
                 }
+                error_log("[PLACED IMPORT] No duplicate, proceeding with insert");
                 $checkPlaced->close();
             }
 
             // Insert placement record
+            error_log("[PLACED IMPORT] Inserting record for UPID '$upid', company='$company_name'");
             $stmt = $conn->prepare("INSERT INTO placed_students
-                (student_id, upid, program_type, program, course, reg_no, student_name, email, phone_no, percentage,
+                (student_id, upid, program_type, program, course, reg_no, student_name, email, phone_no,
                  offer_type, drive_no, company_name, role, ctc, stipend)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
 
             if ($stmt) {
-                $stmt->bind_param("issssssssdssssss",
+                $stmt->bind_param("issssssssssssss",
                     $student_id, $upid, $program_type, $program, $course,
-                    $reg_no, $student_name, $email, $phone_no, $percentage,
+                    $reg_no, $student_name, $email, $phone_no,
                     $offer_type, $drive_no, $company_name, $role, $ctc, $stipend
                 );
 
                 if ($stmt->execute()) {
                     $inserted++;
+                    error_log("[PLACED IMPORT] INSERT SUCCESSFUL for UPID '$upid'");
                 } else {
-                    error_log("Insert failed for UPID $upid: " . $stmt->error);
+                    error_log("[PLACED IMPORT] INSERT FAILED for UPID $upid: " . $stmt->error);
                     $skipped++;
                     $skipReasons['errors']++;
                     $skippedDetails[] = "Row $rowNumber: Database error for UPID '$upid'";
@@ -461,11 +476,17 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["csv_file_placed"])) 
 
         $_SESSION['import_status'] = ($inserted > 0) ? "success" : ($skipped > 0 ? "warning" : "success");
 
+        error_log("[PLACED IMPORT] === IMPORT COMPLETED ===");
+        error_log("[PLACED IMPORT] Inserted: $inserted, Skipped: $skipped");
+        error_log("[PLACED IMPORT] Message: " . $_SESSION['import_message']);
+
     } catch (Exception $e) {
         $_SESSION['import_message'] = "Error during import: " . $e->getMessage();
         $_SESSION['import_status'] = "error";
+        error_log("[PLACED IMPORT] EXCEPTION: " . $e->getMessage());
     }
 
+    error_log("[PLACED IMPORT] Redirecting to internship_placed_students.php");
     header("Location: internship_placed_students.php");
     exit;
 }
@@ -667,11 +688,11 @@ if (!empty($_SESSION['import_message'])) {
     <span class="ipt_close-btn">&times;</span>
     <h5>Select Import Option</h5>
 
-    <form method="POST" enctype="multipart/form-data" class="import-form">
+    <form method="POST" enctype="multipart/form-data" class="import-form" id="placedImportForm">
       <label for="csv_file_placed" class="ipt_import-option">
         <i class="fa fa-download"></i> Import Excel File
       </label>
-      <input type="file" id="csv_file_placed" name="csv_file_placed" accept=".csv,.xls,.xlsx" required style="display:none;" onchange="this.form.submit()">
+      <input type="file" id="csv_file_placed" name="csv_file_placed" accept=".csv,.xls,.xlsx" required style="display:none;" onchange="submitPlacedImport()">
     </form>
   </div>
 </div>
@@ -983,6 +1004,28 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("csv_file_placed").click();
   });
 });
+
+// Handle form submission with loading indicator - GLOBAL FUNCTION
+function submitPlacedImport() {
+  const input = document.getElementById("csv_file_placed");
+  const file = input.files[0];
+
+  if (!file) return;
+
+  console.log("File selected:", file.name);
+
+  // Submit form FIRST
+  document.getElementById("placedImportForm").submit();
+
+  // THEN show loading indicator
+  const modal = document.getElementById("ipt_importPopup");
+  if (modal) {
+    const modalContent = modal.querySelector(".ipt_modal-content");
+    if (modalContent) {
+      modalContent.innerHTML = '<div style="text-align:center; padding:40px;"><i class="fas fa-spinner fa-spin" style="font-size:48px; color:#007bff;"></i><p style="margin-top:20px; font-size:16px;">Importing and marking students as placed... Please wait.</p></div>';
+    }
+  }
+}
 
 //clear filters
 function clearFilters() {

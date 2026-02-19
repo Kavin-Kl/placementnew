@@ -251,7 +251,6 @@ function fetch_students($conn, $where, $types, $params, $limit = 50, $offset = 0
 
       -- Dynamic WHERE clause if filters exist
       WHERE 1=1
-        AND s.class IN ('First Year', 'Second Year')
     ";
 
     if (!empty($where)) {
@@ -270,9 +269,14 @@ function fetch_students($conn, $where, $types, $params, $limit = 50, $offset = 0
         LIMIT ? OFFSET ?  
     ";
 
+    // DEBUG: Log the actual SQL query
+    error_log("FULL SQL QUERY: " . $sql);
+    error_log("Params count: " . count($params) . " | Types: " . $types);
+
     $stmt = $conn->prepare($sql);
 
     if (!$stmt) {
+        error_log("SQL PREPARE ERROR: " . $conn->error);
         die("Error preparing statement: " . $conn->error);
     }
 

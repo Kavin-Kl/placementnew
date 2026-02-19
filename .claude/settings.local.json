@@ -3,7 +3,19 @@
     "allow": [
       "Bash(\"C:\\xampp\\mysql\\bin\\mysql.exe\" -u root --port=3308 -e \"SELECT COUNT(*) as count FROM drives WHERE drive_id = 599\" admin_placement_db)",
       "Bash(\"C:\\xampp\\apache\\logs\\error.log\")",
-      "Bash(\"C:\\xampp\\mysql\\bin\\mysql.exe\":*)"
+      "Bash(\"C:\\xampp\\mysql\\bin\\mysql.exe\":*)",
+      "Bash(\"C:\\xampp\\mysql\\bin\\mysql.exe\" -u root --port=3308 -e \"SELECT COUNT(*) as count, class FROM students WHERE batch = ''2025-2026'' GROUP BY class\" admin_placement_db)",
+      "Bash(\"C:\\xampp\\mysql\\bin\\mysql.exe\" -u root --port=3308 -e \"SELECT COUNT(*) FROM students WHERE batch = ''2025-2026'' LIMIT 5\" admin_placement_db)",
+      "Bash(\"C:\\xampp\\mysql\\bin\\mysql.exe\" -u root --port=3308 -e \"SELECT s.student_id, s.upid, s.student_name, s.class FROM students s WHERE 1=1 LIMIT 5\" admin_placement_db)",
+      "Bash(\"C:\\xampp\\php\\php.exe\" test_internship_import.php)",
+      "Bash(\"C:\\xampp\\php\\php.exe\" test_placed_imports.php)",
+      "Bash(\"C:\\xampp\\mysql\\bin\\mysql.exe\" -u root --port=3308 -e \"SELECT upid, student_name, program, course FROM students WHERE offer_type = ''Internship'' OR offer_type IS NULL LIMIT 5\" admin_placement_db)",
+      "Bash(\"C:\\xampp\\php\\php.exe\" create_real_test_placed.php)",
+      "Bash(\"C:\\xampp\\mysql\\bin\\mysql.exe\" -u root --port=3308 -e \"SELECT place_id, student_id, upid, drive_no, company_name FROM placed_students WHERE student_id IN (3916, 3913, 3914)\" admin_placement_db)",
+      "Bash(\"C:\\xampp\\mysql\\bin\\mysql.exe\" -u root --port=3308 -e \"DESCRIBE placed_students\" admin_placement_db)",
+      "Bash(\"C:\\xampp\\mysql\\bin\\mysql.exe\" -u root --port=3308 -e \"SHOW COLUMNS FROM placed_students LIKE ''percentage''\" admin_placement_db)",
+      "Bash(\"C:\\xampp\\php\\php.exe\" check_registration_file.php)",
+      "Bash(nul)"
     ],
     "deny": [],
     "ask": []

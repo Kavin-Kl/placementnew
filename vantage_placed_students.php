@@ -24,7 +24,7 @@ function render_student_row($row, $sl_no = '') {
         <td><?= htmlspecialchars($row['student_name']) ?></td>
         <td><?= htmlspecialchars($row['email']) ?></td>
         <td><?= htmlspecialchars($row['phone_no']) ?></td>
-        <td><?= htmlspecialchars($row['percentage']) ?></td>
+        <td><?= htmlspecialchars($row['percentage'] ?? '') ?></td>
         <td><?= htmlspecialchars($row['offer_type']) ?></td>
         <td><?= htmlspecialchars($row['drive_no']) ?></td>
         <td><?= htmlspecialchars($row['company_name']) ?></td>
@@ -381,14 +381,14 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["csv_file_placed"])) 
 
             // Insert placement record
             $stmt = $conn->prepare("INSERT INTO placed_students
-                (student_id, upid, program_type, program, course, reg_no, student_name, email, phone_no, percentage,
+                (student_id, upid, program_type, program, course, reg_no, student_name, email, phone_no,
                  offer_type, drive_no, company_name, role, ctc, stipend)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
 
             if ($stmt) {
-                $stmt->bind_param("issssssssdssssss",
+                $stmt->bind_param("issssssssssssss",
                     $student_id, $upid, $program_type, $program, $course,
-                    $reg_no, $student_name, $email, $phone_no, $percentage,
+                    $reg_no, $student_name, $email, $phone_no,
                     $offer_type, $drive_no, $company_name, $role, $ctc, $stipend
                 );
 
@@ -604,11 +604,11 @@ if (!empty($_SESSION['import_message'])) {
     <span class="ipt_close-btn">&times;</span>
     <h5>Select Import Option</h5>
 
-    <form method="POST" enctype="multipart/form-data" class="import-form">
+    <form method="POST" enctype="multipart/form-data" class="import-form" id="placedImportForm">
       <label for="csv_file_placed" class="ipt_import-option">
         <i class="fa fa-download"></i> Import Excel File
       </label>
-      <input type="file" id="csv_file_placed" name="csv_file_placed" accept=".csv,.xls,.xlsx" required style="display:none;" onchange="this.form.submit()">
+      <input type="file" id="csv_file_placed" name="csv_file_placed" accept=".csv,.xls,.xlsx" required style="display:none;" onchange="submitPlacedImport()">
     </form>
   </div>
 </div>
@@ -921,6 +921,28 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("csv_file_placed").click();
   });
 });
+
+// Handle form submission with loading indicator - GLOBAL FUNCTION
+function submitPlacedImport() {
+  const input = document.getElementById("csv_file_placed");
+  const file = input.files[0];
+
+  if (!file) return;
+
+  console.log("File selected:", file.name);
+
+  // Submit form FIRST
+  document.getElementById("placedImportForm").submit();
+
+  // THEN show loading indicator
+  const modal = document.getElementById("ipt_importPopup");
+  if (modal) {
+    const modalContent = modal.querySelector(".ipt_modal-content");
+    if (modalContent) {
+      modalContent.innerHTML = '<div style="text-align:center; padding:40px;"><i class="fas fa-spinner fa-spin" style="font-size:48px; color:#007bff;"></i><p style="margin-top:20px; font-size:16px;">Importing and marking students as placed... Please wait.</p></div>';
+    }
+  }
+}
 
 //clear filters
 function clearFilters() {

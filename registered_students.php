@@ -584,6 +584,9 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["csv_file"])) {
             }
         }
 
+        logImportReg("Header mapping result: " . json_encode($headerMap));
+        logImportReg("Expected columns: " . json_encode($expectedColumns));
+
         // Friendly display names for each expected column
         $columnDisplayNames = [
             'upid'          => 'Placement ID',
@@ -612,11 +615,14 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["csv_file"])) {
                 return $columnDisplayNames[$col] ?? $col;
             }, $missingColumns);
 
+            logImportReg("ERROR: Missing columns: " . implode(', ', $readableNames));
             $_SESSION['import_message'] = "Missing required column(s): " . implode(', ', $readableNames);
             $_SESSION['import_status'] = "error";
             header("Location: registered_students.php");
             exit;
         }
+
+        logImportReg("All required columns found, starting import...");
 
 
         $inserted = 0;
