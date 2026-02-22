@@ -40,3 +40,9 @@
 [2026-02-18 22:38:32] File upload successful, validating filename...
 [2026-02-18 22:38:32] === IMPORT COMPLETED ===
 [2026-02-18 22:38:32] Results: Inserted=3, Skipped=0
+[2026-02-22 20:23:10] === IMPORT STARTED ===
+[2026-02-22 20:23:10] User: 7
+[2026-02-22 20:23:10] File received: Registration_2025-2026 (1).xlsx (Size: 9.78 KB)
+[2026-02-22 20:23:10] File upload successful, validating filename...
+[2026-02-22 20:23:10] === IMPORT COMPLETED ===
+[2026-02-22 20:23:10] Results: Inserted=7, Skipped=0

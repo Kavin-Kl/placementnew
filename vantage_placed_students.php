@@ -253,7 +253,9 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["csv_file_placed"])) 
             'stipend'       => ['Company Stipend', 'stipend', 'Stipend'],
         ];
 
-        $expectedColumns = array_keys($headerPatterns);
+        // Only these columns are REQUIRED - placement details are optional
+        $requiredColumns = ['upid', 'reg_no', 'student_name', 'email'];
+
         $headerMap = [];
 
         foreach ($header as $index => $colName) {
@@ -290,10 +292,10 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["csv_file_placed"])) 
             'stipend'       => 'Stipend'
         ];
 
-        // Check for missing required columns
+        // Check for missing REQUIRED columns only
         $missingColumns = [];
 
-        foreach ($expectedColumns as $col) {
+        foreach ($requiredColumns as $col) {
             if (!isset($headerMap[$col])) {
                 $missingColumns[] = $col;
             }
@@ -316,20 +318,25 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["csv_file_placed"])) 
 
         foreach ($dataRows as $data) {
             $upid          = trim($data[$headerMap['upid']] ?? '');
-            $program_type  = trim($data[$headerMap['program_type']] ?? '');
-            $program       = trim($data[$headerMap['program']] ?? '');
-            $course        = trim($data[$headerMap['course']] ?? '');
+            $program_type  = isset($headerMap['program_type']) ? trim($data[$headerMap['program_type']] ?? '') : '';
+            $program       = isset($headerMap['program']) ? trim($data[$headerMap['program']] ?? '') : '';
+            $course        = isset($headerMap['course']) ? trim($data[$headerMap['course']] ?? '') : '';
             $reg_no        = trim($data[$headerMap['reg_no']] ?? '');
             $student_name  = trim($data[$headerMap['student_name']] ?? '');
             $email         = trim($data[$headerMap['email']] ?? '');
-            $phone_no      = trim($data[$headerMap['phone_no']] ?? '');
+            $phone_no      = isset($headerMap['phone_no']) ? trim($data[$headerMap['phone_no']] ?? '') : '';
             $percentage    = isset($headerMap['percentage']) && !empty($data[$headerMap['percentage']]) ? (float)$data[$headerMap['percentage']] : null;
-            $offer_type    = trim($data[$headerMap['offer_type']] ?? '');
-            $drive_no      = trim($data[$headerMap['drive_no']] ?? '');
-            $company_name  = trim($data[$headerMap['company_name']] ?? '');
-            $role          = trim($data[$headerMap['role']] ?? '');
-            $ctc           = trim($data[$headerMap['ctc']] ?? '');
-            $stipend       = trim($data[$headerMap['stipend']] ?? '');
+            $offer_type    = isset($headerMap['offer_type']) ? trim($data[$headerMap['offer_type']] ?? '') : 'Placement';
+            $drive_no      = isset($headerMap['drive_no']) ? trim($data[$headerMap['drive_no']] ?? '') : '';
+            $company_name  = isset($headerMap['company_name']) ? trim($data[$headerMap['company_name']] ?? '') : '';
+            $role          = isset($headerMap['role']) ? trim($data[$headerMap['role']] ?? '') : '';
+            $ctc           = isset($headerMap['ctc']) ? trim($data[$headerMap['ctc']] ?? '') : '';
+            $stipend       = isset($headerMap['stipend']) ? trim($data[$headerMap['stipend']] ?? '') : '';
+
+            // If drive_no is empty, generate a unique one
+            if (empty($drive_no)) {
+                $drive_no = 'Vantage_Import_' . date('Ymd_His') . '_' . ($inserted + $skipped + 1);
+            }
 
             if (empty($upid) || empty($reg_no) || empty($student_name) || empty($email)) {
                 $skipped++;
