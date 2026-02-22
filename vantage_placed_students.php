@@ -372,10 +372,11 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["csv_file_placed"])) 
                 continue;
             }
 
-            // Check if placement record already exists
-            $checkPlaced = $conn->prepare("SELECT 1 FROM placed_students WHERE student_id = ? AND drive_no = ?");
+            // Check if student already has a vantage placement record (by student_id only)
+            // For vantage, we don't allow duplicate placements for the same student
+            $checkPlaced = $conn->prepare("SELECT 1 FROM placed_students WHERE student_id = ? AND offer_type NOT IN ('Internship', 'Internship + PPO')");
             if ($checkPlaced) {
-                $checkPlaced->bind_param("is", $student_id, $drive_no);
+                $checkPlaced->bind_param("i", $student_id);
                 $checkPlaced->execute();
                 $checkPlaced->store_result();
                 if ($checkPlaced->num_rows > 0) {
@@ -492,6 +493,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_filter']) && $_P
     $sql = "SELECT DISTINCT ps.* FROM placed_students ps
             INNER JOIN students s ON ps.student_id = s.student_id
             WHERE s.vantage_placed = 'yes'
+              AND ps.offer_type NOT IN ('Internship', 'Internship + PPO')
               AND ps.program IS NOT NULL
               AND ps.program != ''";
     if (!empty($where)) {
@@ -858,6 +860,7 @@ if (!empty($_SESSION['import_message'])) {
         FROM placed_students ps
         INNER JOIN students s ON ps.student_id = s.student_id
         WHERE s.vantage_placed = 'yes'
+          AND ps.offer_type NOT IN ('Internship', 'Internship + PPO')
           AND ps.program IS NOT NULL
           AND ps.program != ''
         GROUP BY ps.student_id, ps.drive_no
