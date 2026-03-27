@@ -33,6 +33,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
     try {
         $company = $_POST["company_name"];
+        $company_sector = trim($_POST['company_sector'] ?? '');
         $open = $_POST['open_date'] ? date('Y-m-d H:i:s', strtotime($_POST['open_date'])) : null;
         $close = $_POST['close_date'] ? date('Y-m-d H:i:s', strtotime($_POST['close_date'])) : null;
 
@@ -99,16 +100,17 @@ $show_to_internship = isset($_POST['show_to_internship']) ? 1 : 0;
 $show_to_vantage = isset($_POST['show_to_vantage']) ? 1 : 0;
 $show_to_placement = isset($_POST['show_to_placement']) ? 1 : 0;
 
-// Insert into drives (added eligibility fields and academic_year)
+// Insert into drives (added eligibility fields, academic_year, and company_sector)
 $stmt = $conn->prepare("INSERT INTO drives (
-    company_name, drive_no, open_date, close_date, jd_file, form_link, extra_details, created_by, form_fields, company_url, graduating_year, work_location, show_to_internship, show_to_vantage, show_to_placement, academic_year
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+    company_name, company_sector, drive_no, open_date, close_date, jd_file, form_link, extra_details, created_by, form_fields, company_url, graduating_year, work_location, show_to_internship, show_to_vantage, show_to_placement, academic_year
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
 
 
 if (!$stmt) throw new Exception("SQL Error (drives insert): " . $conn->error);
 $stmt->bind_param(
-    "ssssssssssssiiis",
+    "sssssssssssssiiis",
     $company,
+    $company_sector,
     $drive_no,
     $open,
     $close,
@@ -272,6 +274,22 @@ $stmt->bind_param(
 
   <label>Company Name: <span style="color: red;">*</span></label><br>
   <input type="text" name="company_name" required><br><br>
+
+  <label>Company Sector: <span style="color: red;">*</span></label><br>
+  <select name="company_sector" required style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+    <option value="">Select Sector</option>
+    <option value="BFSI">BFSI</option>
+    <option value="Sales, Marketing, BD">Sales, Marketing, BD</option>
+    <option value="IT">IT</option>
+    <option value="Consulting">Consulting</option>
+    <option value="Analytics">Analytics</option>
+    <option value="Core Engineering">Core Engineering</option>
+    <option value="Product Development">Product Development</option>
+    <option value="Healthcare">Healthcare</option>
+    <option value="E-commerce">E-commerce</option>
+    <option value="Manufacturing">Manufacturing</option>
+    <option value="Others">Others</option>
+  </select><br><br>
 
 <label>Form Open Date & Time: <span style="color: red;">*</span></label><br>
 <input type="text" id="open_date" name="open_date" required><br><br>

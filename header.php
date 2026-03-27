@@ -685,6 +685,14 @@ ul, ol {
             </li>
 
             <li>
+                <a href="import_companies.php" class="<?= $currentPage === 'import_companies.php' ? 'active' : '' ?>">
+                    <i class="bi bi-cloud-upload"></i>
+                    <span class="links_name">Import Companies</span>
+                </a>
+                <span class="tooltip">Import Companies</span>
+            </li>
+
+            <li>
                 <a href="enrolled_students.php" class="<?= $currentPage === 'enrolled_students.php' ? 'active' : '' ?>">
                     <i class="bi bi-card-list"></i>
                     <span class="links_name">Applications List</span>
@@ -762,6 +770,14 @@ ul, ol {
                     <span class="links_name">Offer Letter Collection</span>
                 </a>
                 <span class="tooltip">Offer Letter Collection</span>
+            </li>
+
+            <li>
+                <a href="internship_offer_letters.php" class="<?= $currentPage === 'internship_offer_letters.php' ? 'active' : '' ?>">
+                    <i class="bi bi-file-earmark-text"></i>
+                    <span class="links_name">Internship Letter Collection</span>
+                </a>
+                <span class="tooltip">Internship Letter Collection</span>
             </li>
 
             <li>

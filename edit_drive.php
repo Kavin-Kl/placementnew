@@ -139,6 +139,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         // Basic drive columns
         // -------------------------------------------------
         $company    = $_POST['company_name'];
+        $company_sector = $_POST['company_sector'] ?? '';
         $extra_json = $_POST['extra_details'] ?? '{}';
         $jd_link    = $_POST['jd_link'] ?? '';
         $company_url     = $_POST['company_url'] ?? '';
@@ -193,10 +194,11 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         //$pdo->prepare('UPDATE drives SET company_name = ?, open_date = ?, close_date = ?, jd_file = ?, extra_details = ?, jd_link = ? WHERE drive_id = ?')
           //  ->execute([$company, $open, $close, $jd_json, $extra_json, $jd_link, $drive_id]);
     $pdo->prepare('UPDATE drives
-    SET company_name = ?, open_date = ?, close_date = ?, jd_file = ?, extra_details = ?, jd_link = ?, company_url = ?, graduating_year = ?, work_location = ?, form_fields = ?, show_to_internship = ?, show_to_vantage = ?, show_to_placement = ?, academic_year = ?
+    SET company_name = ?, company_sector = ?, open_date = ?, close_date = ?, jd_file = ?, extra_details = ?, jd_link = ?, company_url = ?, graduating_year = ?, work_location = ?, form_fields = ?, show_to_internship = ?, show_to_vantage = ?, show_to_placement = ?, academic_year = ?
     WHERE drive_id = ?')
     ->execute([
         $company,
+        $company_sector,
         $open,
         $close,
         $jd_json,
@@ -1303,6 +1305,23 @@ $field_types = ['text', 'number', 'email', 'textarea', 'select', 'file', 'checkb
                         <div class="form-group">
                             <label class="form-label">Company Name <span class="required-asterisk">*</span></label>
                            <input type="text" name="company_name" class="form-input" value="<?= htmlspecialchars($drive['company_name'] ?? '') ?>" required>  </div>
+                        <div class="form-group">
+                            <label class="form-label">Company Sector <span class="required-asterisk">*</span></label>
+                            <select name="company_sector" class="form-input" required>
+                                <option value="">Select Sector</option>
+                                <option value="BFSI" <?= ($drive['company_sector'] ?? '') === 'BFSI' ? 'selected' : '' ?>>BFSI</option>
+                                <option value="Sales, Marketing, BD" <?= ($drive['company_sector'] ?? '') === 'Sales, Marketing, BD' ? 'selected' : '' ?>>Sales, Marketing, BD</option>
+                                <option value="IT" <?= ($drive['company_sector'] ?? '') === 'IT' ? 'selected' : '' ?>>IT</option>
+                                <option value="Consulting" <?= ($drive['company_sector'] ?? '') === 'Consulting' ? 'selected' : '' ?>>Consulting</option>
+                                <option value="Analytics" <?= ($drive['company_sector'] ?? '') === 'Analytics' ? 'selected' : '' ?>>Analytics</option>
+                                <option value="Core Engineering" <?= ($drive['company_sector'] ?? '') === 'Core Engineering' ? 'selected' : '' ?>>Core Engineering</option>
+                                <option value="Product Development" <?= ($drive['company_sector'] ?? '') === 'Product Development' ? 'selected' : '' ?>>Product Development</option>
+                                <option value="Healthcare" <?= ($drive['company_sector'] ?? '') === 'Healthcare' ? 'selected' : '' ?>>Healthcare</option>
+                                <option value="E-commerce" <?= ($drive['company_sector'] ?? '') === 'E-commerce' ? 'selected' : '' ?>>E-commerce</option>
+                                <option value="Manufacturing" <?= ($drive['company_sector'] ?? '') === 'Manufacturing' ? 'selected' : '' ?>>Manufacturing</option>
+                                <option value="Others" <?= ($drive['company_sector'] ?? '') === 'Others' ? 'selected' : '' ?>>Others</option>
+                            </select>
+                        </div>
                         <div class="form-group">
     <label class="form-label">Form Open Date & Time <span class="required-asterisk">*</span></label>
     <input type="text" id="open_date" name="open_date" class="form-input" 

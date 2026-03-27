@@ -179,38 +179,69 @@ function simplifyCourses($coursesRaw) {
 
 // Initialize empty arrays for each status
 $cards = ["Upcoming" => [], "Current" => [], "Finished" => []];
+$finished_total_count = 0;
+
+// Pagination for Finished drives
+$finished_page = isset($_GET['finished_page']) ? max(1, intval($_GET['finished_page'])) : 1;
+$finished_per_page = 10;
+$finished_offset = ($finished_page - 1) * $finished_per_page;
 
 // Get current datetime for comparison
 $now = new DateTime();
+$now_str = $now->format('Y-m-d H:i:s');
+
 // 🔥 Auto-delete drives that have no roles
 $conn->query("
-    DELETE d 
+    DELETE d
     FROM drives d
     LEFT JOIN drive_roles dr ON d.drive_id = dr.drive_id
     WHERE dr.role_id IS NULL
 ");
 
-// Fetch all drives and classify them
-$drives_result = $conn->query("SELECT * FROM drives ORDER BY open_date DESC");
+// Fetch Current and Upcoming drives (no pagination)
+$current_upcoming_query = "SELECT * FROM drives WHERE close_date >= ? OR open_date > ? ORDER BY open_date DESC";
+$stmt = $conn->prepare($current_upcoming_query);
+$stmt->bind_param("ss", $now_str, $now_str);
+$stmt->execute();
+$drives_result = $stmt->get_result();
+
 while ($drive = $drives_result->fetch_assoc()) {
     try {
         $open = new DateTime($drive['open_date']);
         $close = new DateTime($drive['close_date']);
-        
-        if ($close < $now) {
-            $status = "Finished";
-        } elseif ($open <= $now && $close >= $now) {
-            $status = "Current";
+
+        if ($open <= $now && $close >= $now) {
+            $cards["Current"][] = $drive;
         } else {
-            $status = "Upcoming";
+            $cards["Upcoming"][] = $drive;
         }
-        
-        $cards[$status][] = $drive;
     } catch (Exception $e) {
         error_log("Error parsing dates for drive {$drive['drive_id']}: ".$e->getMessage());
         continue;
     }
 }
+$stmt->close();
+
+// Count total Finished drives for pagination
+$count_stmt = $conn->prepare("SELECT COUNT(*) as total FROM drives WHERE close_date < ?");
+$count_stmt->bind_param("s", $now_str);
+$count_stmt->execute();
+$finished_total_count = $count_stmt->get_result()->fetch_assoc()['total'];
+$count_stmt->close();
+
+// Fetch Finished drives with pagination
+$finished_query = "SELECT * FROM drives WHERE close_date < ? ORDER BY open_date DESC LIMIT ? OFFSET ?";
+$stmt = $conn->prepare($finished_query);
+$stmt->bind_param("sii", $now_str, $finished_per_page, $finished_offset);
+$stmt->execute();
+$drives_result = $stmt->get_result();
+
+while ($drive = $drives_result->fetch_assoc()) {
+    $cards["Finished"][] = $drive;
+}
+$stmt->close();
+
+$finished_total_pages = ceil($finished_total_count / $finished_per_page);
 // Sync placed students once per page load
 // DISABLED: Import from Excel already has complete data
 // include_once __DIR__ . '/sync_placed_students.php';
@@ -226,9 +257,34 @@ if (isset($_SESSION['selected_academic_year'])) {
     $graduation_year = isset($parts[1]) ? intval($parts[1]) : null;
 }
 
-// Top Dashboard Boxes - Show ALL students regardless of year (consistent with statistics page)
-$total_students = $conn->query("SELECT COUNT(*) AS count FROM students")->fetch_assoc()['count'];
-$total_companies = $conn->query("SELECT COUNT(DISTINCT company_name) AS count FROM drives")->fetch_assoc()['count'];
+// Top Dashboard Boxes - Filter by selected academic year
+$year_filter = "";
+$year_params = [];
+if ($graduation_year) {
+    $year_filter = " WHERE year_of_passing = ?";
+    $year_params[] = $graduation_year;
+}
+
+// Total students for selected year
+$stmt = $conn->prepare("SELECT COUNT(*) AS count FROM students" . $year_filter);
+if ($graduation_year) {
+    $stmt->bind_param("i", $graduation_year);
+}
+$stmt->execute();
+$total_students = $stmt->get_result()->fetch_assoc()['count'];
+$stmt->close();
+
+// Total companies for selected academic year
+$academic_year = $_SESSION['selected_academic_year'] ?? null;
+if ($academic_year) {
+    $stmt = $conn->prepare("SELECT COUNT(DISTINCT company_name) AS count FROM drives WHERE academic_year = ?");
+    $stmt->bind_param("s", $academic_year);
+    $stmt->execute();
+    $total_companies = $stmt->get_result()->fetch_assoc()['count'];
+    $stmt->close();
+} else {
+    $total_companies = $conn->query("SELECT COUNT(DISTINCT company_name) AS count FROM drives")->fetch_assoc()['count'];
+}
 
 // Get placed students breakdown - Count total placement records (excluding internships)
 $placed_students_query = "
@@ -238,33 +294,55 @@ $placed_students_query = "
         COUNT(CASE WHEN s.vantage_participant != 'yes' OR s.vantage_participant IS NULL THEN ps.place_id END) as final_year
     FROM placed_students ps
     LEFT JOIN students s ON ps.student_id = s.student_id
-    WHERE ps.offer_type != 'Internship' OR ps.offer_type IS NULL
+    WHERE (ps.offer_type != 'Internship' OR ps.offer_type IS NULL)
 ";
-$placed_result = $conn->query($placed_students_query)->fetch_assoc();
+
+// Add year filter
+if ($graduation_year) {
+    $placed_students_query .= " AND s.year_of_passing = ?";
+    $stmt = $conn->prepare($placed_students_query);
+    $stmt->bind_param("i", $graduation_year);
+    $stmt->execute();
+    $placed_result = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+} else {
+    $placed_result = $conn->query($placed_students_query)->fetch_assoc();
+}
+
 $placed_students = $placed_result['total'];
 $vantage_placed = $placed_result['vantage'];
 $final_year_placed = $placed_result['final_year'];
 
 // Get internship placed students breakdown - Count total placement records (offer_type = 'Internship')
+// Note: Removed final_year breakdown as per requirements
 $internship_placed_query = "
     SELECT
         COUNT(ps.place_id) as total,
-        COUNT(CASE WHEN s.vantage_participant = 'yes' THEN ps.place_id END) as vantage,
-        COUNT(CASE WHEN s.vantage_participant != 'yes' OR s.vantage_participant IS NULL THEN ps.place_id END) as final_year
+        COUNT(CASE WHEN s.vantage_participant = 'yes' THEN ps.place_id END) as vantage
     FROM placed_students ps
     LEFT JOIN students s ON ps.student_id = s.student_id
     WHERE ps.offer_type = 'Internship'
 ";
-$internship_result = $conn->query($internship_placed_query);
+
+// Add year filter
+if ($graduation_year) {
+    $internship_placed_query .= " AND s.year_of_passing = ?";
+    $stmt = $conn->prepare($internship_placed_query);
+    $stmt->bind_param("i", $graduation_year);
+    $stmt->execute();
+    $internship_result = $stmt->get_result();
+    $stmt->close();
+} else {
+    $internship_result = $conn->query($internship_placed_query);
+}
+
 if ($internship_result) {
     $internship_data = $internship_result->fetch_assoc();
     $internship_placed = $internship_data['total'];
     $internship_vantage_placed = $internship_data['vantage'];
-    $internship_final_year_placed = $internship_data['final_year'];
 } else {
     $internship_placed = 0;
     $internship_vantage_placed = 0;
-    $internship_final_year_placed = 0;
 }
 
 // Get registered students breakdown
@@ -275,7 +353,19 @@ $registered_students_query = "
         COUNT(CASE WHEN vantage_participant != 'yes' OR vantage_participant IS NULL THEN student_id END) as final_year
     FROM students
 ";
-$registered_result = $conn->query($registered_students_query)->fetch_assoc();
+
+// Add year filter
+if ($graduation_year) {
+    $registered_students_query .= " WHERE year_of_passing = ?";
+    $stmt = $conn->prepare($registered_students_query);
+    $stmt->bind_param("i", $graduation_year);
+    $stmt->execute();
+    $registered_result = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+} else {
+    $registered_result = $conn->query($registered_students_query)->fetch_assoc();
+}
+
 $registered_total = $registered_result['total'];
 $registered_vantage = $registered_result['vantage'];
 $registered_final_year = $registered_result['final_year'];
@@ -360,7 +450,7 @@ function getCompanyProgress($status) {
         <div class="text-sm">Internship Placed</div>
         <div class="text-2xl font-bold"><?= $internship_placed ?></div>
         <div class="text-red-300 text-xs mt-1">
-          Final Year: <?= $internship_final_year_placed ?> | Vantage: <?= $internship_vantage_placed ?>
+          Vantage: <?= $internship_vantage_placed ?>
         </div>
         <div class="text-red-300 text-xs mt-1" style="opacity: 0.7;">Updated daily</div>
       </div>
@@ -870,6 +960,28 @@ if (!empty($jd_items)): ?>
             </div>
           <?php endforeach; ?>
         </div>
+
+        <!-- Pagination for Finished tab -->
+        <?php if ($tab === 'Finished' && $finished_total_pages > 1): ?>
+          <div class="pagination" style="margin-top: 20px; display: flex; justify-content: center; align-items: center; gap: 10px;">
+            <?php if ($finished_page > 1): ?>
+              <a href="?finished_page=<?= $finished_page - 1 ?>" class="px-3 py-2 text-sm rounded-md border border-gray-300 hover:bg-gray-100">
+                &laquo; Previous
+              </a>
+            <?php endif; ?>
+
+            <span class="text-sm" style="color: #666;">
+              Page <?= $finished_page ?> of <?= $finished_total_pages ?> (Total: <?= $finished_total_count ?> drives)
+            </span>
+
+            <?php if ($finished_page < $finished_total_pages): ?>
+              <a href="?finished_page=<?= $finished_page + 1 ?>" class="px-3 py-2 text-sm rounded-md border border-gray-300 hover:bg-gray-100">
+                Next &raquo;
+              </a>
+            <?php endif; ?>
+          </div>
+        <?php endif; ?>
+
       <?php endif; ?>
     </div>
   <?php endforeach; ?>

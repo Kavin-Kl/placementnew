@@ -435,8 +435,9 @@ function render_students_table($conn, $result, $offset = 0) {
   
         // Action buttons
         echo '<td>
-                <button type="button" title="Save Student Record" class="save-btn btn btn-sm" data-student-id="' . htmlspecialchars($row['student_id']) . '" style="margin-right:3px; background-color:white; border:1px solid #198754; font-weight: 700; color:#198754;">Save</button>
+                <button type="button" title="Save Student Record" class="save-btn btn btn-sm" data-student-id="' . htmlspecialchars($row['student_id']) . '" data-upid="' . htmlspecialchars($row['upid']) . '" style="margin-right:3px; background-color:white; border:1px solid #198754; font-weight: 700; color:#198754;">Save</button>
                 <button type="button" title="Edit Student Record" class="edit-btn btn btn-sm" data-student-id="' . htmlspecialchars($row['student_id']) . '" style="margin-right:3px; background-color:white; border:1px solid #650000; color:#650000;"><i class="fas fa-edit"></i></button>
+                <button type="button" title="Block Student" class="block-student-btn btn btn-sm" data-student-id="' . htmlspecialchars($row['student_id']) . '" data-upid="' . htmlspecialchars($row['upid']) . '" style="margin-right:3px; background-color:white; border:1px solid #ffc107; color:#ffc107;"><i class="fas fa-ban"></i></button>
                 <button type="button" title="Delete Student Record" class="delete-student-btn btn btn-sm" data-student-id="' . htmlspecialchars($row['student_id']) . '" style="background-color:white; border:1px solid #dc3545; color:#dc3545;"><i class="fas fa-trash"></i></button>
               </td>';
 
@@ -1573,6 +1574,40 @@ $(document).on('click', '.delete-student-btn', function () {
       },
       error: function () {
         alert("Error deleting student.");
+      }
+    });
+  }
+});
+
+// block student functionality
+$(document).on('click', '.block-student-btn', function () {
+  var studentId = $(this).data('student-id');
+  var upid = $(this).data('upid');
+  var button = $(this);
+  var row = button.closest('tr');
+
+  if (confirm("Are you sure you want to block this student from all future applications?")) {
+    $.ajax({
+      url: 'block_student.php',
+      method: 'POST',
+      data: {
+        student_id: studentId,
+        upid: upid
+      },
+      success: function (response) {
+        var result = JSON.parse(response);
+        if (result.success) {
+          showToast(result.message, "success", 3000);
+          // Update the status column in the table
+          row.find('td').eq(13).text('blocked'); // Update the status column (index 13)
+          // Optionally reload the table to reflect changes
+          applyFilters();
+        } else {
+          showToast(result.message || "Error blocking student.", "error", 3000);
+        }
+      },
+      error: function () {
+        showToast("Error blocking student.", "error", 3000);
       }
     });
   }

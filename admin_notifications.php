@@ -95,7 +95,7 @@ require 'header.php';
                     </h5>
                     <?php if ($unread_count > 0): ?>
                         <button class="btn btn-sm btn-primary" id="markAllReadBtn">
-                            <i class='bx bx-check-double'></i> Mark All as Read
+                            <i class='bx bx-check-double'></i> Mark All Data Shared
                         </button>
                     <?php endif; ?>
                 </div>
@@ -173,7 +173,7 @@ require 'header.php';
                                                 <?php if (!$notification['is_read']): ?>
                                                     <button class="btn btn-sm btn-outline-success mark-read-btn"
                                                             data-id="<?php echo $notification['notification_id']; ?>">
-                                                        <i class='bx bx-check'></i> Mark as Read
+                                                        <i class='bx bx-check'></i> Data Shared
                                                     </button>
                                                 <?php endif; ?>
                                                 <button class="btn btn-sm btn-outline-danger delete-btn"
