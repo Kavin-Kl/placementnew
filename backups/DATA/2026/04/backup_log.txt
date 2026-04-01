@@ -1,0 +1,12 @@
+[❌ ERROR] 2026-04-01 17:06:18
+Command: "C:\xampp\mysql\bin\mysqldump.exe" --routines --triggers --events --single-transaction -h 127.0.0.1 -u root  admin_placement_db > "C:\xampp\htdocs\placementcell/backups/DATA/2026/04/placement_backup_01-04-2026.sql"
+
+[❌ ERROR] 2026-04-01 17:06:45
+Command: "C:\xampp\mysql\bin\mysqldump.exe" --routines --triggers --events --single-transaction -h 127.0.0.1 -u root  admin_placement_db > "C:\xampp\htdocs\placementcell/backups/DATA/2026/04/placement_backup_01-04-2026.sql"
+
+[❌ ERROR] 2026-04-01 17:08:12
+Command: "C:\xampp\mysql\bin\mysqldump.exe" --routines --triggers --events --single-transaction -h 127.0.0.1 -u root  admin_placement_db > "C:\xampp\htdocs\placementcell/backups/DATA/2026/04/placement_backup_01-04-2026.sql"
+
+[❌ ERROR] 2026-04-01 17:08:45
+Command: "C:\xampp\mysql\bin\mysqldump.exe" --routines --triggers --events --single-transaction -h 127.0.0.1 -u root  admin_placement_db > "C:\xampp\htdocs\placementcell/backups/DATA/2026/04/placement_backup_01-04-2026.sql"
+

@@ -19,7 +19,13 @@
       "Bash(\"C:\\xampp\\mysql\\bin\\mysql.exe\" -u root --port=3308 -e \"SELECT place_id, student_id, upid, offer_type, drive_no FROM placed_students WHERE upid = ''MCC25PLC_MS234537_2026'' ORDER BY place_id\" admin_placement_db)",
       "Bash(\"C:\\xampp\\mysql\\bin\\mysql.exe\" -u root --port=3308 -e \"DELETE FROM placed_students WHERE place_id = 2545\" admin_placement_db)",
       "Bash(\"C:\\xampp\\mysql\\bin\\mysql.exe\" -u root --port=3308 -e \"DESCRIBE drives\" admin_placement_db)",
-      "Bash(xampp-control.exe)"
+      "Bash(xampp-control.exe)",
+      "Bash(cp:*)",
+      "Bash(dir /b fulltime_progress_tracker.php internship_progress_tracker.php export_applications.php 2)",
+      "Bash(\"C:\\xampp\\mysql\\bin\\mysql.exe\" -u root --port=3308 -e \"SHOW COLUMNS FROM drives LIKE ''%sector%''\" admin_placement_db)",
+      "Bash(\"C:\\xampp\\mysql\\bin\\mysql.exe\" -u root --port=3308 -e \"SHOW COLUMNS FROM drive_roles LIKE ''offer_type''\" admin_placement_db)",
+      "Bash(\"C:\\xampp\\mysql\\bin\\mysql.exe\" -u root --port=3308 -e \"SHOW TABLES LIKE ''application_rounds''\" admin_placement_db)",
+      "Bash(\"C:\\xampp\\mysql\\bin\\mysql.exe\" -u root --port=3308 -e \"SHOW COLUMNS FROM drives LIKE ''company_sector''\" admin_placement_db)"
     ],
     "deny": [],
     "ask": []

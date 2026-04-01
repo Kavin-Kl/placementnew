@@ -709,6 +709,22 @@ ul, ol {
             </li>
 
             <li>
+                <a href="fulltime_round_results.php" class="<?= $currentPage === 'fulltime_round_results.php' ? 'active' : '' ?>">
+                    <i class="bi bi-briefcase-fill"></i>
+                    <span class="links_name">Full-Time Round Results</span>
+                </a>
+                <span class="tooltip">Full-Time Round Results</span>
+            </li>
+
+            <li>
+                <a href="internship_round_results.php" class="<?= $currentPage === 'internship_round_results.php' ? 'active' : '' ?>">
+                    <i class="bi bi-clock-history"></i>
+                    <span class="links_name">Internship Round Results</span>
+                </a>
+                <span class="tooltip">Internship Round Results</span>
+            </li>
+
+            <li>
                 <a href="registered_students.php" class="<?= $currentPage === 'registered_students.php' ? 'active' : '' ?>">
                     <i class="bi bi-person-vcard"></i>
                     <span class="links_name">Final Year Registered Students</span>
@@ -781,11 +797,19 @@ ul, ol {
             </li>
 
             <li>
-                <a href="course_specific_drive_data.php" class="<?= $currentPage === 'course_specific_drive_data.php' ? 'active' : '' ?>">
-                    <i class="bi bi-journal-bookmark"></i>
-                    <span class="links_name">Company Progress Tracker</span>
+                <a href="fulltime_progress_tracker.php" class="<?= $currentPage === 'fulltime_progress_tracker.php' ? 'active' : '' ?>">
+                    <i class="bi bi-briefcase"></i>
+                    <span class="links_name">Full-Time Progress Tracker</span>
                 </a>
-                <span class="tooltip">Progress Tracker</span>
+                <span class="tooltip">Full-Time Progress Tracker</span>
+            </li>
+
+            <li>
+                <a href="internship_progress_tracker.php" class="<?= $currentPage === 'internship_progress_tracker.php' ? 'active' : '' ?>">
+                    <i class="bi bi-clock-history"></i>
+                    <span class="links_name">Internship Progress Tracker</span>
+                </a>
+                <span class="tooltip">Internship Progress Tracker</span>
             </li>
 
 <li>

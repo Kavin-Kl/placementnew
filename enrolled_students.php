@@ -1170,10 +1170,13 @@ foreach ($grouped as $company => $drives) {
       <i class="fas fa-filter"></i> Filters
     </button>
     <button type="button" id="resetBtn" class="reset-button" onclick="resetFilterToSameTab();" style="margin-left: 2px;">
-      <i class="fas fa-undo"></i> Reset</span>
+      <i class="fas fa-undo"></i> Reset
+    </button>
+    <button type="button" id="exportBtn" class="filter-button" onclick="exportApplications();" style="margin-left: 2px; background-color: #198754;">
+      <i class="fas fa-file-excel"></i> Export to Excel
     </button>
     <!--removed !dashboard close tag-->
- 
+
 </div>
 <!-- Universal Search Input -->
 
@@ -3072,6 +3075,22 @@ function hideFieldPopup(uniqueId) {
 function toggleSection(sectionClass, sourceCheckbox) {
   const checkboxes = document.querySelectorAll('.' + sectionClass + ' input[type="checkbox"]');
   checkboxes.forEach(cb => cb.checked = sourceCheckbox.checked);
+}
+
+function exportApplications() {
+  // Get current filter values
+  const urlParams = new URLSearchParams(window.location.search);
+  const company = urlParams.get('company_filter') || '';
+  const role = urlParams.get('role_filter') || '';
+  const upid = urlParams.get('upid_filter') || '';
+  const regNo = urlParams.get('reg_no_filter') || '';
+  const status = urlParams.get('status_filter') || '';
+
+  // Build export URL with filters
+  const exportUrl = `export_applications.php?company=${encodeURIComponent(company)}&role=${encodeURIComponent(role)}&upid=${encodeURIComponent(upid)}&reg_no=${encodeURIComponent(regNo)}&status=${encodeURIComponent(status)}`;
+
+  // Open export in new window
+  window.open(exportUrl, '_blank');
 }
 </script>
 

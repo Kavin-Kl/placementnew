@@ -11,6 +11,7 @@ include("config.php");
 
 include("course_groups_dynamic.php");
 $course = $_GET['course'] ?? '';
+$offer_type_filter = $_GET['offer_type'] ?? 'ALL'; // NEW: Filter by offer type
 
 // Normalize underscores to commas for matching with DB values
 $normalized_course = str_replace('_', ',', $course);
@@ -208,10 +209,19 @@ if ($course === 'ALL') {
 
 // Students placed
 // Students placed (using same normalization as students_registered) - EXCLUDING VANTAGE
+// Build offer type filter
+$offer_type_condition = "";
+if ($offer_type_filter === 'FULLTIME') {
+    $offer_type_condition = " AND (dr.offer_type IN ('FTE', 'Internship + PPO', 'Internship+PPO', 'Apprentice') OR dr.offer_type IS NULL)";
+} elseif ($offer_type_filter === 'INTERNSHIP') {
+    $offer_type_condition = " AND dr.offer_type = 'Internship'";
+}
+
 $stmt = $conn->prepare("
   SELECT COUNT(DISTINCT a.upid) as total
   FROM applications a
   INNER JOIN students s ON a.student_id = s.student_id
+  LEFT JOIN drive_roles dr ON a.role_id = dr.role_id
   WHERE LOWER(
     TRIM(
       REPLACE(
@@ -243,6 +253,7 @@ $stmt = $conn->prepare("
   ) IN ($placeholders)
   AND LOWER(a.status) = 'placed'
   AND (s.vantage_participant != 'yes' OR s.vantage_participant IS NULL)
+  $offer_type_condition
 ");
 if ($stmt) {
     $stmt->bind_param($types, ...$cleaned_courses);
@@ -324,6 +335,15 @@ if ($stmt) {
 // CTC
 // ✅ Fetch CTC values from placed_students.ctc instead of drive_roles.ctc
 $ctc_values = [];
+
+// Build offer type filter for CTC query
+$ctc_offer_type_condition = "";
+if ($offer_type_filter === 'FULLTIME') {
+    $ctc_offer_type_condition = " AND (offer_type IN ('FTE', 'Internship + PPO', 'Internship+PPO', 'Apprentice') OR offer_type IS NULL)";
+} elseif ($offer_type_filter === 'INTERNSHIP') {
+    $ctc_offer_type_condition = " AND offer_type = 'Internship'";
+}
+
 $query = "
     SELECT ctc
     FROM placed_students
@@ -358,6 +378,7 @@ $query = "
     ) IN ($placeholders)
       AND ctc IS NOT NULL
       AND ctc != ''
+      $ctc_offer_type_condition
 ";
 
 $stmt = $conn->prepare($query);
@@ -389,9 +410,18 @@ $median_ctc = $ctc_values ? round($ctc_values[floor(count($ctc_values) / 2)], 2)
 $highest_ctc = $ctc_values ? max($ctc_values) : 0;
 
 // Companies recruited
+// Build offer type filter for companies query
+$companies_offer_type_condition = "";
+if ($offer_type_filter === 'FULLTIME') {
+    $companies_offer_type_condition = " AND (dr.offer_type IN ('FTE', 'Internship + PPO', 'Internship+PPO', 'Apprentice') OR dr.offer_type IS NULL)";
+} elseif ($offer_type_filter === 'INTERNSHIP') {
+    $companies_offer_type_condition = " AND dr.offer_type = 'Internship'";
+}
+
 $stmt = $conn->prepare("SELECT DISTINCT d.company_name
                         FROM applications a
                         JOIN drives d ON a.drive_id = d.drive_id
+                        LEFT JOIN drive_roles dr ON a.role_id = dr.role_id
                         WHERE LOWER(
                           TRIM(
                             REPLACE(
@@ -421,7 +451,8 @@ $stmt = $conn->prepare("SELECT DISTINCT d.company_name
                             )
                           )
                         ) IN ($placeholders)
-                        AND LOWER(a.status) = 'placed'");
+                        AND LOWER(a.status) = 'placed'
+                        $companies_offer_type_condition");
 if ($stmt) {
     $stmt->bind_param($types, ...$cleaned_courses);
     $stmt->execute();
@@ -480,10 +511,19 @@ if ($stmt && !empty($params)) {
 
 
 
+// Build offer type filter for companies hired query
+$hired_offer_type_condition = "";
+if ($offer_type_filter === 'FULLTIME') {
+    $hired_offer_type_condition = " AND (dr.offer_type IN ('FTE', 'Internship + PPO', 'Internship+PPO', 'Apprentice') OR dr.offer_type IS NULL)";
+} elseif ($offer_type_filter === 'INTERNSHIP') {
+    $hired_offer_type_condition = " AND dr.offer_type = 'Internship'";
+}
+
 $stmt = $conn->prepare("
     SELECT COUNT(DISTINCT d.company_name) AS hired
     FROM applications a
     JOIN drives d ON a.drive_id = d.drive_id
+    LEFT JOIN drive_roles dr ON a.role_id = dr.role_id
     WHERE LOWER(
       TRIM(
         REPLACE(
@@ -514,6 +554,7 @@ $stmt = $conn->prepare("
       )
     ) IN ($placeholders)
       AND LOWER(a.status) = 'placed'
+      $hired_offer_type_condition
 ");
 if ($stmt) {
     $stmt->bind_param($types, ...$cleaned_courses);
@@ -730,13 +771,21 @@ $pg_not_placed = $pg_registered - $pg_placed;
 
 // === EXPORT TO EXCEL ===
 if (isset($_GET['export']) && $_GET['export'] === 'excel') {
+    // Build report type title
+    $report_type = '';
+    if ($offer_type_filter === 'FULLTIME') {
+        $report_type = ' - FULL-TIME';
+    } elseif ($offer_type_filter === 'INTERNSHIP') {
+        $report_type = ' - INTERNSHIP';
+    }
+
     header("Content-Type: application/vnd.ms-excel");
-    header("Content-Disposition: attachment; filename=placement_report_" . str_replace(' ', '_', $course) . ".xls");
+    header("Content-Disposition: attachment; filename=placement_report_" . str_replace(' ', '_', $course) . "_" . $offer_type_filter . ".xls");
     header("Pragma: no-cache");
     header("Expires: 0");
 
     echo "<table border='1'>";
-    echo "<tr><th colspan='2' style='background:#650000;color:#fff;'>PLACEMENT REPORT - " . htmlspecialchars($course) . "</th></tr>";
+    echo "<tr><th colspan='2' style='background:#650000;color:#fff;'>PLACEMENT REPORT" . $report_type . " - " . htmlspecialchars($course) . "</th></tr>";
 
     echo "<tr><td>Students Registered</td><td>$students_registered</td></tr>";
     echo "<tr><td>Students Placed On-Campus</td><td>$students_placed</td></tr>";
@@ -903,11 +952,30 @@ include ("header.php");
 
 <body class="bg-light">
 <h3 class="text-center mb-4">PLACEMENT REPORT</h3>
+
+<!-- Offer Type Filter Buttons -->
+<div class="text-center mb-3">
+    <div class="btn-group" role="group" aria-label="Offer Type Filter">
+        <a href="?course=<?= urlencode($course) ?>&offer_type=ALL"
+           class="btn btn-sm <?= $offer_type_filter === 'ALL' ? 'btn-primary' : 'btn-outline-primary' ?>">
+            All Placements
+        </a>
+        <a href="?course=<?= urlencode($course) ?>&offer_type=FULLTIME"
+           class="btn btn-sm <?= $offer_type_filter === 'FULLTIME' ? 'btn-primary' : 'btn-outline-primary' ?>">
+            Full-Time Only
+        </a>
+        <a href="?course=<?= urlencode($course) ?>&offer_type=INTERNSHIP"
+           class="btn btn-sm <?= $offer_type_filter === 'INTERNSHIP' ? 'btn-primary' : 'btn-outline-primary' ?>">
+            Internship Only
+        </a>
+    </div>
+</div>
+
 <?php if ($course): ?>
 <div class="text-end mb-3">
  <button onclick="exportPDF()" class="import-button"style ="margin-top:20px; margin-right:20px;">  <i class="bi bi-folder-symlink-fill me-1"></i> Download Report as PDF</button>
-<button onclick="window.location.href='<?= $_SERVER['PHP_SELF'] ?>?course=<?= urlencode($course) ?>&export=excel'" 
-          class="import-button" 
+<button onclick="window.location.href='<?= $_SERVER['PHP_SELF'] ?>?course=<?= urlencode($course) ?>&offer_type=<?= urlencode($offer_type_filter) ?>&export=excel'"
+          class="import-button"
           style="margin-top:20px; margin-right:20px;">
     <i class="bi bi-file-earmark-excel-fill me-1"></i> Download Report as Excel
   </button>
@@ -955,7 +1023,17 @@ include ("header.php");
 
 <div id="report-content" class="container bg-white p-4 rounded shadow-sm mb-4">
 
-    <h5 class="text-center mb-4"><?= htmlspecialchars($course) ?> - OVERALL STATISTICS</h5>
+    <h5 class="text-center mb-4"><?= htmlspecialchars($course) ?> -
+    <?php
+        if ($offer_type_filter === 'FULLTIME') {
+            echo 'FULL-TIME PLACEMENT STATISTICS';
+        } elseif ($offer_type_filter === 'INTERNSHIP') {
+            echo 'INTERNSHIP PLACEMENT STATISTICS';
+        } else {
+            echo 'OVERALL STATISTICS';
+        }
+    ?>
+    </h5>
 
     <table class="table table-bordered table-striped">
         <thead><tr><th>Metric</th><th>Value</th></tr></thead>

@@ -133,11 +133,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['bulk_update_result'])
     }
 }
 
-// Get all drives with applications
+// Get all drives with applications (FULL-TIME ONLY: FTE, Internship+PPO, Apprentice)
 $drives_query = "
     SELECT DISTINCT d.drive_id, d.company_name, d.drive_no, COUNT(a.application_id) as app_count
     FROM drives d
     INNER JOIN applications a ON d.drive_id = a.drive_id
+    INNER JOIN drive_roles dr ON a.role_id = dr.role_id
+    WHERE dr.offer_type IN ('FTE', 'Internship + PPO', 'Internship+PPO', 'Apprentice') OR dr.offer_type IS NULL
     GROUP BY d.drive_id
     ORDER BY d.drive_no DESC
 ";
@@ -169,6 +171,7 @@ if ($selected_drive) {
         LEFT JOIN drive_roles dr ON a.role_id = dr.role_id
         LEFT JOIN placed_students ps ON a.student_id = ps.student_id
         WHERE a.drive_id = ?
+        AND (dr.offer_type IN ('FTE', 'Internship + PPO', 'Internship+PPO', 'Apprentice') OR dr.offer_type IS NULL)
         ORDER BY ps.place_id IS NULL DESC, s.student_name ASC
     ";
 
@@ -459,7 +462,7 @@ require 'header.php';
 <div class="container-fluid">
     <div class="row mb-4">
         <div class="col-12">
-            <h3><i class='bx bx-list-check'></i> Manage Round-wise Results</h3>
+            <h3><i class='bx bx-list-check'></i> Manage Round-wise Results - Full-Time Placements</h3>
             <p class="text-muted">Track student progress through different interview rounds</p>
         </div>
     </div>

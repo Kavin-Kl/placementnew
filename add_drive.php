@@ -34,6 +34,10 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     try {
         $company = $_POST["company_name"];
         $company_sector = trim($_POST['company_sector'] ?? '');
+        // Handle "Others" with custom input
+        if ($company_sector === 'Others' && !empty($_POST['company_sector_custom'])) {
+            $company_sector = trim($_POST['company_sector_custom']);
+        }
         $open = $_POST['open_date'] ? date('Y-m-d H:i:s', strtotime($_POST['open_date'])) : null;
         $close = $_POST['close_date'] ? date('Y-m-d H:i:s', strtotime($_POST['close_date'])) : null;
 
@@ -177,6 +181,11 @@ $stmt->bind_param(
                 $offer_type = $_POST["offer_type"][$i] ?? "FTE";
                 $sector = $_POST["sector"][$i] ?? "IT";
 
+                // Handle "Others" with custom input for role sector
+                if ($sector === 'Others' && !empty($_POST['sector_custom'][$i])) {
+                    $sector = trim($_POST['sector_custom'][$i]);
+                }
+
                 // drive_roles insert
               
                     $stmt2 = $conn->prepare("INSERT INTO drive_roles 
@@ -276,7 +285,7 @@ $stmt->bind_param(
   <input type="text" name="company_name" required><br><br>
 
   <label>Company Sector: <span style="color: red;">*</span></label><br>
-  <select name="company_sector" required style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+  <select name="company_sector" id="companySectorSelect" required style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
     <option value="">Select Sector</option>
     <option value="BFSI">BFSI</option>
     <option value="Sales, Marketing, BD">Sales, Marketing, BD</option>
@@ -289,7 +298,8 @@ $stmt->bind_param(
     <option value="E-commerce">E-commerce</option>
     <option value="Manufacturing">Manufacturing</option>
     <option value="Others">Others</option>
-  </select><br><br>
+  </select>
+  <input type="text" name="company_sector_custom" id="companySectorCustom" placeholder="Enter custom sector" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; margin-top: 10px; display: none;"><br><br>
 
 <label>Form Open Date & Time: <span style="color: red;">*</span></label><br>
 <input type="text" id="open_date" name="open_date" required><br><br>
@@ -804,7 +814,7 @@ font-size: 14px;
         </select>
 
       <label>Job Sector:</label>
-<select name="sector[]" >
+<select name="sector[]" class="roleSectorSelect">
   <option value="">-- Select Job Sector --</option>
   <option value="BFSI">BFSI</option>
   <option value="Sales, Marketing, BD">Sales, Marketing, BD</option>
@@ -822,7 +832,9 @@ font-size: 14px;
   <option value="Int Design Mgmt">Int Design Mgmt</option>
   <option value="Research">Research</option>
   <option value="Resource Planning & Logistics">Resource Planning & Logistics</option>
+  <option value="Others">Others</option>
 </select>
+<input type="text" name="sector_custom[]" class="roleSectorCustom" placeholder="Enter custom sector" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; margin-top: 5px; display: none;">
 
 
       <label>Eligibility: <span style="color:red;">*</span></label>
@@ -2254,6 +2266,37 @@ document.getElementById('driveForm').addEventListener('submit', function() {
     const role1Input = document.getElementById('form_fields_0');
     if (role1Input) {
         role1Input.value = JSON.stringify(selectedFieldsPerRole[0] || []);
+    }
+});
+
+// Company Sector "Others" Handler
+document.getElementById('companySectorSelect').addEventListener('change', function() {
+    const customInput = document.getElementById('companySectorCustom');
+    if (this.value === 'Others') {
+        customInput.style.display = 'block';
+        customInput.required = true;
+    } else {
+        customInput.style.display = 'none';
+        customInput.required = false;
+        customInput.value = '';
+    }
+});
+
+// Role Sector "Others" Handler (using event delegation for dynamic roles)
+document.addEventListener('change', function(e) {
+    if (e.target && e.target.classList.contains('roleSectorSelect')) {
+        const select = e.target;
+        const customInput = select.nextElementSibling; // The custom input is right after the select
+        if (customInput && customInput.classList.contains('roleSectorCustom')) {
+            if (select.value === 'Others') {
+                customInput.style.display = 'block';
+                customInput.required = true;
+            } else {
+                customInput.style.display = 'none';
+                customInput.required = false;
+                customInput.value = '';
+            }
+        }
     }
 });
 
