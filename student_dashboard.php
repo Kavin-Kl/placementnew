@@ -99,22 +99,6 @@ $upcoming_drives = $conn->query($upcoming_drives_query);
           <div class="card-body">
             <div class="d-flex justify-content-between align-items-center">
               <div>
-                <h6 class="text-muted mb-1">Placements</h6>
-                <h2 class="mb-0"><?= $placed_applications ?></h2>
-              </div>
-              <div class="stat-icon bg-success bg-opacity-10 p-3 rounded">
-                <i class="bx bx-check-circle text-success" style="font-size: 32px;"></i>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div class="col-md-4 col-sm-6">
-        <div class="card border-0 shadow-sm h-100">
-          <div class="card-body">
-            <div class="d-flex justify-content-between align-items-center">
-              <div>
                 <h6 class="text-muted mb-1">Active Drives</h6>
                 <h2 class="mb-0"><?= $active_drives ?></h2>
               </div>

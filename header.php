@@ -781,6 +781,14 @@ ul, ol {
             </li>
 
             <li>
+                <a href="send_notification.php" class="<?= $currentPage === 'send_notification.php' ? 'active' : '' ?>">
+                    <i class='bx bx-send'></i>
+                    <span class="links_name">Send Notification</span>
+                </a>
+                <span class="tooltip">Send Notification</span>
+            </li>
+
+            <li>
                 <a href="on_off_campus.php" class="<?= $currentPage === 'on_off_campus.php' ? 'active' : '' ?>">
                     <i class="bi bi-buildings"></i>
                     <span class="links_name">Offer Letter Collection</span>

@@ -25,7 +25,15 @@
       "Bash(\"C:\\xampp\\mysql\\bin\\mysql.exe\" -u root --port=3308 -e \"SHOW COLUMNS FROM drives LIKE ''%sector%''\" admin_placement_db)",
       "Bash(\"C:\\xampp\\mysql\\bin\\mysql.exe\" -u root --port=3308 -e \"SHOW COLUMNS FROM drive_roles LIKE ''offer_type''\" admin_placement_db)",
       "Bash(\"C:\\xampp\\mysql\\bin\\mysql.exe\" -u root --port=3308 -e \"SHOW TABLES LIKE ''application_rounds''\" admin_placement_db)",
-      "Bash(\"C:\\xampp\\mysql\\bin\\mysql.exe\" -u root --port=3308 -e \"SHOW COLUMNS FROM drives LIKE ''company_sector''\" admin_placement_db)"
+      "Bash(\"C:\\xampp\\mysql\\bin\\mysql.exe\" -u root --port=3308 -e \"SHOW COLUMNS FROM drives LIKE ''company_sector''\" admin_placement_db)",
+      "Bash(\"C:\\xampp\\mysql\\bin\\mysql.exe\" -u root --port=3308 -e \"ALTER TABLE drives ADD COLUMN company_sector VARCHAR(100) DEFAULT ''Others'' AFTER company_name\" admin_placement_db)",
+      "Bash(\"C:\\xampp\\mysql\\bin\\mysql.exe\" -u root --port=3308 -e \"SHOW COLUMNS FROM drive_roles\" admin_placement_db)",
+      "Bash(\"C:\\xampp\\mysql\\bin\\mysql.exe\" -u root --port=3308 -e \"ALTER TABLE drives ADD COLUMN company_sector VARCHAR(100) DEFAULT NULL AFTER company_name\" admin_placement_db)",
+      "Bash(\"C:\\xampp\\mysql\\bin\\mysql.exe\" -u root --port=3308 -e \"SHOW TABLES\" admin_placement_db)",
+      "Bash(\"C:\\xampp\\mysql\\bin\\mysql.exe\" -u root --port=3308 -e \"DESCRIBE drive_roles\" admin_placement_db)",
+      "Bash(\"C:\\xampp\\mysql\\bin\\mysql.exe\" -u root --port=3308 -e \"DESCRIBE students\" admin_placement_db)",
+      "Bash(\"C:\\xampp\\mysql\\bin\\mysql.exe\" -u root --port=3308 -e \"DESCRIBE applications\" admin_placement_db)",
+      "Bash(\"C:\\xampp\\mysql\\bin\\mysql.exe\" -u root --port=3308 -e \"SELECT ''Database connection successful'' as status\" admin_placement_db)"
     ],
     "deny": [],
     "ask": []
