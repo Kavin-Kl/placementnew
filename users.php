@@ -82,7 +82,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     }
 }
 
-$result = $conn->query("SELECT admin_id, username, email, created_at FROM admin_users ORDER BY admin_id DESC");
+require_once __DIR__ . '/pagination_helper.php';
+$total_users = (int)$conn->query("SELECT COUNT(*) AS c FROM admin_users")->fetch_assoc()['c'];
+$pg = paginate_setup($total_users, 10, 'page');
+$result = $conn->query("SELECT admin_id, username, email, created_at FROM admin_users ORDER BY admin_id DESC LIMIT {$pg['per_page']} OFFSET {$pg['offset']}");
 $users = $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
 ?>
 
@@ -316,6 +319,7 @@ th {
         <?php endif; ?>
         </tbody>
     </table>
+    <?= render_pagination($pg) ?>
 </div>
 <script>
 window.addEventListener('DOMContentLoaded', () => {

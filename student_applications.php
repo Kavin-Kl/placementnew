@@ -16,7 +16,8 @@ $student_id = $_SESSION['student_id'];
 
 // Fetch all applications
 $apps_query = "
-    SELECT a.*, d.company_name, d.drive_no, dr.designation_name, dr.ctc, dr.stipend, dr.offer_type
+    SELECT a.*, d.company_name, d.drive_no, d.extra_details AS drive_extra_details,
+           dr.designation_name, dr.ctc, dr.stipend, dr.offer_type
     FROM applications a
     JOIN drives d ON a.drive_id = d.drive_id
     JOIN drive_roles dr ON a.role_id = dr.role_id
@@ -70,12 +71,28 @@ $applications = $apps_stmt->get_result();
                         default => 'bg-secondary'
                       };
                     ?>
+                      <?php
+                        $whatsapp_link = '';
+                        if (!empty($app['drive_extra_details'])) {
+                            $ed = json_decode($app['drive_extra_details'], true);
+                            if (is_array($ed) && !empty($ed['whatsapp']) && trim($ed['whatsapp']) !== '') {
+                                $whatsapp_link = trim($ed['whatsapp']);
+                            }
+                        }
+                      ?>
                       <tr>
                         <td><?= $count++ ?></td>
                         <td>
                           <strong><?= htmlspecialchars($app['company_name']) ?></strong>
                           <br>
                           <small class="text-muted">Drive #<?= htmlspecialchars($app['drive_no']) ?></small>
+                          <?php if ($whatsapp_link): ?>
+                            <br>
+                            <a href="<?= htmlspecialchars($whatsapp_link) ?>" target="_blank" rel="noopener"
+                               class="small text-success" style="text-decoration:none;">
+                              <i class="bx bxl-whatsapp"></i> Join WhatsApp Group
+                            </a>
+                          <?php endif; ?>
                         </td>
                         <td><?= htmlspecialchars($app['designation_name']) ?></td>
                         <td>

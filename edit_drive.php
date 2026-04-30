@@ -140,12 +140,15 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         // -------------------------------------------------
         $company    = $_POST['company_name'];
         $company_sector = $_POST['company_sector'] ?? '';
+        if ($company_sector === 'Others' && !empty($_POST['company_sector_custom'])) {
+            $company_sector = trim($_POST['company_sector_custom']);
+        }
         $extra_json = $_POST['extra_details'] ?? '{}';
         $jd_link    = $_POST['jd_link'] ?? '';
         $company_url     = $_POST['company_url'] ?? '';
         $graduating_year = $_POST['graduating_year'] ?? '';
         $work_location   = $_POST['work_location'] ?? '';
-        $academic_year   = $_POST['academic_year'] ?? '2025-2026';
+        $academic_year   = $_POST['academic_year'] ?? '2026-2027';
 
         // Get eligibility checkboxes (1 if checked, 0 if not)
         $show_to_internship = isset($_POST['show_to_internship']) ? 1 : 0;
@@ -284,6 +287,9 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
  // Added stipend field
                 $offer_type   = $_POST['offer_types'][$idx]   ?? 'FTE';
                 $sector       = $_POST['sectors'][$idx]       ?? 'IT';
+                if ($sector === 'Others' && !empty($_POST['sectors_custom'][$idx])) {
+                    $sector = trim($_POST['sectors_custom'][$idx]);
+                }
 
                 // Update drive_data table for existing roles
                 if ($role_id > 0) {
@@ -489,7 +495,7 @@ $drive_form_fields = json_decode($drive['form_fields'] ?? '[]', true) ?: [];
 // -----------------------------------------------------------------------------
 // Static arrays for the form (unchanged)
 // -----------------------------------------------------------------------------
-$offer_types = ['FTE', 'Internship + PPO', 'Apprentice','Internship'];
+$offer_types = ['FTE', 'Apprenticeship (Full time)', 'Internship + PPO (Final Year)', 'Internship + PPO (Pre-Final Year)', 'Apprenticeship (Part Time)', 'Internship'];
 $sectors = [
     'BFSI',
     'Sales , Marketing, BD ',
@@ -1307,20 +1313,19 @@ $field_types = ['text', 'number', 'email', 'textarea', 'select', 'file', 'checkb
                            <input type="text" name="company_name" class="form-input" value="<?= htmlspecialchars($drive['company_name'] ?? '') ?>" required>  </div>
                         <div class="form-group">
                             <label class="form-label">Company Sector <span class="required-asterisk">*</span></label>
-                            <select name="company_sector" class="form-input" required>
+                            <?php
+                                $standardCompanySectors = ['BFSI','Sales, Marketing, BD','IT','Consulting','Analytics','Core Engineering','Product Development','Healthcare','E-commerce','Manufacturing'];
+                                $currentCompanySector = $drive['company_sector'] ?? '';
+                                $isCompanyOther = $currentCompanySector !== '' && !in_array($currentCompanySector, $standardCompanySectors, true);
+                            ?>
+                            <select name="company_sector" id="companySectorSelect" class="form-input" required onchange="(function(s){var c=document.getElementById('companySectorCustom');if(s.value==='Others'){c.style.display='block';c.required=true;}else{c.style.display='none';c.required=false;c.value='';}})(this)">
                                 <option value="">Select Sector</option>
-                                <option value="BFSI" <?= ($drive['company_sector'] ?? '') === 'BFSI' ? 'selected' : '' ?>>BFSI</option>
-                                <option value="Sales, Marketing, BD" <?= ($drive['company_sector'] ?? '') === 'Sales, Marketing, BD' ? 'selected' : '' ?>>Sales, Marketing, BD</option>
-                                <option value="IT" <?= ($drive['company_sector'] ?? '') === 'IT' ? 'selected' : '' ?>>IT</option>
-                                <option value="Consulting" <?= ($drive['company_sector'] ?? '') === 'Consulting' ? 'selected' : '' ?>>Consulting</option>
-                                <option value="Analytics" <?= ($drive['company_sector'] ?? '') === 'Analytics' ? 'selected' : '' ?>>Analytics</option>
-                                <option value="Core Engineering" <?= ($drive['company_sector'] ?? '') === 'Core Engineering' ? 'selected' : '' ?>>Core Engineering</option>
-                                <option value="Product Development" <?= ($drive['company_sector'] ?? '') === 'Product Development' ? 'selected' : '' ?>>Product Development</option>
-                                <option value="Healthcare" <?= ($drive['company_sector'] ?? '') === 'Healthcare' ? 'selected' : '' ?>>Healthcare</option>
-                                <option value="E-commerce" <?= ($drive['company_sector'] ?? '') === 'E-commerce' ? 'selected' : '' ?>>E-commerce</option>
-                                <option value="Manufacturing" <?= ($drive['company_sector'] ?? '') === 'Manufacturing' ? 'selected' : '' ?>>Manufacturing</option>
-                                <option value="Others" <?= ($drive['company_sector'] ?? '') === 'Others' ? 'selected' : '' ?>>Others</option>
+                                <?php foreach ($standardCompanySectors as $opt): ?>
+                                    <option value="<?= htmlspecialchars($opt) ?>" <?= (!$isCompanyOther && $currentCompanySector === $opt) ? 'selected' : '' ?>><?= htmlspecialchars($opt) ?></option>
+                                <?php endforeach; ?>
+                                <option value="Others" <?= $isCompanyOther ? 'selected' : '' ?>>Others</option>
                             </select>
+                            <input type="text" name="company_sector_custom" id="companySectorCustom" placeholder="Enter custom sector" class="form-input" style="margin-top:8px; <?= $isCompanyOther ? '' : 'display:none;' ?>" value="<?= $isCompanyOther ? htmlspecialchars($currentCompanySector) : '' ?>" <?= $isCompanyOther ? 'required' : '' ?>>
                         </div>
                         <div class="form-group">
     <label class="form-label">Form Open Date & Time <span class="required-asterisk">*</span></label>
@@ -1366,7 +1371,7 @@ $field_types = ['text', 'number', 'email', 'textarea', 'select', 'file', 'checkb
     </div>
 
     <div class="form-group">
-        <label class="form-label">Graduating Year</label>
+        <label class="form-label">Year of Passing</label>
         <input type="text" name="graduating_year" class="form-input" value="<?= htmlspecialchars($drive['graduating_year'] ?? '') ?>" placeholder="e.g. 2026">
     </div>
 
@@ -1377,7 +1382,12 @@ $field_types = ['text', 'number', 'email', 'textarea', 'select', 'file', 'checkb
 
     <div class="form-group">
         <label class="form-label">Academic Year</label>
-        <input type="text" name="academic_year" class="form-input" value="<?= htmlspecialchars($drive['academic_year'] ?? '2025-2026') ?>" placeholder="e.g. 2025-2026">
+        <?php $currentAY = $drive['academic_year'] ?? '2026-2027'; $ayOptions = ['2026-2027','2027-2028','2028-2029','2029-2030','2030-2031']; ?>
+        <select name="academic_year" class="form-input">
+            <?php foreach ($ayOptions as $ay): ?>
+                <option value="<?= htmlspecialchars($ay) ?>" <?= $currentAY === $ay ? 'selected' : '' ?>><?= htmlspecialchars($ay) ?></option>
+            <?php endforeach; ?>
+        </select>
     </div>
 
     <div class="form-group">
@@ -1518,12 +1528,18 @@ $field_types = ['text', 'number', 'email', 'textarea', 'select', 'file', 'checkb
                                                     </div>
                                                     <div class="form-group">
                                                         <label class="form-label">Job Sector </label>
-                                                        <select name="sectors[]" class="form-select">
+                                                        <?php
+                                                            $currentRoleSector = $role['sector'] ?? 'IT';
+                                                            $isRoleOther = $currentRoleSector !== '' && !in_array($currentRoleSector, $sectors, true) && $currentRoleSector !== 'Others';
+                                                        ?>
+                                                        <select name="sectors[]" class="form-select roleSectorSelect" onchange="(function(s){var c=s.parentNode.querySelector('.roleSectorCustom');if(!c)return;if(s.value==='Others'){c.style.display='block';c.required=true;}else{c.style.display='none';c.required=false;c.value='';}})(this)">
                                                             <option value="">-- Select --</option>
                                                             <?php foreach ($sectors as $sector): ?>
-                                                                <option value="<?= $sector ?>" <?= ($role['sector'] ?? 'IT') == $sector ? 'selected' : '' ?>><?= $sector ?></option>
+                                                                <option value="<?= $sector ?>" <?= (!$isRoleOther && $currentRoleSector == $sector) ? 'selected' : '' ?>><?= $sector ?></option>
                                                             <?php endforeach; ?>
+                                                            <option value="Others" <?= $isRoleOther ? 'selected' : '' ?>>Others</option>
                                                         </select>
+                                                        <input type="text" name="sectors_custom[]" class="form-input roleSectorCustom" placeholder="Enter custom sector" style="margin-top:6px; <?= $isRoleOther ? '' : 'display:none;' ?>" value="<?= $isRoleOther ? htmlspecialchars($currentRoleSector) : '' ?>" <?= $isRoleOther ? 'required' : '' ?>>
                                                     </div>
                                                     <div class="form-group">
                                                         <label class="form-label">Eligible Courses <span class="required-asterisk">*</span></label>
@@ -1759,6 +1775,7 @@ $field_types = ['text', 'number', 'email', 'textarea', 'select', 'file', 'checkb
                         <div class="form-group">
                             <label class="form-label">WhatsApp Group Link</label>
                             <input type="text" id="whatsapp" class="form-input">
+                            <small style="display:block;color:#555;margin-top:4px;">Students who apply to this drive will see this link and be able to join the WhatsApp group.</small>
                         </div>
                         <div class="form-group">
                             <label class="form-label">Additional Info</label>
@@ -1919,12 +1936,14 @@ const standardFieldNames = Object.values(extraDetailsFields);
                             </div>
                             <div class="form-group">
                                 <label class="form-label">Sector </label>
-                                <select name="sectors[]" class="form-select" >
+                                <select name="sectors[]" class="form-select roleSectorSelect" onchange="(function(s){var c=s.parentNode.querySelector('.roleSectorCustom');if(!c)return;if(s.value==='Others'){c.style.display='block';c.required=true;}else{c.style.display='none';c.required=false;c.value='';}})(this)">
                                     <option value="">-- Select --</option>
                                     <?php foreach ($sectors as $sector): ?>
                                         <option value="<?= $sector ?>"><?= $sector ?></option>
                                     <?php endforeach; ?>
+                                    <option value="Others">Others</option>
                                 </select>
+                                <input type="text" name="sectors_custom[]" class="form-input roleSectorCustom" placeholder="Enter custom sector" style="margin-top:6px; display:none;">
                             </div>
                             <div class="form-group">
                                 <label class="form-label">Eligible Courses <span class="required-asterisk">*</span></label>

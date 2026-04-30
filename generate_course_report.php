@@ -10,8 +10,26 @@ ini_set("display_errors", 1);
 include("config.php");
 
 include("course_groups_dynamic.php");
+
+// === Academic Year filter (from header.php year selector) ===
+$ay_value = $_SESSION['selected_academic_year'] ?? null;
+$ay_year_int = null;
+if ($ay_value && preg_match('/(\d{4})\s*-\s*(\d{4})/', $ay_value, $m)) {
+    $ay_year_int = (int)$m[2];
+}
+$ay_value_esc = $ay_value ? $conn->real_escape_string($ay_value) : '';
+// SQL fragments — empty string when no AY selected.
+$ay_filter_students        = $ay_year_int ? " AND year_of_passing = $ay_year_int " : '';
+$ay_filter_students_s      = $ay_year_int ? " AND s.year_of_passing = $ay_year_int " : '';
+$ay_filter_drives_d        = $ay_value ? " AND d.academic_year = '$ay_value_esc' " : '';
 $course = $_GET['course'] ?? '';
-$offer_type_filter = $_GET['offer_type'] ?? 'ALL'; // NEW: Filter by offer type
+$offer_type_filter = $_GET['offer_type'] ?? 'FULLTIME'; // Default to Full-Time; only Internship/Full-Time supported
+if (!in_array($offer_type_filter, ['FULLTIME', 'INTERNSHIP'], true)) {
+    $offer_type_filter = 'FULLTIME';
+}
+$is_internship_report = ($offer_type_filter === 'INTERNSHIP');
+$compensation_column = $is_internship_report ? 'stipend' : 'ctc';
+$compensation_label  = $is_internship_report ? 'Stipend' : 'CTC';
 
 // Normalize underscores to commas for matching with DB values
 $normalized_course = str_replace('_', ',', $course);
@@ -105,6 +123,7 @@ if (!empty($UG_COURSES)) {
         IN ($placeholders)
         AND LOWER(Offcampus_selection) = 'placed'
         AND (vantage_participant != 'yes' OR vantage_participant IS NULL)
+        $ay_filter_students
     ");
     if ($stmt) {
         $stmt->bind_param($types, ...$cleaned_ug);
@@ -137,6 +156,7 @@ if (!empty($PG_COURSES)) {
         IN ($placeholders)
         AND LOWER(Offcampus_selection) = 'placed'
         AND (vantage_participant != 'yes' OR vantage_participant IS NULL)
+        $ay_filter_students
     ");
     if ($stmt) {
         $stmt->bind_param($types, ...$cleaned_pg);
@@ -159,7 +179,7 @@ $cleaned_courses = array_map(function($c) {
 
 // Students registered - if ALL selected, count ALL students (EXCLUDING VANTAGE)
 if ($course === 'ALL') {
-    $stmt = $conn->query("SELECT COUNT(*) as total FROM students WHERE (vantage_participant != 'yes' OR vantage_participant IS NULL)");
+    $stmt = $conn->query("SELECT COUNT(*) as total FROM students WHERE (vantage_participant != 'yes' OR vantage_participant IS NULL) $ay_filter_students");
     $students_registered = $stmt->fetch_assoc()['total'];
 } else {
     $sql = "
@@ -195,6 +215,7 @@ if ($course === 'ALL') {
         )
       ) IN ($placeholders)
       AND (vantage_participant != 'yes' OR vantage_participant IS NULL)
+      $ay_filter_students
     ";
     $stmt = $conn->prepare($sql);
     if ($stmt) {
@@ -212,7 +233,7 @@ if ($course === 'ALL') {
 // Build offer type filter
 $offer_type_condition = "";
 if ($offer_type_filter === 'FULLTIME') {
-    $offer_type_condition = " AND (dr.offer_type IN ('FTE', 'Internship + PPO', 'Internship+PPO', 'Apprentice') OR dr.offer_type IS NULL)";
+    $offer_type_condition = " AND (dr.offer_type IN ('FTE', 'Internship + PPO', 'Internship+PPO', 'Internship + PPO (Final Year)', 'Apprenticeship (Part Time)') OR dr.offer_type IS NULL)";
 } elseif ($offer_type_filter === 'INTERNSHIP') {
     $offer_type_condition = " AND dr.offer_type = 'Internship'";
 }
@@ -254,6 +275,7 @@ $stmt = $conn->prepare("
   AND LOWER(a.status) = 'placed'
   AND (s.vantage_participant != 'yes' OR s.vantage_participant IS NULL)
   $offer_type_condition
+  $ay_filter_students_s
 ");
 if ($stmt) {
     $stmt->bind_param($types, ...$cleaned_courses);
@@ -301,6 +323,7 @@ $stmt = $conn->prepare("
   ) IN ($placeholders)
   AND LOWER(a.status) = 'blocked'
   AND (s.vantage_participant != 'yes' OR s.vantage_participant IS NULL)
+  $ay_filter_students_s
 ");
 if ($stmt) {
     $stmt->bind_param($types, ...$cleaned_courses);
@@ -322,6 +345,7 @@ $stmt = $conn->prepare("
   IN ($placeholders)
   AND LOWER(Offcampus_selection) = 'placed'
   AND (vantage_participant != 'yes' OR vantage_participant IS NULL)
+  $ay_filter_students
 ");
 if ($stmt) {
     $stmt->bind_param($types, ...$cleaned_courses);
@@ -339,13 +363,13 @@ $ctc_values = [];
 // Build offer type filter for CTC query
 $ctc_offer_type_condition = "";
 if ($offer_type_filter === 'FULLTIME') {
-    $ctc_offer_type_condition = " AND (offer_type IN ('FTE', 'Internship + PPO', 'Internship+PPO', 'Apprentice') OR offer_type IS NULL)";
+    $ctc_offer_type_condition = " AND (offer_type IN ('FTE', 'Internship + PPO', 'Internship+PPO', 'Internship + PPO (Final Year)', 'Apprenticeship (Part Time)') OR offer_type IS NULL)";
 } elseif ($offer_type_filter === 'INTERNSHIP') {
     $ctc_offer_type_condition = " AND offer_type = 'Internship'";
 }
 
 $query = "
-    SELECT ctc
+    SELECT $compensation_column AS comp_value
     FROM placed_students
     WHERE LOWER(
       TRIM(
@@ -376,9 +400,10 @@ $query = "
         )
       )
     ) IN ($placeholders)
-      AND ctc IS NOT NULL
-      AND ctc != ''
+      AND $compensation_column IS NOT NULL
+      AND $compensation_column != ''
       $ctc_offer_type_condition
+      " . ($ay_year_int ? " AND student_id IN (SELECT student_id FROM students WHERE year_of_passing = $ay_year_int)" : "") . "
 ";
 
 $stmt = $conn->prepare($query);
@@ -389,7 +414,7 @@ if ($stmt) {
 
     while ($row = $res->fetch_assoc()) {
         // Remove any non-numeric text like 'LPA', 'lpa', etc.
-        $clean_ctc = preg_replace('/[^0-9.]/', '', $row['ctc']);
+        $clean_ctc = preg_replace('/[^0-9.]/', '', $row['comp_value']);
         if ($clean_ctc !== '') {
             $ctc_values[] = (float)$clean_ctc;
         }
@@ -413,7 +438,7 @@ $highest_ctc = $ctc_values ? max($ctc_values) : 0;
 // Build offer type filter for companies query
 $companies_offer_type_condition = "";
 if ($offer_type_filter === 'FULLTIME') {
-    $companies_offer_type_condition = " AND (dr.offer_type IN ('FTE', 'Internship + PPO', 'Internship+PPO', 'Apprentice') OR dr.offer_type IS NULL)";
+    $companies_offer_type_condition = " AND (dr.offer_type IN ('FTE', 'Internship + PPO', 'Internship+PPO', 'Internship + PPO (Final Year)', 'Apprenticeship (Part Time)') OR dr.offer_type IS NULL)";
 } elseif ($offer_type_filter === 'INTERNSHIP') {
     $companies_offer_type_condition = " AND dr.offer_type = 'Internship'";
 }
@@ -452,7 +477,8 @@ $stmt = $conn->prepare("SELECT DISTINCT d.company_name
                           )
                         ) IN ($placeholders)
                         AND LOWER(a.status) = 'placed'
-                        $companies_offer_type_condition");
+                        $companies_offer_type_condition
+                        $ay_filter_drives_d");
 if ($stmt) {
     $stmt->bind_param($types, ...$cleaned_courses);
     $stmt->execute();
@@ -493,7 +519,7 @@ $sql = "
     SELECT COUNT(DISTINCT d.company_name) AS total
     FROM drives d
     JOIN drive_data dd ON d.company_name = dd.company_name AND d.drive_no = dd.drive_no
-    WHERE $where $excludeBroad
+    WHERE $where $excludeBroad $ay_filter_drives_d
 ";
 $stmt = $conn->prepare($sql);
 if ($stmt && !empty($params)) {
@@ -509,12 +535,34 @@ if ($stmt && !empty($params)) {
     $companies_visited = 0;
 }
 
+// Pull the list of distinct companies visited (for the same course filter) so the report
+// can show the names alongside the recruited list.
+$companies_visited_list = [];
+$listSql = "
+    SELECT DISTINCT d.company_name
+    FROM drives d
+    JOIN drive_data dd ON d.company_name = dd.company_name AND d.drive_no = dd.drive_no
+    WHERE $where $excludeBroad $ay_filter_drives_d
+    ORDER BY d.company_name ASC
+";
+$stmtList = $conn->prepare($listSql);
+if ($stmtList) {
+    if (!empty($params)) {
+        $stmtList->bind_param(str_repeat('s', count($params)), ...$params);
+    }
+    $stmtList->execute();
+    $resList = $stmtList->get_result();
+    while ($r = $resList->fetch_assoc()) {
+        $companies_visited_list[] = strtoupper($r['company_name']);
+    }
+}
+
 
 
 // Build offer type filter for companies hired query
 $hired_offer_type_condition = "";
 if ($offer_type_filter === 'FULLTIME') {
-    $hired_offer_type_condition = " AND (dr.offer_type IN ('FTE', 'Internship + PPO', 'Internship+PPO', 'Apprentice') OR dr.offer_type IS NULL)";
+    $hired_offer_type_condition = " AND (dr.offer_type IN ('FTE', 'Internship + PPO', 'Internship+PPO', 'Internship + PPO (Final Year)', 'Apprenticeship (Part Time)') OR dr.offer_type IS NULL)";
 } elseif ($offer_type_filter === 'INTERNSHIP') {
     $hired_offer_type_condition = " AND dr.offer_type = 'Internship'";
 }
@@ -555,6 +603,7 @@ $stmt = $conn->prepare("
     ) IN ($placeholders)
       AND LOWER(a.status) = 'placed'
       $hired_offer_type_condition
+      $ay_filter_drives_d
 ");
 if ($stmt) {
     $stmt->bind_param($types, ...$cleaned_courses);
@@ -610,6 +659,7 @@ if (!empty($UG_COURSES)) {
     )
   ) IN ($placeholders)
   AND (vantage_participant != 'yes' OR vantage_participant IS NULL)
+  $ay_filter_students
 ");
 
     if ($stmt) {
@@ -654,6 +704,7 @@ WHERE LOWER(
 ) IN ($placeholders)
 AND LOWER(a.status) = 'placed'
 AND (s.vantage_participant != 'yes' OR s.vantage_participant IS NULL)
+$ay_filter_students_s
 ");
     if ($stmt) {
         $stmt->bind_param($types, ...$cleaned_ug);
@@ -708,6 +759,7 @@ if (!empty($PG_COURSES)) {
     )
   ) IN ($placeholders)
   AND (vantage_participant != 'yes' OR vantage_participant IS NULL)
+  $ay_filter_students
 ");
 
     if ($stmt) {
@@ -752,6 +804,7 @@ WHERE LOWER(
 ) IN ($placeholders)
 AND LOWER(a.status) = 'placed'
 AND (s.vantage_participant != 'yes' OR s.vantage_participant IS NULL)
+$ay_filter_students_s
 ");
     if ($stmt) {
         $stmt->bind_param($types, ...$cleaned_pg);
@@ -819,9 +872,9 @@ if ($course === 'ALL') {
     }
 
     echo "<tr><th colspan='2'>Package Details</th></tr>";
-    echo "<tr><td>Average CTC</td><td>$average_ctc</td></tr>";
-    echo "<tr><td>Median CTC</td><td>$median_ctc</td></tr>";
-    echo "<tr><td>Highest CTC</td><td>$highest_ctc</td></tr>";
+    echo "<tr><td>Average $compensation_label</td><td>$average_ctc</td></tr>";
+    echo "<tr><td>Median $compensation_label</td><td>$median_ctc</td></tr>";
+    echo "<tr><td>Highest $compensation_label</td><td>$highest_ctc</td></tr>";
 
     echo "<tr><th colspan='2'>Companies Overview</th></tr>";
     echo "<tr><td>Total Companies Visited</td><td>$companies_visited</td></tr>";
@@ -956,17 +1009,13 @@ include ("header.php");
 <!-- Offer Type Filter Buttons -->
 <div class="text-center mb-3">
     <div class="btn-group" role="group" aria-label="Offer Type Filter">
-        <a href="?course=<?= urlencode($course) ?>&offer_type=ALL"
-           class="btn btn-sm <?= $offer_type_filter === 'ALL' ? 'btn-primary' : 'btn-outline-primary' ?>">
-            All Placements
+        <a href="?course=<?= urlencode($course) ?>&offer_type=INTERNSHIP"
+           class="btn btn-sm <?= $offer_type_filter === 'INTERNSHIP' ? 'btn-primary' : 'btn-outline-primary' ?>">
+            Internship Report (Stipend)
         </a>
         <a href="?course=<?= urlencode($course) ?>&offer_type=FULLTIME"
            class="btn btn-sm <?= $offer_type_filter === 'FULLTIME' ? 'btn-primary' : 'btn-outline-primary' ?>">
-            Full-Time Only
-        </a>
-        <a href="?course=<?= urlencode($course) ?>&offer_type=INTERNSHIP"
-           class="btn btn-sm <?= $offer_type_filter === 'INTERNSHIP' ? 'btn-primary' : 'btn-outline-primary' ?>">
-            Internship Only
+            Full-Time Report (CTC)
         </a>
     </div>
 </div>
@@ -1080,13 +1129,32 @@ include ("header.php");
     </tbody>
 </table>
 
+   <table class="table table-bordered table-striped">
+    <thead><tr><th>Companies Visited</th></tr></thead>
+    <tbody>
+        <tr>
+            <td>
+                <?php if (!empty($companies_visited_list)): ?>
+                    <div class="company-list">
+                        <?php foreach ($companies_visited_list as $c): ?>
+                            <span class="company-item"><?= htmlspecialchars($c) ?></span>
+                        <?php endforeach; ?>
+                    </div>
+                <?php else: ?>
+                    None
+                <?php endif; ?>
+            </td>
+        </tr>
+    </tbody>
+</table>
+
 
     <table class="table table-bordered table-striped">
         <thead><tr><th>Package Type</th><th>Value</th></tr></thead>
         <tbody>
-            <tr><td>Average CTC</td><td><?= $average_ctc ?></td></tr>
-            <tr><td>Median CTC</td><td><?= $median_ctc ?></td></tr>
-            <tr><td>Highest CTC</td><td><?= $highest_ctc ?></td></tr>
+            <tr><td>Average <?= $compensation_label ?></td><td><?= $average_ctc ?></td></tr>
+            <tr><td>Median <?= $compensation_label ?></td><td><?= $median_ctc ?></td></tr>
+            <tr><td>Highest <?= $compensation_label ?></td><td><?= $highest_ctc ?></td></tr>
         </tbody>
     </table>
 

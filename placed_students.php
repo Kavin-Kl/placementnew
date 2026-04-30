@@ -377,21 +377,27 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["csv_file_placed"])) 
                 $checkPlaced->close();
             }
 
-            // Insert placement record
+            // Insert placement record — stamp academic_year so the row honors the AY filter.
+            $row_ay = $_SESSION['selected_academic_year'] ?? '2026-2027';
             $stmt = $conn->prepare("INSERT INTO placed_students
                 (student_id, upid, program_type, program, course, reg_no, student_name, email, phone_no, percentage,
-                 offer_type, drive_no, company_name, role, ctc, stipend)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+                 offer_type, drive_no, company_name, role, ctc, stipend, academic_year)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
 
             if ($stmt) {
-                $stmt->bind_param("issssssssdssssss",
+                $stmt->bind_param("issssssssdsssssss",
                     $student_id, $upid, $program_type, $program, $course,
                     $reg_no, $student_name, $email, $phone_no, $percentage,
-                    $offer_type, $drive_no, $company_name, $role, $ctc, $stipend
+                    $offer_type, $drive_no, $company_name, $role, $ctc, $stipend, $row_ay
                 );
 
                 if ($stmt->execute()) {
                     $inserted++;
+                    // Lock the student if this is a full-time placement.
+                    require_once __DIR__ . '/academic_year_helper.php';
+                    $yopRow = $conn->query("SELECT year_of_passing FROM students WHERE student_id = " . intval($student_id));
+                    $yop = $yopRow ? ($yopRow->fetch_assoc()['year_of_passing'] ?? null) : null;
+                    apply_placement_lock_if_fulltime($conn, intval($student_id), (string)$offer_type, $yop !== null ? intval($yop) : null, $row_ay);
                 } else {
                     error_log("Insert failed for UPID $upid: " . $stmt->error);
                     $skipped++;
@@ -419,15 +425,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_filter']) && $_P
     $params = [];
     $types = '';
 
-    // Add academic year filter (from header.php year selector)
-    if (isset($_SESSION['selected_academic_year'])) {
+    // Resolve final-year integer from selected academic year (e.g. "2026-2027" -> 2027)
+    $final_year_int = null;
+    if (!empty($_SESSION['selected_academic_year'])) {
         $parts = explode('-', $_SESSION['selected_academic_year']);
-        $graduation_year = isset($parts[1]) ? intval($parts[1]) : null;
-        if ($graduation_year) {
-            $where[] = "s.year_of_passing = ?";
-            $params[] = $graduation_year;
-            $types .= "i";
-        }
+        $final_year_int = isset($parts[1]) ? intval($parts[1]) : null;
+    }
+
+    // Add academic year filter on placement row (s.academic_year)
+    if (!empty($_SESSION['selected_academic_year'])) {
+        $where[] = "s.academic_year = ?";
+        $params[] = $_SESSION['selected_academic_year'];
+        $types .= "s";
     }
 
     $exactMatchFields = [
@@ -480,9 +489,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_filter']) && $_P
         $types .= 'd';
     }
 
+    // Tab routing for full-time placed:
+    // Default: anything NOT in the internship bucket lands here. The internship bucket is:
+    //   - offer_type = 'Internship'
+    //   - offer_type = 'Apprenticeship (Part Time)'
+    //   - 'Internship + PPO' for non-final-year students
+    // Tolerant of legacy/blank/NULL offer_types so old imports stay visible.
+    $route_clause = $final_year_int
+        ? "NOT (
+                ps.offer_type IN ('Internship','Apprenticeship (Part Time)','Internship + PPO (Pre-Final Year)')
+                OR (
+                  ps.offer_type IN ('Internship + PPO','Internship+PPO')
+                  AND s.year_of_passing IS NOT NULL
+                  AND s.year_of_passing <> $final_year_int
+                )
+            )"
+        : "ps.offer_type IS NULL OR ps.offer_type NOT IN ('Internship','Apprenticeship (Part Time)','Internship + PPO (Pre-Final Year)')";
+
     $sql = "SELECT DISTINCT ps.* FROM placed_students ps
             LEFT JOIN students s ON ps.student_id = s.student_id
-            WHERE (ps.offer_type != 'Internship' OR ps.offer_type IS NULL)
+            WHERE $route_clause
               AND ps.program IS NOT NULL
               AND ps.program != ''";
     if (!empty($where)) {
@@ -661,9 +687,11 @@ if (!empty($_SESSION['import_message'])) {
           <select name="offer_type">
             <option value="">All options</option>
             <option value="FTE" <?= (isset($_GET['offer_type']) && $_GET['offer_type'] === 'FTE') ? 'selected' : '' ?>>FTE</option>
+            <option value="Apprenticeship (Full time)" <?= (isset($_GET['offer_type']) && $_GET['offer_type'] === 'Apprenticeship (Full time)') ? 'selected' : '' ?>>Apprenticeship (Full time)</option>
             <option value="Internship" <?= (isset($_GET['offer_type']) && $_GET['offer_type'] === 'Internship') ? 'selected' : '' ?>>Internship</option>
-            <option value="Apprentice" <?= (isset($_GET['offer_type']) && $_GET['offer_type'] === 'Apprentice') ? 'selected' : '' ?>>Apprentice</option>
-            <option value="Internship + PPO" <?= (isset($_GET['offer_type']) && $_GET['offer_type'] === 'Internship + PPO') ? 'selected' : '' ?>>Internship + PPO</option>
+            <option value="Apprenticeship (Part Time)" <?= (isset($_GET['offer_type']) && $_GET['offer_type'] === 'Apprenticeship (Part Time)') ? 'selected' : '' ?>>Apprenticeship (Part Time)</option>
+            <option value="Internship + PPO (Final Year)" <?= (isset($_GET['offer_type']) && $_GET['offer_type'] === 'Internship + PPO (Final Year)') ? 'selected' : '' ?>>Internship + PPO (Final Year)</option>
+            <option value="Internship + PPO (Pre-Final Year)" <?= (isset($_GET['offer_type']) && $_GET['offer_type'] === 'Internship + PPO (Pre-Final Year)') ? 'selected' : '' ?>>Internship + PPO (Pre-Final Year)</option>
           </select>
         </label>
         <label>Company Drive No:
@@ -844,26 +872,62 @@ if (!empty($_SESSION['import_message'])) {
     </thead>
     <tbody id="tableBody">
       <?php
+      require_once __DIR__ . '/pagination_helper.php';
+
+      // Resolve final-year integer + AY string for the default listing query
+      $ps_ay = $_SESSION['selected_academic_year'] ?? null;
+      $ps_ay_parts = $ps_ay ? explode('-', $ps_ay) : [];
+      $ps_final_year_int = isset($ps_ay_parts[1]) ? intval($ps_ay_parts[1]) : null;
+      $ps_ay_sql_join = " LEFT JOIN students s ON ps.student_id = s.student_id ";
+      $ps_ay_where = $ps_ay
+          ? " AND s.academic_year = '" . $conn->real_escape_string($ps_ay) . "' "
+          : "";
+      $ps_route_clause = $ps_final_year_int
+        ? "NOT (
+              ps.offer_type IN ('Internship','Apprenticeship (Part Time)','Internship + PPO (Pre-Final Year)')
+              OR (
+                ps.offer_type IN ('Internship + PPO','Internship+PPO')
+                AND s.year_of_passing IS NOT NULL
+                AND s.year_of_passing <> $ps_final_year_int
+              )
+          )"
+        : "(ps.offer_type IS NULL OR ps.offer_type NOT IN ('Internship','Apprenticeship (Part Time)','Internship + PPO (Pre-Final Year)'))";
+
+      $ps_count_q = $conn->query("
+        SELECT COUNT(*) AS c FROM (
+          SELECT DISTINCT ps.student_id, ps.drive_no
+          FROM placed_students ps
+          $ps_ay_sql_join
+          WHERE $ps_route_clause
+            AND ps.program IS NOT NULL
+            AND ps.program != ''
+            $ps_ay_where
+        ) t
+      ");
+      $ps_total = (int)($ps_count_q ? $ps_count_q->fetch_assoc()['c'] : 0);
+      $ps_pg = paginate_setup($ps_total, 10, 'page');
       $defaultQuery = $conn->query("
         SELECT DISTINCT ps.*
         FROM placed_students ps
-        WHERE (ps.offer_type != 'Internship' OR ps.offer_type IS NULL)
+        $ps_ay_sql_join
+        WHERE $ps_route_clause
           AND ps.program IS NOT NULL
           AND ps.program != ''
+          $ps_ay_where
         GROUP BY ps.student_id, ps.drive_no
         ORDER BY ps.place_id DESC
+        LIMIT {$ps_pg['per_page']} OFFSET {$ps_pg['offset']}
       ");
       if (!$defaultQuery) {
           echo "<tr><td colspan='20'>Error: " . $conn->error . "</td></tr>";
       } else {
           $count = $defaultQuery->num_rows;
-          echo "<!-- DEBUG: Found $count rows -->";
-          $sl_no = 1;
+          $sl_no = $ps_pg['offset'] + 1;
           while ($row = $defaultQuery->fetch_assoc()) {
               echo render_student_row($row, $sl_no++);
           }
           if ($count == 0) {
-              echo "<tr><td colspan='20' style='text-align:center; padding:20px;'>No placed students found. Total in DB: $count</td></tr>";
+              echo "<tr><td colspan='20' style='text-align:center; padding:20px;'>No placed students found.</td></tr>";
           }
       }
       ?>
@@ -871,6 +935,7 @@ if (!empty($_SESSION['import_message'])) {
 
 
   </table>
+  <?= render_pagination($ps_pg) ?>
 </div>
 
 

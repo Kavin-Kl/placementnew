@@ -198,10 +198,17 @@ $conn->query("
     WHERE dr.role_id IS NULL
 ");
 
-// Fetch Current and Upcoming drives (no pagination)
-$current_upcoming_query = "SELECT * FROM drives WHERE close_date >= ? OR open_date > ? ORDER BY open_date DESC";
-$stmt = $conn->prepare($current_upcoming_query);
-$stmt->bind_param("ss", $now_str, $now_str);
+// Fetch Current and Upcoming drives (no pagination) — filtered by selected academic year
+$selected_ay = $_SESSION['selected_academic_year'] ?? null;
+if ($selected_ay) {
+    $current_upcoming_query = "SELECT * FROM drives WHERE (close_date >= ? OR open_date > ?) AND academic_year = ? ORDER BY open_date DESC";
+    $stmt = $conn->prepare($current_upcoming_query);
+    $stmt->bind_param("sss", $now_str, $now_str, $selected_ay);
+} else {
+    $current_upcoming_query = "SELECT * FROM drives WHERE close_date >= ? OR open_date > ? ORDER BY open_date DESC";
+    $stmt = $conn->prepare($current_upcoming_query);
+    $stmt->bind_param("ss", $now_str, $now_str);
+}
 $stmt->execute();
 $drives_result = $stmt->get_result();
 
@@ -222,17 +229,28 @@ while ($drive = $drives_result->fetch_assoc()) {
 }
 $stmt->close();
 
-// Count total Finished drives for pagination
-$count_stmt = $conn->prepare("SELECT COUNT(*) as total FROM drives WHERE close_date < ?");
-$count_stmt->bind_param("s", $now_str);
+// Count total Finished drives for pagination — filtered by selected academic year
+if ($selected_ay) {
+    $count_stmt = $conn->prepare("SELECT COUNT(*) as total FROM drives WHERE close_date < ? AND academic_year = ?");
+    $count_stmt->bind_param("ss", $now_str, $selected_ay);
+} else {
+    $count_stmt = $conn->prepare("SELECT COUNT(*) as total FROM drives WHERE close_date < ?");
+    $count_stmt->bind_param("s", $now_str);
+}
 $count_stmt->execute();
 $finished_total_count = $count_stmt->get_result()->fetch_assoc()['total'];
 $count_stmt->close();
 
-// Fetch Finished drives with pagination
-$finished_query = "SELECT * FROM drives WHERE close_date < ? ORDER BY open_date DESC LIMIT ? OFFSET ?";
-$stmt = $conn->prepare($finished_query);
-$stmt->bind_param("sii", $now_str, $finished_per_page, $finished_offset);
+// Fetch Finished drives with pagination — filtered by selected academic year
+if ($selected_ay) {
+    $finished_query = "SELECT * FROM drives WHERE close_date < ? AND academic_year = ? ORDER BY open_date DESC LIMIT ? OFFSET ?";
+    $stmt = $conn->prepare($finished_query);
+    $stmt->bind_param("ssii", $now_str, $selected_ay, $finished_per_page, $finished_offset);
+} else {
+    $finished_query = "SELECT * FROM drives WHERE close_date < ? ORDER BY open_date DESC LIMIT ? OFFSET ?";
+    $stmt = $conn->prepare($finished_query);
+    $stmt->bind_param("sii", $now_str, $finished_per_page, $finished_offset);
+}
 $stmt->execute();
 $drives_result = $stmt->get_result();
 
@@ -250,25 +268,25 @@ $finished_total_pages = ceil($finished_total_count / $finished_per_page);
 //     error_log("Sync errors: " . implode(", ", $sync_result['errors']));
 // }
 
-// Extract graduation year from academic year (e.g., "2025-2026" → 2026)
+// Selected academic year (e.g., "2026-2027") drives all student-side counts.
+$selected_ay = $_SESSION['selected_academic_year'] ?? null;
+// Final-year integer is still useful for special cases (e.g., final-year-only Internship+PPO routing).
 $graduation_year = null;
-if (isset($_SESSION['selected_academic_year'])) {
-    $parts = explode('-', $_SESSION['selected_academic_year']);
+if ($selected_ay) {
+    $parts = explode('-', $selected_ay);
     $graduation_year = isset($parts[1]) ? intval($parts[1]) : null;
 }
 
 // Top Dashboard Boxes - Filter by selected academic year
 $year_filter = "";
-$year_params = [];
-if ($graduation_year) {
-    $year_filter = " WHERE year_of_passing = ?";
-    $year_params[] = $graduation_year;
+if ($selected_ay) {
+    $year_filter = " WHERE academic_year = ?";
 }
 
-// Total students for selected year
+// Total students for selected academic year
 $stmt = $conn->prepare("SELECT COUNT(*) AS count FROM students" . $year_filter);
-if ($graduation_year) {
-    $stmt->bind_param("i", $graduation_year);
+if ($selected_ay) {
+    $stmt->bind_param("s", $selected_ay);
 }
 $stmt->execute();
 $total_students = $stmt->get_result()->fetch_assoc()['count'];
@@ -286,7 +304,8 @@ if ($academic_year) {
     $total_companies = $conn->query("SELECT COUNT(DISTINCT company_name) AS count FROM drives")->fetch_assoc()['count'];
 }
 
-// Get placed students breakdown - Count total placement records (excluding internships)
+// Get placed students breakdown - count full-time placement records.
+// Routing: FTE / Apprenticeship (Full time) always counted; Internship + PPO counted only for final-year.
 $placed_students_query = "
     SELECT
         COUNT(ps.place_id) as total,
@@ -294,14 +313,23 @@ $placed_students_query = "
         COUNT(CASE WHEN s.vantage_participant != 'yes' OR s.vantage_participant IS NULL THEN ps.place_id END) as final_year
     FROM placed_students ps
     LEFT JOIN students s ON ps.student_id = s.student_id
-    WHERE (ps.offer_type != 'Internship' OR ps.offer_type IS NULL)
+    WHERE " . ($graduation_year
+        ? "NOT (
+              ps.offer_type IN ('Internship','Apprenticeship (Part Time)','Internship + PPO (Pre-Final Year)')
+              OR (
+                ps.offer_type IN ('Internship + PPO','Internship+PPO')
+                AND s.year_of_passing IS NOT NULL
+                AND s.year_of_passing <> $graduation_year
+              )
+           )"
+        : "(ps.offer_type IS NULL OR ps.offer_type NOT IN ('Internship','Apprenticeship (Part Time)','Internship + PPO (Pre-Final Year)'))") . "
 ";
 
-// Add year filter
-if ($graduation_year) {
-    $placed_students_query .= " AND s.year_of_passing = ?";
+// Add academic year filter
+if ($selected_ay) {
+    $placed_students_query .= " AND s.academic_year = ?";
     $stmt = $conn->prepare($placed_students_query);
-    $stmt->bind_param("i", $graduation_year);
+    $stmt->bind_param("s", $selected_ay);
     $stmt->execute();
     $placed_result = $stmt->get_result()->fetch_assoc();
     $stmt->close();
@@ -321,14 +349,19 @@ $internship_placed_query = "
         COUNT(CASE WHEN s.vantage_participant = 'yes' THEN ps.place_id END) as vantage
     FROM placed_students ps
     LEFT JOIN students s ON ps.student_id = s.student_id
-    WHERE ps.offer_type = 'Internship'
+    WHERE (
+        ps.offer_type IN ('Internship','Apprenticeship (Part Time)','Internship + PPO (Pre-Final Year)')
+        " . ($graduation_year
+            ? "OR (ps.offer_type IN ('Internship + PPO','Internship+PPO') AND (s.year_of_passing IS NULL OR s.year_of_passing <> $graduation_year))"
+            : "OR ps.offer_type IN ('Internship + PPO','Internship+PPO')") . "
+    )
 ";
 
-// Add year filter
-if ($graduation_year) {
-    $internship_placed_query .= " AND s.year_of_passing = ?";
+// Add academic year filter
+if ($selected_ay) {
+    $internship_placed_query .= " AND s.academic_year = ?";
     $stmt = $conn->prepare($internship_placed_query);
-    $stmt->bind_param("i", $graduation_year);
+    $stmt->bind_param("s", $selected_ay);
     $stmt->execute();
     $internship_result = $stmt->get_result();
     $stmt->close();
@@ -354,11 +387,11 @@ $registered_students_query = "
     FROM students
 ";
 
-// Add year filter
-if ($graduation_year) {
-    $registered_students_query .= " WHERE year_of_passing = ?";
+// Add academic year filter
+if ($selected_ay) {
+    $registered_students_query .= " WHERE academic_year = ?";
     $stmt = $conn->prepare($registered_students_query);
-    $stmt->bind_param("i", $graduation_year);
+    $stmt->bind_param("s", $selected_ay);
     $stmt->execute();
     $registered_result = $stmt->get_result()->fetch_assoc();
     $stmt->close();
@@ -1021,7 +1054,7 @@ if (!empty($jd_items)): ?>
         <select name="offer_type" id="filter_offer_type">
           <option value="">--Select offer type--</option>
           <option value="FTE">FTE</option>
-          <option value="Apprentice">Apprentice</option>
+          <option value="Apprenticeship (Part Time)">Apprenticeship (Part Time)</option>
           <option value="Internship + PPO">Internship + PPO</option>
         </select>
       </label>

@@ -956,6 +956,13 @@ else {
     $params = [];
     $types = '';
 
+    // Academic year filter (from header.php year selector)
+    if (!empty($_SESSION['selected_academic_year'])) {
+        $where[] = "d.academic_year = ?";
+        $params[] = $_SESSION['selected_academic_year'];
+        $types .= 's';
+    }
+
     if (!empty($filterCompany)) {
         $where[] = "d.company_name LIKE ?";
         $params[] = "%$filterCompany%";
@@ -1063,6 +1070,21 @@ foreach ($grouped as $company => $drives) {
     }
 }
 
+// === Pagination: 5 drives per page within the active tab ===
+require_once __DIR__ . '/pagination_helper.php';
+$pageItems = [];
+foreach (($applications[$tab] ?? []) as $company => $drives) {
+    foreach ($drives as $driveNo => $roles) {
+        $pageItems[] = [$company, $driveNo];
+    }
+}
+$enrolledPagination = paginate_setup(count($pageItems), 5, 'page');
+$pagedApplications = [];
+foreach (array_slice($pageItems, $enrolledPagination['offset'], $enrolledPagination['per_page']) as $pair) {
+    [$c, $dn] = $pair;
+    $pagedApplications[$c][$dn] = $applications[$tab][$c][$dn];
+}
+$applications[$tab] = $pagedApplications;
 ?>
 
 <?php if (isset($_SESSION['msg'])): ?>
@@ -2001,6 +2023,7 @@ foreach ($remainingFields as $f) {
     <?php endforeach; // drives ?>
 </div>
 <?php endforeach; // companies ?>
+<?= render_pagination($enrolledPagination, 'page') ?>
 <?php endif; // empty applications check ?>
 
 <!-- 🌐 Filter Modal -->
@@ -2282,6 +2305,7 @@ function resetFilterForm() {
 function switchTab(targetTab) {
   const params = new URLSearchParams(window.location.search);
   params.set('tab', targetTab);
+  params.delete('page');
 
   ['filter_company', 'filter_role_name', 'filter_upid', 'filter_reg_no', 'filter_placed_status'].forEach(key => {
     const el = document.getElementById(key);

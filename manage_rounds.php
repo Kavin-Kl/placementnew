@@ -133,13 +133,48 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['bulk_update_result'])
     }
 }
 
-// Get all drives with applications
+// Round results view filter: 'internship' or 'fulltime' (default fulltime)
+$round_type_filter = $_GET['type'] ?? 'fulltime';
+if (!in_array($round_type_filter, ['internship', 'fulltime'], true)) {
+    $round_type_filter = 'fulltime';
+}
+
+// Build offer_type condition for drives listing
+if ($round_type_filter === 'internship') {
+    $offer_type_clause = "dr.offer_type = 'Internship'";
+} else {
+    $offer_type_clause = "(dr.offer_type IN ('FTE', 'Internship + PPO', 'Internship+PPO', 'Internship + PPO (Final Year)', 'Apprenticeship (Part Time)') OR dr.offer_type IS NULL)";
+}
+
+// Get drives with applications filtered by offer type (paginated)
+require_once __DIR__ . '/pagination_helper.php';
+$ay_filter_sql = '';
+$ay_value = $_SESSION['selected_academic_year'] ?? null;
+if ($ay_value) {
+    $ay_filter_sql = " AND d.academic_year = '" . $conn->real_escape_string($ay_value) . "'";
+}
+$count_drives_sql = "
+    SELECT COUNT(*) AS c FROM (
+        SELECT d.drive_id
+        FROM drives d
+        INNER JOIN applications a ON d.drive_id = a.drive_id
+        INNER JOIN drive_roles dr ON a.role_id = dr.role_id
+        WHERE $offer_type_clause $ay_filter_sql
+        GROUP BY d.drive_id
+    ) t
+";
+$total_drives = (int)$conn->query($count_drives_sql)->fetch_assoc()['c'];
+$drives_pg = paginate_setup($total_drives, 10, 'page');
+
 $drives_query = "
     SELECT DISTINCT d.drive_id, d.company_name, d.drive_no, COUNT(a.application_id) as app_count
     FROM drives d
     INNER JOIN applications a ON d.drive_id = a.drive_id
+    INNER JOIN drive_roles dr ON a.role_id = dr.role_id
+    WHERE $offer_type_clause $ay_filter_sql
     GROUP BY d.drive_id
     ORDER BY d.drive_no DESC
+    LIMIT {$drives_pg['per_page']} OFFSET {$drives_pg['offset']}
 ";
 $drives = $conn->query($drives_query);
 
@@ -168,7 +203,7 @@ if ($selected_drive) {
         INNER JOIN students s ON a.student_id = s.student_id
         LEFT JOIN drive_roles dr ON a.role_id = dr.role_id
         LEFT JOIN placed_students ps ON a.student_id = ps.student_id
-        WHERE a.drive_id = ?
+        WHERE a.drive_id = ? AND $offer_type_clause
         ORDER BY ps.place_id IS NULL DESC, s.student_name ASC
     ";
 
@@ -461,6 +496,14 @@ require 'header.php';
         <div class="col-12">
             <h3><i class='bx bx-list-check'></i> Manage Round-wise Results</h3>
             <p class="text-muted">Track student progress through different interview rounds</p>
+            <div class="btn-group mt-2" role="group" aria-label="Round Type">
+                <a href="?type=internship" class="btn btn-sm <?= $round_type_filter === 'internship' ? 'btn-primary' : 'btn-outline-primary' ?>">
+                    <i class='bx bx-time'></i> Internship Rounds
+                </a>
+                <a href="?type=fulltime" class="btn btn-sm <?= $round_type_filter === 'fulltime' ? 'btn-primary' : 'btn-outline-primary' ?>">
+                    <i class='bx bx-briefcase'></i> Full-Time Rounds
+                </a>
+            </div>
         </div>
     </div>
 
@@ -497,7 +540,7 @@ require 'header.php';
                         <?php while ($drive = $drives->fetch_assoc()): ?>
                             <div class="drive-card <?= $selected_drive == $drive['drive_id'] ? 'active' : '' ?>"
                                  data-company="<?= htmlspecialchars(strtolower($drive['company_name'])) ?>"
-                                 onclick="window.location.href='manage_rounds.php?drive_id=<?= $drive['drive_id'] ?>'">
+                                 onclick="window.location.href='manage_rounds.php?type=<?= urlencode($round_type_filter) ?>&drive_id=<?= $drive['drive_id'] ?>'">
                                 <h6 class="mb-1"><?= htmlspecialchars($drive['company_name']) ?></h6>
                                 <small class="text-muted">
                                     Drive #<?= $drive['drive_no'] ?> • <?= $drive['app_count'] ?> applications
@@ -511,6 +554,7 @@ require 'header.php';
                         </div>
                     <?php endif; ?>
                 </div>
+                <?= render_pagination($drives_pg) ?>
             </div>
         </div>
 

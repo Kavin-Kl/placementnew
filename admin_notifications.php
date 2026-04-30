@@ -62,7 +62,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-// Fetch all notifications
+// Fetch all notifications (paginated, 10 per page)
+require_once __DIR__ . '/pagination_helper.php';
+$total_notif = (int)$conn->query("SELECT COUNT(*) AS c FROM admin_notifications")->fetch_assoc()['c'];
+$pg = paginate_setup($total_notif, 10, 'page');
 $notifications_query = "
     SELECT
         an.*,
@@ -71,7 +74,7 @@ $notifications_query = "
     FROM admin_notifications an
     LEFT JOIN drives d ON an.drive_id = d.drive_id
     ORDER BY an.created_at DESC
-    LIMIT 100
+    LIMIT {$pg['per_page']} OFFSET {$pg['offset']}
 ";
 $notifications_result = $conn->query($notifications_query);
 
@@ -186,6 +189,7 @@ require 'header.php';
                                 </div>
                             <?php endwhile; ?>
                         </div>
+                        <?= render_pagination($pg) ?>
                     <?php else: ?>
                         <div class="text-center py-5">
                             <i class='bx bx-bell-off' style="font-size: 64px; color: #ccc;"></i>

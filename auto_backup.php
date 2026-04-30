@@ -26,9 +26,13 @@ $files = [
 ];
 
 // ==== Helper: Get selected columns except excluded ====
-function getSelectedColumns($table, $exclude = [], $conn, $alias = null) {
+function getSelectedColumns($table, $exclude, $conn, $alias = null) {
     $cols = [];
-    $res = mysqli_query($conn, "SHOW COLUMNS FROM $table");
+    $res = mysqli_query($conn, "SHOW COLUMNS FROM `$table`");
+    if (!$res) {
+        error_log("auto_backup: SHOW COLUMNS FROM $table failed: " . mysqli_error($conn));
+        return '';
+    }
     while ($row = mysqli_fetch_assoc($res)) {
         if (!in_array($row['Field'], $exclude)) {
             $fieldName = ($alias ? "$alias." : "") . $row['Field'];

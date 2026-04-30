@@ -312,17 +312,18 @@ try {
             $joining_status = 'unknown';
         }
 
-        // Insert into placed_students
+        // Insert into placed_students — stamp academic_year so the row honors the AY filter.
+        $row_ay = $_SESSION['selected_academic_year'] ?? '2026-2027';
         $insertStmt = $conn->prepare("
             INSERT INTO placed_students
             (student_id, drive_id, role_id, upid, program_type, program, course, reg_no,
              student_name, email, phone_no, company_name, role, ctc, stipend, drive_no, offer_type,
-             offer_letter_accepted, offer_letter_received, joining_status, comment, filled_on_off_form, placement_batch)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'original')
+             offer_letter_accepted, offer_letter_received, joining_status, comment, filled_on_off_form, placement_batch, academic_year)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'original', ?)
         ");
 
-        // Type string: 3 integers (iii) + 19 strings (19 s's) = 22 parameters
-        $typeString = "iiisssssssssssssssssss"; // 22 characters total (3 i's + 19 s's)
+        // Type string: 3 integers (iii) + 20 strings = 23 parameters
+        $typeString = "iiissssssssssssssssssss"; // 3 i + 20 s
 
         $insertStmt->bind_param(
             $typeString,
@@ -347,7 +348,8 @@ try {
             $offer_letter_received,
             $joining_status,
             $comment,
-            $filled_on_off_form
+            $filled_on_off_form,
+            $row_ay
         );
 
         if ($insertStmt->execute()) {
@@ -356,6 +358,11 @@ try {
                 $placementKey = "$placement_id-$company_name-$role";
                 $existingPlacements[$placementKey] = true; // Mark as inserted
             }
+            // Lock student if this is a full-time placement.
+            require_once __DIR__ . '/academic_year_helper.php';
+            $yopRow = $conn->query("SELECT year_of_passing FROM students WHERE student_id = " . intval($student_id));
+            $yop = $yopRow ? ($yopRow->fetch_assoc()['year_of_passing'] ?? null) : null;
+            apply_placement_lock_if_fulltime($conn, intval($student_id), (string)$offer_type, $yop !== null ? intval($yop) : null, $row_ay);
         } else {
             $skipped++;
             $skipReasons['errors']++;

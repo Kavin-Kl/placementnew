@@ -168,7 +168,10 @@ body {
 }
 
 .sidebar .profile {
-    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
     padding: 12px;
     background: rgba(255, 255, 255, 0.1);
     border-radius: 8px;
@@ -178,6 +181,8 @@ body {
 .sidebar .profile-details {
     display: flex;
     align-items: center;
+    flex: 1;
+    min-width: 0;
 }
 
 .sidebar .profile-details i {
@@ -190,6 +195,7 @@ body {
     opacity: 0;
     transition: opacity 0.3s ease;
     color: white;
+    overflow: hidden;
 }
 
 .sidebar.open .profile-details .name_job {
@@ -199,6 +205,9 @@ body {
 .sidebar .profile-details .name {
     font-size: 14px;
     font-weight: 600;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    overflow: hidden;
 }
 
 .sidebar .profile-details .job {
@@ -207,12 +216,17 @@ body {
 }
 
 .sidebar .profile i.bx-log-out {
-    position: absolute;
-    right: 10px;
     font-size: 22px;
+    color: white;
     cursor: pointer;
-    opacity: 1;
-    transition: opacity 0.3s ease;
+    flex-shrink: 0;
+    padding: 6px;
+    border-radius: 6px;
+    transition: background 0.2s ease;
+}
+
+.sidebar .profile i.bx-log-out:hover {
+    background: rgba(255, 255, 255, 0.15);
 }
 
 .home-section {

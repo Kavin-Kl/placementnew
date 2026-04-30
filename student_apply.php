@@ -10,6 +10,7 @@ if (!isset($_SESSION['student_id'])) {
 
 date_default_timezone_set('Asia/Kolkata');
 include("config.php");
+require_once __DIR__ . '/academic_year_helper.php';
 
 $student_id = $_SESSION['student_id'];
 $role_id = $_GET['role_id'] ?? null;
@@ -51,6 +52,13 @@ $check_stmt->bind_param("ii", $student_id, $role_id);
 $check_stmt->execute();
 if ($check_stmt->get_result()->num_rows > 0) {
     $_SESSION['error'] = "You have already applied for this role.";
+    header("Location: student_drives.php");
+    exit;
+}
+
+// Once placed full-time and not allowed to reapply, block all new applications.
+if (student_is_locked_out($student ?? [])) {
+    $_SESSION['error'] = "You are already placed full-time. Please contact the placement office to re-enable applications.";
     header("Location: student_drives.php");
     exit;
 }
@@ -168,7 +176,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_application'])
             $notif_stmt->bind_param("isss", $student_id, $notif_title, $notif_message, $notif_type);
             $notif_stmt->execute();
 
-            $_SESSION['success'] = "Application submitted successfully!";
+            $whatsapp_msg = '';
+            if (!empty($drive['extra_details'])) {
+                $ed = json_decode($drive['extra_details'], true);
+                if (is_array($ed) && !empty($ed['whatsapp']) && trim($ed['whatsapp']) !== '') {
+                    $whatsapp_msg = " You'll be added to the WhatsApp group for this drive — join here: " . trim($ed['whatsapp']);
+                }
+            }
+            $_SESSION['success'] = "Application submitted successfully!" . $whatsapp_msg;
             header("Location: student_applications.php");
             exit;
         } else {

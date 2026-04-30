@@ -12,8 +12,10 @@ $logContent = $logExists ? file_get_contents($logFile) : 'No logs found.';
 $logLines = $logExists ? explode("\n", $logContent) : [];
 $logLines = array_reverse(array_filter($logLines)); // Show newest first
 
-// Get only last 500 lines
-$logLines = array_slice($logLines, 0, 500);
+// Paginate log lines (10 per page)
+require_once __DIR__ . '/pagination_helper.php';
+$log_pg = paginate_setup(count($logLines), 10, 'page');
+$logLines = array_slice($logLines, $log_pg['offset'], $log_pg['per_page']);
 
 // Clear logs functionality
 if (isset($_POST['clear_logs'])) {
@@ -228,6 +230,7 @@ if (isset($_GET['download'])) {
             <?php endforeach; ?>
         <?php endif; ?>
     </div>
+    <?= render_pagination($log_pg) ?>
 
     <div style="margin: 20px 0; padding: 15px; background: #f8f9fa; border-radius: 5px; border-left: 4px solid #650000;">
         <strong>Legend:</strong><br>

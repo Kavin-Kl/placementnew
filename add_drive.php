@@ -97,7 +97,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 $company_url = trim($_POST['company_url'] ?? '');
 $graduating_year = trim($_POST['graduating_year'] ?? '');
 $work_location = trim($_POST['work_location'] ?? '');
-$academic_year = trim($_POST['academic_year'] ?? '2025-2026');
+$academic_year = trim($_POST['academic_year'] ?? '2026-2027');
 
 // Get eligibility checkboxes (1 if checked, 0 if not)
 $show_to_internship = isset($_POST['show_to_internship']) ? 1 : 0;
@@ -285,7 +285,7 @@ $stmt->bind_param(
   <input type="text" name="company_name" required><br><br>
 
   <label>Company Sector: <span style="color: red;">*</span></label><br>
-  <select name="company_sector" id="companySectorSelect" required style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+  <select name="company_sector" id="companySectorSelect" required style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;" onchange="(function(s){var c=document.getElementById('companySectorCustom');if(s.value==='Others'){c.style.display='block';c.required=true;}else{c.style.display='none';c.required=false;c.value='';}})(this)">
     <option value="">Select Sector</option>
     <option value="BFSI">BFSI</option>
     <option value="Sales, Marketing, BD">Sales, Marketing, BD</option>
@@ -318,14 +318,20 @@ $stmt->bind_param(
 <label>Company URL:</label><br>
 <input type="text" name="company_url" placeholder="https://www.company.com" style="width: 100%;"><br><br>
 
-<label>Graduating Year:</label><br>
+<label>Year of Passing:</label><br>
 <input type="text" name="graduating_year" placeholder="e.g. 2025" style="width: 100%;"><br><br>
 
 <label>Work Location:</label><br>
 <input type="text" name="work_location" placeholder="e.g. Bangalore, Remote" style="width: 100%;"><br><br>
 
-<label>Academic Year:</label><br>
-<input type="text" name="academic_year" placeholder="e.g. 2025-2026" value="2025-2026" style="width: 100%;"><br><br>
+<label>Academic Year: <span style="color: red;">*</span></label><br>
+<select name="academic_year" required style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+  <option value="2026-2027">2026-2027</option>
+  <option value="2027-2028">2027-2028</option>
+  <option value="2028-2029">2028-2029</option>
+  <option value="2029-2030">2029-2030</option>
+  <option value="2030-2031">2030-2031</option>
+</select><br><br>
 
 <label style="font-weight: bold; margin-top: 10px; display: block;">Show This Drive To:</label>
 <div style="margin-left: 20px; margin-top: 10px; margin-bottom: 20px;">
@@ -398,6 +404,7 @@ $stmt->bind_param(
 
   <label>WhatsApp Group Link:</label>
   <input type="text" id="whatsapp"><br>
+  <small style="display:block;color:#555;margin-top:-4px;margin-bottom:8px;">Students who apply to this drive will see this link and be able to join the WhatsApp group.</small>
 
   <label>Additional Info:</label>
 <input type="text" id="additionalInfo"><br>
@@ -568,6 +575,7 @@ $stmt->bind_param(
 
   <label>WhatsApp Group Link:</label>
   <input type="text" id="whatsapp"><br>
+  <small style="display:block;color:#555;margin-top:-4px;margin-bottom:8px;">Students who apply to this drive will see this link and be able to join the WhatsApp group.</small>
 </div>
 <input type="hidden" name="extra_details" id="extra_details">
 <button type="button" onclick="openExtraModal()">+ Extra Drive Details</button>-->
@@ -808,13 +816,15 @@ font-size: 14px;
         <select name="offer_type[]">
      <option value="">-- Select Offer Type --</option>
           <option value="FTE">FTE</option>
-          <option value="Internship + PPO">Internship + PPO</option>
-          <option value="Apprentice">Apprentice</option>
+          <option value="Apprenticeship (Full time)">Apprenticeship (Full time)</option>
+          <option value="Internship + PPO (Final Year)">Internship + PPO (Final Year)</option>
+          <option value="Internship + PPO (Pre-Final Year)">Internship + PPO (Pre-Final Year)</option>
+          <option value="Apprenticeship (Part Time)">Apprenticeship (Part Time)</option>
           <option value="Internship">Internship</option>
         </select>
 
       <label>Job Sector:</label>
-<select name="sector[]" class="roleSectorSelect">
+<select name="sector[]" class="roleSectorSelect" onchange="(function(s){var c=s.nextElementSibling;if(c&&c.classList.contains('roleSectorCustom')){if(s.value==='Others'){c.style.display='block';c.required=true;}else{c.style.display='none';c.required=false;c.value='';}}})(this)">
   <option value="">-- Select Job Sector --</option>
   <option value="BFSI">BFSI</option>
   <option value="Sales, Marketing, BD">Sales, Marketing, BD</option>

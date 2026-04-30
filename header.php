@@ -614,33 +614,22 @@ ul, ol {
 
         // Set default year if not set
         if (!isset($_SESSION['selected_academic_year'])) {
-            $_SESSION['selected_academic_year'] = '2025-2026';
+            $_SESSION['selected_academic_year'] = '2026-2027';
         }
 
-        // Get available years from drives table
-        $years_query = "SELECT DISTINCT academic_year FROM drives WHERE academic_year IS NOT NULL ORDER BY academic_year DESC";
-        $years_result = $conn->query($years_query);
-        $db_years = [];
-        if ($years_result) {
-            while ($row = $years_result->fetch_assoc()) {
-                $db_years[] = $row['academic_year'];
-            }
-        }
-
-        // Define a comprehensive list of years (past, present, and future)
-        $predefined_years = [
+        // Fixed list of academic years (2026-27 through 2030-31)
+        $available_years = [
+            '2030-2031',
+            '2029-2030',
+            '2028-2029',
             '2027-2028',
             '2026-2027',
-            '2025-2026',
-            '2024-2025',
-            '2023-2024'
         ];
 
-        // Merge database years with predefined years and remove duplicates
-        $available_years = array_unique(array_merge($predefined_years, $db_years));
-
-        // Sort years in descending order
-        rsort($available_years);
+        // Reset to default if previously-stored year is outside the new range
+        if (!in_array($_SESSION['selected_academic_year'], $available_years, true)) {
+            $_SESSION['selected_academic_year'] = '2026-2027';
+        }
         ?>
         <div class="year-selector-wrapper" style="padding: 15px 10px; background: #f8f9fa; border-bottom: 2px solid #650000; margin-bottom: 10px;">
             <form method="POST" id="yearSelectorForm" style="display: flex; flex-direction: column; gap: 5px;">
@@ -813,11 +802,27 @@ ul, ol {
             </li>
 
             <li>
+                <a href="fulltime_company_data.php" class="<?= $currentPage === 'fulltime_company_data.php' ? 'active' : '' ?>">
+                    <i class="bi bi-building"></i>
+                    <span class="links_name">Full-Time Company Data</span>
+                </a>
+                <span class="tooltip">Full-Time Company Data</span>
+            </li>
+
+            <li>
                 <a href="internship_progress_tracker.php" class="<?= $currentPage === 'internship_progress_tracker.php' ? 'active' : '' ?>">
                     <i class="bi bi-clock-history"></i>
                     <span class="links_name">Internship Progress Tracker</span>
                 </a>
                 <span class="tooltip">Internship Progress Tracker</span>
+            </li>
+
+            <li>
+                <a href="internship_company_data.php" class="<?= $currentPage === 'internship_company_data.php' ? 'active' : '' ?>">
+                    <i class="bi bi-building-fill"></i>
+                    <span class="links_name">Internship Company Data</span>
+                </a>
+                <span class="tooltip">Internship Company Data</span>
             </li>
 
 <li>

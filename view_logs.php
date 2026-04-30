@@ -13,6 +13,10 @@ if (!file_exists($logFile)) {
 }
 
 $logs = file($logFile);
+$logs = array_reverse(array_filter($logs)); // Newest first
+require_once __DIR__ . '/pagination_helper.php';
+$logs_pg = paginate_setup(count($logs), 10, 'page');
+$logs_slice = array_slice($logs, $logs_pg['offset'], $logs_pg['per_page']);
 ?>
 <!DOCTYPE html>
 <html>
@@ -25,6 +29,7 @@ $logs = file($logFile);
 </head>
 <body>
     <h2>Admin Activity Logs</h2>
-    <pre><?= htmlspecialchars(implode("", $logs)) ?></pre>
+    <pre><?= htmlspecialchars(implode("", $logs_slice)) ?></pre>
+    <?= render_pagination($logs_pg) ?>
 </body>
 </html>

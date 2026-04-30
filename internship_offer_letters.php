@@ -906,6 +906,20 @@ function downloadPhotoZip() {
   <table class="table table-bordered table-striped custom-table">
 <?php
 $whereClauses = [];
+
+// Academic year filter — matches passing_year against the selected AY in any of its common
+// representations (e.g. "2026-2027", "2026-27", or just "2027").
+if (!empty($_SESSION['selected_academic_year'])) {
+    $ay_full = $_SESSION['selected_academic_year'];
+    $ay_parts = explode('-', $ay_full);
+    $ay_short = isset($ay_parts[0], $ay_parts[1]) ? $ay_parts[0] . '-' . substr($ay_parts[1], -2) : $ay_full;
+    $ay_trailing = $ay_parts[1] ?? '';
+    $ay_full_e = $conn->real_escape_string($ay_full);
+    $ay_short_e = $conn->real_escape_string($ay_short);
+    $ay_trail_e = $conn->real_escape_string($ay_trailing);
+    $whereClauses[] = "(passing_year = '$ay_full_e' OR passing_year = '$ay_short_e' OR passing_year = '$ay_trail_e')";
+}
+
 if (!empty($_GET['search'])) {
     $search = $conn->real_escape_string($_GET['search']);
     $whereClauses[] = "(full_name LIKE '%$search%' OR reg_no LIKE '%$search%' OR email LIKE '%$search%')";
@@ -979,14 +993,18 @@ foreach ($columns as $col) {
 }
 echo "<th class='no-export'></th>";
 echo "</tr></thead>";
-// Fetch data
-$qry = "SELECT * FROM on_off_campus_students $where ORDER BY external_id DESC";
+// Fetch data (paginated, 10 per page)
+require_once __DIR__ . '/pagination_helper.php';
+$count_qry = "SELECT COUNT(*) AS c FROM on_off_campus_students $where";
+$total_rows = (int)($conn->query($count_qry)->fetch_assoc()['c'] ?? 0);
+$iol_pg = paginate_setup($total_rows, 10, 'page');
+$qry = "SELECT * FROM on_off_campus_students $where ORDER BY external_id DESC LIMIT {$iol_pg['per_page']} OFFSET {$iol_pg['offset']}";
 $r = $conn->query($qry);
 
 // ✅ Show table body
 echo "<tbody id='tableBody'>";
 if ($r && $r->num_rows > 0) {
-  $serial = 1; // 👈 Initialize serial number
+  $serial = $iol_pg['offset'] + 1; // 👈 Serial offset for paginated view
     while ($row = $r->fetch_assoc()) {
         echo "<tr>";
         echo "<td>{$serial}</td>"; 
@@ -1055,6 +1073,7 @@ echo "</td>";
 echo "</tbody>";
 ?>
 </table>
+<?= render_pagination($iol_pg) ?>
 </div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>

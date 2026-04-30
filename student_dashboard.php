@@ -34,11 +34,36 @@ $placed_applications = $placed_count_stmt->get_result()->fetch_assoc()['total'];
 
 // Pending applications removed from dashboard as per requirement
 
-// Get active drives count
+// Get active drives count — scoped to the student's own academic year + graduating year.
 $now = date('Y-m-d H:i:s');
-$active_drives_query = "SELECT COUNT(*) as total FROM drives WHERE open_date <= '$now' AND close_date >= '$now'";
-$active_drives_result = $conn->query($active_drives_query);
-$active_drives = $active_drives_result->fetch_assoc()['total'];
+$student_ay = $student['academic_year'] ?? null;
+$student_yop = $student['year_of_passing'] ?? null;
+
+$active_drives_sql = "SELECT COUNT(*) as total FROM drives
+                       WHERE open_date <= ? AND close_date >= ?";
+$active_params = [$now, $now];
+$active_types = 'ss';
+
+if ($student_ay) {
+    $active_drives_sql .= " AND academic_year = ?";
+    $active_params[] = $student_ay;
+    $active_types .= 's';
+}
+if ($student_yop) {
+    // Strict match: drives must explicitly target this graduating year.
+    // Empty / NULL graduating_year does NOT pass — admin must tag each drive.
+    $active_drives_sql .= " AND graduating_year IS NOT NULL
+                            AND graduating_year <> ''
+                            AND FIND_IN_SET(?, REPLACE(graduating_year, ' ', ''))";
+    $active_params[] = $student_yop;
+    $active_types .= 's';
+}
+
+$stmt = $conn->prepare($active_drives_sql);
+$stmt->bind_param($active_types, ...$active_params);
+$stmt->execute();
+$active_drives = $stmt->get_result()->fetch_assoc()['total'];
+$stmt->close();
 
 // Get recent applications
 $recent_apps_stmt = $conn->prepare("
@@ -54,17 +79,34 @@ $recent_apps_stmt->bind_param("i", $student_id);
 $recent_apps_stmt->execute();
 $recent_apps = $recent_apps_stmt->get_result();
 
-// Get upcoming drives
-$upcoming_drives_query = "
-    SELECT d.*, COUNT(dr.role_id) as role_count
-    FROM drives d
-    LEFT JOIN drive_roles dr ON d.drive_id = dr.drive_id
-    WHERE d.open_date <= '$now' AND d.close_date >= '$now'
-    GROUP BY d.drive_id
-    ORDER BY d.open_date ASC
-    LIMIT 5
-";
-$upcoming_drives = $conn->query($upcoming_drives_query);
+// Get upcoming drives — same AY + graduating year scope as the count above.
+$upcoming_sql = "SELECT d.*, COUNT(dr.role_id) as role_count
+                 FROM drives d
+                 LEFT JOIN drive_roles dr ON d.drive_id = dr.drive_id
+                 WHERE d.open_date <= ? AND d.close_date >= ?";
+$upcoming_params = [$now, $now];
+$upcoming_types = 'ss';
+
+if ($student_ay) {
+    $upcoming_sql .= " AND d.academic_year = ?";
+    $upcoming_params[] = $student_ay;
+    $upcoming_types .= 's';
+}
+if ($student_yop) {
+    // Strict match: drives must explicitly target this graduating year.
+    $upcoming_sql .= " AND d.graduating_year IS NOT NULL
+                       AND d.graduating_year <> ''
+                       AND FIND_IN_SET(?, REPLACE(d.graduating_year, ' ', ''))";
+    $upcoming_params[] = $student_yop;
+    $upcoming_types .= 's';
+}
+
+$upcoming_sql .= " GROUP BY d.drive_id ORDER BY d.open_date ASC LIMIT 5";
+
+$stmt = $conn->prepare($upcoming_sql);
+$stmt->bind_param($upcoming_types, ...$upcoming_params);
+$stmt->execute();
+$upcoming_drives = $stmt->get_result();
 ?>
 
 <div class="home-section">

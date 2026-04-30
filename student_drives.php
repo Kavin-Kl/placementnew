@@ -13,12 +13,16 @@ include("config.php");
 include("student_header.php");
 
 $student_id = $_SESSION['student_id'];
+require_once __DIR__ . '/academic_year_helper.php';
 
 // Fetch student details for eligibility checking
 $student_stmt = $conn->prepare("SELECT * FROM students WHERE student_id = ?");
 $student_stmt->bind_param("i", $student_id);
 $student_stmt->execute();
 $student = $student_stmt->get_result()->fetch_assoc();
+
+// Once placed full-time and not allowed to reapply, the student cannot apply to anything new.
+$student_locked_out = student_is_locked_out($student ?? []);
 
 // Determine which eligibility flags to check based on student's category
 $placement_category = $student['placement_category'] ?? 'none';
@@ -43,10 +47,21 @@ if ($placement_category === 'internship') {
     $drives_query .= " AND (d.show_to_internship = 1 OR d.show_to_vantage = 1 OR d.show_to_placement = 1)";
 }
 
-// Filter by graduating_year - check if student's year_of_passing is in the comma-separated graduating_year
+// Filter by academic year — drive's AY must match the student's stored AY.
+$student_ay = $student['academic_year'] ?? null;
+if ($student_ay) {
+    $student_ay_e = $conn->real_escape_string($student_ay);
+    $drives_query .= " AND d.academic_year = '$student_ay_e'";
+}
+
+// Strict graduating_year match — drives without an explicit graduating_year tag are hidden
+// from student dashboards. Forces admins to tag each drive's target cohort.
 $student_year = $student['year_of_passing'] ?? null;
 if ($student_year) {
-    $drives_query .= " AND (d.graduating_year IS NULL OR d.graduating_year = '' OR FIND_IN_SET('$student_year', REPLACE(d.graduating_year, ' ', '')))";
+    $student_year_e = $conn->real_escape_string((string)$student_year);
+    $drives_query .= " AND d.graduating_year IS NOT NULL
+                       AND d.graduating_year <> ''
+                       AND FIND_IN_SET('$student_year_e', REPLACE(d.graduating_year, ' ', ''))";
 }
 
 $drives_query .= " ORDER BY d.close_date ASC";
@@ -65,6 +80,13 @@ $selected_drive_id = $_GET['drive_id'] ?? null;
         <p class="text-muted">Browse and apply for placement drives</p>
       </div>
     </div>
+
+    <?php if ($student_locked_out): ?>
+      <div class="alert alert-warning" role="alert">
+        <strong>You are already placed full-time.</strong>
+        You can no longer apply to new drives. If you believe this is wrong, please contact the placement office to re-enable applications.
+      </div>
+    <?php endif; ?>
 
     <?php if ($drives_result->num_rows > 0): ?>
       <div class="row g-3">
@@ -196,6 +218,27 @@ $selected_drive_id = $_GET['drive_id'] ?? null;
                   </a>
                 <?php endif; ?>
 
+                <?php
+                // WhatsApp group link — visible only after the student has applied to this drive.
+                $whatsapp_link = '';
+                if ($has_applied && !empty($drive['extra_details'])) {
+                    $ed = json_decode($drive['extra_details'], true);
+                    if (is_array($ed) && !empty($ed['whatsapp']) && trim($ed['whatsapp']) !== '') {
+                        $whatsapp_link = trim($ed['whatsapp']);
+                    }
+                }
+                ?>
+                <?php if ($whatsapp_link): ?>
+                  <div class="alert alert-success mb-3">
+                    <i class="bx bxl-whatsapp"></i>
+                    <strong>You'll be added to the WhatsApp group for this drive.</strong>
+                    Join here:
+                    <a href="<?= htmlspecialchars($whatsapp_link) ?>" target="_blank" rel="noopener">
+                      <?= htmlspecialchars($whatsapp_link) ?>
+                    </a>
+                  </div>
+                <?php endif; ?>
+
                 <!-- Roles List -->
                 <?php if ($roles->num_rows > 0): ?>
                   <h5 class="mb-3">Available Roles (<?= $roles->num_rows ?>)</h5>
@@ -257,7 +300,7 @@ $selected_drive_id = $_GET['drive_id'] ?? null;
                           $meets_percentage = !$role['min_percentage'] ||
                                              ($student['percentage'] && $student['percentage'] >= $role['min_percentage']);
 
-                          $can_apply = $is_eligible && $meets_percentage && !$role_applied;
+                          $can_apply = $is_eligible && $meets_percentage && !$role_applied && !$student_locked_out;
                         ?>
                           <tr>
                             <td><strong><?= htmlspecialchars($role['designation_name']) ?></strong></td>

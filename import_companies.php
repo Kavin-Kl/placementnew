@@ -114,7 +114,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["company_file"])) {
             $check->close();
 
             // Insert placeholder drive entry (admin needs to complete it)
-            $academic_year = $_SESSION['selected_academic_year'] ?? '2025-2026';
+            $academic_year = $_SESSION['selected_academic_year'] ?? '2026-2027';
             $drive_no = "Drive 1"; // Will be updated when admin edits
             $open_date = date('Y-m-d H:i:s');
             $close_date = !empty($deadline) ? date('Y-m-d H:i:s', strtotime($deadline)) : date('Y-m-d H:i:s', strtotime('+30 days'));

@@ -8,36 +8,31 @@ include("config.php");
 include("course_groups_dynamic.php");
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_single_row'])) {
     $id = $_POST['row_id'];
-    $spo = $_POST['spo_name'];
-    $spoc_email = $_POST['spoc_email'] ?? '';
-    $contact = $_POST['contact_no'];
-    $follow = $_POST['follow_status'];
-    $final = $_POST['final_status'];
-    $person = $_POST['follow_up_person'] ?? '';  // Added null coalescing operator
+    $spo                   = $_POST['spo_name']              ?? '';
+    $spoc_email            = $_POST['spoc_email']            ?? '';
+    $contact               = $_POST['contact_no']            ?? '';
+    $final                 = $_POST['final_status']          ?? '';
+    $follow_status_team    = $_POST['follow_status_team']    ?? '';
+    $follow_status_officer = $_POST['follow_status_officer'] ?? '';
 
-    // Fetch the live hired count
-   // Fetch the live hired count using drive_id and role_id for accuracy
-$sql = "
-  SELECT COUNT(DISTINCT ps.student_id) as count
-  FROM placed_students ps
-  INNER JOIN drive_data dd ON ps.drive_id = dd.drive_id AND ps.role_id = dd.role_id
-  WHERE dd.id = ?
-";
+    // Recalculate live hired_count using drive_id/role_id link.
+    $sql = "
+      SELECT COUNT(DISTINCT ps.student_id) as count
+      FROM placed_students ps
+      INNER JOIN drive_data dd ON ps.drive_id = dd.drive_id AND ps.role_id = dd.role_id
+      WHERE dd.id = ?
+    ";
+    $stmtCount = $conn->prepare($sql);
+    $stmtCount->bind_param("i", $id);
+    $stmtCount->execute();
+    $hiredCount = $stmtCount->get_result()->fetch_assoc()['count'] ?? 0;
 
-$stmtCount = $conn->prepare($sql);
-$stmtCount->bind_param("i", $id);
-$stmtCount->execute();
-$result = $stmtCount->get_result();
-$row = $result->fetch_assoc();
-$hiredCount = $row['count'] ?? 0;
-
-
-
-    
-    // Now update hired_count too!
+    // Simplified tracker only writes the fields it owns. min_ctc/max_ctc/follow_status (single)/
+    // follow_up_person are edited elsewhere (Full Time Company Data) and intentionally left untouched here.
     $stmt = $conn->prepare("
       UPDATE drive_data
-      SET spo_name = ?, spoc_email = ?, contact_no = ?, follow_status = ?, final_status = ?, follow_up_person = ?, hired_count = ?
+      SET spo_name = ?, spoc_email = ?, contact_no = ?, final_status = ?, hired_count = ?,
+          follow_status_team = ?, follow_status_officer = ?
       WHERE id = ?
     ");
 
@@ -45,16 +40,19 @@ $hiredCount = $row['count'] ?? 0;
         die("Prepare failed: " . $conn->error);
     }
 
-    // Changed to "ssssssii" to account for spoc_email and follow_up_person
-    if (!$stmt->bind_param("ssssssii", $spo, $spoc_email, $contact, $follow, $final, $person, $hiredCount, $id)) {
+    if (!$stmt->bind_param(
+        "ssssissi",
+        $spo, $spoc_email, $contact, $final, $hiredCount,
+        $follow_status_team, $follow_status_officer,
+        $id
+    )) {
         die("Bind failed: " . $stmt->error);
     }
 
     if (!$stmt->execute()) {
         die("Execute failed: " . $stmt->error);
     }
-    
-    // Return success response for AJAX
+
     if (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest') {
         echo json_encode(['status' => 'success']);
         exit;
@@ -136,7 +134,7 @@ $data = [];
 // sync_placed_students($conn);
 
 // Academic Year Filtering
-$academic_year = $_SESSION['selected_academic_year'] ?? '2025-2026';
+$academic_year = $_SESSION['selected_academic_year'] ?? '2026-2027';
 $graduation_year = null;
 if ($academic_year) {
     $parts = explode('-', $academic_year);
@@ -157,13 +155,13 @@ SELECT
     WHERE
       ps.company_name = d.company_name
       AND ps.role = d.role
-      AND ps.offer_type IN ('FTE', 'Internship + PPO', 'Internship+PPO', 'Apprentice')
+      AND ps.offer_type IN ('FTE', 'Apprenticeship (Full time)', 'Internship + PPO', 'Internship+PPO', 'Internship + PPO (Final Year)', 'Apprenticeship (Part Time)')
       " . ($graduation_year ? "AND s.year_of_passing = $graduation_year" : "") . "
   ) AS hired_count
 FROM drive_data d
 LEFT JOIN drives drv ON d.company_name = drv.company_name AND d.drive_no = drv.drive_no
 LEFT JOIN drive_roles dr ON drv.drive_id = dr.drive_id AND TRIM(d.role) = TRIM(dr.designation_name)
-WHERE d.offer_type IN ('FTE', 'Internship + PPO', 'Internship+PPO', 'Apprentice')
+WHERE d.offer_type IN ('FTE', 'Apprenticeship (Full time)', 'Internship + PPO', 'Internship+PPO', 'Internship + PPO (Final Year)', 'Apprenticeship (Part Time)')
   " . ($academic_year ? "AND drv.academic_year = '$academic_year'" : "") . "
 GROUP BY d.id
 ORDER BY d.company_name ASC, d.id ASC
@@ -956,23 +954,19 @@ table.company-table th.sticky-col { background: #650000; z-index: 5; }
                     <th class="sticky-col col-company">Company Name</th>
                     <th>Drive No</th>
                     <th class="sticky-col col-role">Role</th>
-                    <th>Created By</th>
-                    <th>Offer Type</th>
-                    <th>Sector</th>
                     <th class="courses-column">
                         <span class="courses-toggle" onclick="toggleCourses()">
                             Courses <i class="fas fa-chevron-down"></i>
                         </span>
                     </th>
                     <th>Form Open Date</th>
-                    <th>Role Close Date</th>
                     <th class="w-spoc">SPOC Name</th>
                     <th class="w-spoc-email">SPOC Email ID</th>
                     <th class="w-contact">SPOC Contact Number</th>
-                    <th class="w-followup-status">Follow-Up Status</th>
+                    <th>Status (Team)</th>
+                    <th>Status (Officer)</th>
                     <th class="w-final-status">Final Status</th>
                     <th class="w-hired">Hired</th>
-                    <th class="w-followup-person">Follow-Up Person</th>
                     <th></th>
                 </tr>
             </thead>
@@ -983,25 +977,20 @@ table.company-table th.sticky-col { background: #650000; z-index: 5; }
                     <td class="sticky-col col-company"><?= htmlspecialchars($row['company_name']) ?></td>
                     <td><?= htmlspecialchars($row['drive_number']) ?></td>
                     <td class="sticky-col col-role"><?= htmlspecialchars($row['role']) ?></td>
-                    <td><?= htmlspecialchars($row['created_by'] ?? '-') ?></td>
-                    <td><?= htmlspecialchars($row['offer_type']) ?></td>
-                    <td><?= htmlspecialchars($row['sector']) ?></td>
                     <td class="courses-cell">
                         <div class="selected-courses">
                             <?= formatCourseDisplay(is_array($row['eligible_courses']) ? $row['eligible_courses'] : []) ?>
                         </div>
                     </td>
                     <?php
-                      // Form Open Date and Role Close Date
                       $openFmt = !empty($row['opening_date']) ? date('d-m-y', strtotime($row['opening_date'])) : '-';
-                      $closeFmt = !empty($row['closing_date']) ? date('d-m-y', strtotime($row['closing_date'])) : '-';
                     ?>
                     <td data-open-iso="<?= htmlspecialchars(!empty($row['opening_date']) ? date('Y-m-d', strtotime($row['opening_date'])) : '') ?>"><?= $openFmt ?></td>
-                    <td data-close-iso="<?= htmlspecialchars(!empty($row['closing_date']) ? date('Y-m-d', strtotime($row['closing_date'])) : '') ?>"><?= $closeFmt ?></td>
                     <td class="w-spoc"><input type="text" name="spo_name" class="form-control form-control-sm" value="<?= htmlspecialchars($row['spo_name'] ?? '') ?>"></td>
                     <td class="w-spoc-email"><input type="email" name="spoc_email" class="form-control form-control-sm" value="<?= htmlspecialchars($row['spoc_email'] ?? '') ?>"></td>
                     <td class="w-contact"><input type="text" name="contact_no" class="form-control form-control-sm" value="<?= htmlspecialchars($row['contact_no'] ?? '') ?>"></td>
-                    <td class="w-followup-status"><input type="text" name="follow_status" class="form-control form-control-sm" value="<?= htmlspecialchars($row['follow_status'] ?? '') ?>"></td>
+                    <td><input type="text" name="follow_status_team" class="form-control form-control-sm" value="<?= htmlspecialchars($row['follow_status_team'] ?? '') ?>"></td>
+                    <td><input type="text" name="follow_status_officer" class="form-control form-control-sm" value="<?= htmlspecialchars($row['follow_status_officer'] ?? '') ?>"></td>
                     <td class="w-final-status">
                         <select name="final_status" class="form-select form-select-sm final-status-dropdown">
                             <option value="">---Select---</option>
@@ -1014,14 +1003,10 @@ table.company-table th.sticky-col { background: #650000; z-index: 5; }
                         </select>
                     </td>
                     <td class="w-hired"><?= htmlspecialchars($row['hired_count'] ?? '0') ?></td>
-                    <td class="w-followup-person">   
-                        <input type="text" name="follow_up_person" class="form-control form-control-sm" 
-                               value="<?= !empty($row['follow_up_person']) ? htmlspecialchars($row['follow_up_person']) : '' ?>">
+                    <td>
+                        <button type="button" onclick="saveRow(<?= $row['id'] ?>)" class="save-btn">Save</button>
+                        <span id="save-status-<?= $row['id'] ?>" class="save-success"></span>
                     </td>
-                                         <td>
-                         <button type="button" onclick="saveRow(<?= $row['id'] ?>)" class="save-btn">Save</button>
-                         <span id="save-status-<?= $row['id'] ?>" class="save-success"></span>
-                     </td>
                 </tr>
                 <?php endforeach; ?>
             </tbody>
@@ -1421,11 +1406,12 @@ function saveRow(rowId) {
     // Add all form data
     formData.append('row_id', rowId);
     formData.append('save_single_row', '1');
-    formData.append('spo_name', row.querySelector('[name="spo_name"]').value);
-    formData.append('contact_no', row.querySelector('[name="contact_no"]').value);
-    formData.append('follow_status', row.querySelector('[name="follow_status"]').value);
-    formData.append('final_status', row.querySelector('[name="final_status"]').value);
-    formData.append('follow_up_person', row.querySelector('[name="follow_up_person"]').value);
+    formData.append('spo_name', row.querySelector('[name="spo_name"]')?.value || '');
+    formData.append('spoc_email', row.querySelector('[name="spoc_email"]')?.value || '');
+    formData.append('contact_no', row.querySelector('[name="contact_no"]')?.value || '');
+    formData.append('final_status', row.querySelector('[name="final_status"]')?.value || '');
+    formData.append('follow_status_team', row.querySelector('[name="follow_status_team"]')?.value || '');
+    formData.append('follow_status_officer', row.querySelector('[name="follow_status_officer"]')?.value || '');
     
     const saveBtn = row.querySelector('.save-btn');
     const saveStatus = document.getElementById('save-status-' + rowId);

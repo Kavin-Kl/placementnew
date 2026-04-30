@@ -133,15 +133,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['bulk_update_result'])
     }
 }
 
-// Get all drives with applications (FULL-TIME ONLY: FTE, Internship+PPO, Apprentice)
+// Get all drives with applications (FULL-TIME ONLY: FTE, Internship+PPO, Apprentice) — paginated
+require_once __DIR__ . '/pagination_helper.php';
+$ft_where = "(dr.offer_type IN ('FTE', 'Internship + PPO', 'Internship+PPO', 'Internship + PPO (Final Year)', 'Apprenticeship (Part Time)') OR dr.offer_type IS NULL)";
+$ay_filter_sql = '';
+$ay_value = $_SESSION['selected_academic_year'] ?? null;
+if ($ay_value) {
+    $ay_filter_sql = " AND d.academic_year = '" . $conn->real_escape_string($ay_value) . "'";
+}
+$count_sql = "
+    SELECT COUNT(*) AS c FROM (
+        SELECT d.drive_id FROM drives d
+        INNER JOIN applications a ON d.drive_id = a.drive_id
+        INNER JOIN drive_roles dr ON a.role_id = dr.role_id
+        WHERE $ft_where $ay_filter_sql
+        GROUP BY d.drive_id
+    ) t
+";
+$total_drives = (int)$conn->query($count_sql)->fetch_assoc()['c'];
+$drives_pg = paginate_setup($total_drives, 10, 'page');
 $drives_query = "
     SELECT DISTINCT d.drive_id, d.company_name, d.drive_no, COUNT(a.application_id) as app_count
     FROM drives d
     INNER JOIN applications a ON d.drive_id = a.drive_id
     INNER JOIN drive_roles dr ON a.role_id = dr.role_id
-    WHERE dr.offer_type IN ('FTE', 'Internship + PPO', 'Internship+PPO', 'Apprentice') OR dr.offer_type IS NULL
+    WHERE $ft_where $ay_filter_sql
     GROUP BY d.drive_id
     ORDER BY d.drive_no DESC
+    LIMIT {$drives_pg['per_page']} OFFSET {$drives_pg['offset']}
 ";
 $drives = $conn->query($drives_query);
 
@@ -171,7 +190,7 @@ if ($selected_drive) {
         LEFT JOIN drive_roles dr ON a.role_id = dr.role_id
         LEFT JOIN placed_students ps ON a.student_id = ps.student_id
         WHERE a.drive_id = ?
-        AND (dr.offer_type IN ('FTE', 'Internship + PPO', 'Internship+PPO', 'Apprentice') OR dr.offer_type IS NULL)
+        AND (dr.offer_type IN ('FTE', 'Internship + PPO', 'Internship+PPO', 'Internship + PPO (Final Year)', 'Apprenticeship (Part Time)') OR dr.offer_type IS NULL)
         ORDER BY ps.place_id IS NULL DESC, s.student_name ASC
     ";
 
@@ -514,6 +533,7 @@ require 'header.php';
                         </div>
                     <?php endif; ?>
                 </div>
+                <?= render_pagination($drives_pg) ?>
             </div>
         </div>
 

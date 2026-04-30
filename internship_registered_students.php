@@ -36,18 +36,11 @@ function build_filters(&$types, &$params) {
     $params = [];
 
     // Add academic year filter (from header.php year selector)
-    // DISABLED: Show all students regardless of academic year
-    /*
-    if (isset($_SESSION['selected_academic_year'])) {
-        $parts = explode('-', $_SESSION['selected_academic_year']);
-        $graduation_year = isset($parts[1]) ? intval($parts[1]) : null;
-        if ($graduation_year) {
-            $where[] = "s.year_of_passing = ?";
-            $params[] = $graduation_year;
-            $types .= "i";
-        }
+    if (!empty($_SESSION['selected_academic_year'])) {
+        $where[] = "s.academic_year = ?";
+        $params[] = $_SESSION['selected_academic_year'];
+        $types .= "s";
     }
-    */
 
     $fields = [
         "upid", "program_type", "program", "course", "reg_no", "batch", "year_of_passing", "placed_status",
@@ -715,10 +708,11 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["csv_file"])) {
             }
         }
 
-        // Prepare the insert statement ONCE
+        // Prepare the insert statement ONCE — stamp current selected academic year.
+        $current_ay = $_SESSION['selected_academic_year'] ?? '2026-2027';
         $stmt = $conn->prepare("INSERT INTO students
-            (upid, program_type, program, course, reg_no, student_name, email, phone_no, batch, year_of_passing, percentage, class)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+            (upid, program_type, program, course, reg_no, student_name, email, phone_no, batch, year_of_passing, percentage, class, academic_year)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, '" . $conn->real_escape_string($current_ay) . "')");
 
         $currentYear = date('Y');
         $rowNumber = 2; // Start at 2 (row 1 is header in Excel)
@@ -1183,8 +1177,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                       <option value="">All options</option>
                       <option value="FTE" <?= (isset($_GET['offer_type']) && $_GET['offer_type'] === 'FTE') ? 'selected' : '' ?>>FTE</option>
                       <option value="Internship" <?= (isset($_GET['offer_type']) && $_GET['offer_type'] === 'Internship') ? 'selected' : '' ?>>Internship</option>
-                      <option value="Apprentice" <?= (isset($_GET['offer_type']) && $_GET['offer_type'] === 'Apprentice') ? 'selected' : '' ?>>Apprentice</option>
-                      <option value="Internship + PPO" <?= (isset($_GET['offer_type']) && $_GET['offer_type'] === 'Internship + PPO') ? 'selected' : '' ?>>Internship + PPO</option>
+                      <option value="Apprenticeship (Part Time)" <?= (isset($_GET['offer_type']) && $_GET['offer_type'] === 'Apprenticeship (Part Time)') ? 'selected' : '' ?>>Apprenticeship (Part Time)</option>
+                      <option value="Internship + PPO (Final Year)" <?= (isset($_GET['offer_type']) && $_GET['offer_type'] === 'Internship + PPO (Final Year)') ? 'selected' : '' ?>>Internship + PPO (Final Year)</option>
+            <option value="Internship + PPO (Pre-Final Year)" <?= (isset($_GET['offer_type']) && $_GET['offer_type'] === 'Internship + PPO (Pre-Final Year)') ? 'selected' : '' ?>>Internship + PPO (Pre-Final Year)</option>
                     </select>
                   </label>
                   <label>Company:
@@ -1918,7 +1913,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
 // and the lazy scroll with Search filter (live search in table)
 let offset = 0;
-const limit = 50;
+const limit = 10;
 let loading = false;
 let noMoreData = false;
 
