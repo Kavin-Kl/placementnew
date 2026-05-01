@@ -17,6 +17,11 @@ if (!$tables_check || $tables_check->num_rows === 0) {
 }
 
 try {
+    // Scope deadline notifications to the currently selected academic year so
+    // that flipping years doesn't surface old years' deadline alerts.
+    $deadline_ay = $_SESSION['selected_academic_year'] ?? null;
+    $ay_clause   = $deadline_ay ? " AND d.academic_year = '" . $conn->real_escape_string($deadline_ay) . "'" : "";
+
     // Find drives where deadline expired more than 1 hour ago and notification not sent
     $deadline_check_query = "
         SELECT
@@ -31,6 +36,7 @@ try {
         AND d.close_date <= NOW()
         AND d.close_date >= DATE_SUB(NOW(), INTERVAL 7 DAY)
         AND TIMESTAMPDIFF(HOUR, d.close_date, NOW()) >= 1
+        $ay_clause
         AND NOT EXISTS (
             SELECT 1 FROM deadline_notifications_sent dns
             WHERE dns.drive_id = d.drive_id
@@ -97,7 +103,7 @@ try {
         }
     }
 
-    // Also check for upcoming deadlines (24 hours)
+    // Also check for upcoming deadlines (24 hours), same AY scope.
     $reminder_query = "
         SELECT
             d.drive_id,
@@ -110,6 +116,7 @@ try {
         WHERE d.close_date IS NOT NULL
         AND d.close_date > NOW()
         AND d.close_date <= DATE_ADD(NOW(), INTERVAL 24 HOUR)
+        $ay_clause
         AND NOT EXISTS (
             SELECT 1 FROM deadline_notifications_sent dns
             WHERE dns.drive_id = d.drive_id

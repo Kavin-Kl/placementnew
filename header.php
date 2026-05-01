@@ -46,9 +46,20 @@ $users_module_admins = ['Asgar Ahmed', 'Annie Shruthi'];
     ];
 
     // If custom title exists, use it; else format the file name nicely
-    $pageTitle = isset($customTitles[$fileName]) 
-        ? $customTitles[$fileName] 
+    $pageTitle = isset($customTitles[$fileName])
+        ? $customTitles[$fileName]
         : ucwords(str_replace("_", " ", $fileName));
+
+    // Refine the Applications List title based on the ?type query so the
+    // header reads "Full Time Applications" / "Internship Applications".
+    if ($fileName === 'enrolled_students') {
+        $applications_type = $_GET['type'] ?? '';
+        if ($applications_type === 'fulltime') {
+            $pageTitle = 'Full Time Applications';
+        } elseif ($applications_type === 'internship') {
+            $pageTitle = 'Internship Applications';
+        }
+    }
 
     // Final full title
     $fullTitle = $pageTitle . " - Mount Carmel College Placement Cell";
@@ -569,12 +580,144 @@ ul, ol {
     opacity: 1;
 }
 
+/* === Collapsible nav groups (Full Time / Internship / Vantage / Other) === */
+.sidebar li.nav-group { display: block; }
+.sidebar li.nav-group > .nav-group-header {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    height: 50px;
+    border-radius: 12px;
+    cursor: pointer;
+    background: white;
+    color: #650000;
+    border: none;
+    padding: 0;
+    text-align: left;
+    font: inherit;
+}
+.sidebar li.nav-group > .nav-group-header:hover {
+    border: 2px solid #650000;
+}
+.sidebar li.nav-group > .nav-group-header i.group-icon {
+    height: 50px;
+    line-height: 50px;
+    font-size: 20px;
+    border-radius: 12px;
+    color: #650000;
+    flex-shrink: 0;
+}
+.sidebar li.nav-group > .nav-group-header .links_name {
+    color: #650000;
+    font-size: 14px;
+    font-weight: 500;
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transition: 0.4s;
+    flex: 1;
+}
+.sidebar.open li.nav-group > .nav-group-header .links_name,
+.sidebar-open .sidebar li.nav-group > .nav-group-header .links_name {
+    opacity: 1;
+    pointer-events: auto;
+}
+.sidebar li.nav-group > .nav-group-header .chev {
+    margin-left: auto;
+    margin-right: 14px;
+    transition: transform 0.25s ease;
+    color: #650000;
+    opacity: 0;
+}
+.sidebar.open li.nav-group > .nav-group-header .chev,
+.sidebar-open .sidebar li.nav-group > .nav-group-header .chev {
+    opacity: 1;
+}
+.sidebar li.nav-group.open > .nav-group-header .chev { transform: rotate(90deg); }
+.sidebar li.nav-group.has-active > .nav-group-header { background: #fff5f5; }
+.sidebar li.nav-group.has-active > .nav-group-header .links_name,
+.sidebar li.nav-group.has-active > .nav-group-header i.group-icon {
+    color: #4a0000;
+}
+
+/* Children list — collapsed by default, animated open. */
+.sidebar li.nav-group > .nav-group-children {
+    list-style: none;
+    overflow: hidden;
+    max-height: 0;
+    transition: max-height 0.3s ease;
+    padding-left: 0;
+    margin: 0;
+}
+.sidebar li.nav-group.open > .nav-group-children {
+    max-height: 1000px; /* generous; collapses cleanly when removed */
+}
+.sidebar li.nav-group > .nav-group-children li a {
+    padding-left: 12px; /* slight indent so children read as sub-items when expanded */
+}
+
+/* Icon-only mode (collapsed sidebar = html WITHOUT .sidebar-open class):
+   groups stay collapsed inline and hover triggers a right-anchored flyout. */
+html:not(.sidebar-open) .sidebar li.nav-group > .nav-group-children {
+    position: fixed;
+    left: 78px;
+    margin-top: -50px; /* align flyout's first item with the group header */
+    background: #fff;
+    border: 1px solid #650000;
+    border-radius: 8px;
+    box-shadow: 0 6px 16px rgba(0,0,0,0.12);
+    padding: 6px 0;
+    min-width: 240px;
+    max-height: 0;
+    overflow: hidden;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.18s ease;
+    z-index: 999998;
+}
+html:not(.sidebar-open) .sidebar li.nav-group:hover > .nav-group-children {
+    max-height: 1000px;
+    opacity: 1;
+    pointer-events: auto;
+}
+html:not(.sidebar-open) .sidebar li.nav-group:hover > .nav-group-children li a .links_name {
+    opacity: 1;
+    pointer-events: auto;
+}
+html:not(.sidebar-open) .sidebar li.nav-group:hover > .nav-group-children li a {
+    padding-left: 14px;
+}
+/* In icon-only mode, hide the chevron (no inline expand) and don't reserve
+   space for the children list since it's a flyout, not an inline list. */
+html:not(.sidebar-open) .sidebar li.nav-group > .nav-group-header .chev { display: none; }
+html:not(.sidebar-open) .sidebar li.nav-group.open > .nav-group-children { /* override inline-open in icon mode */
+    max-height: 0;
+}
+html:not(.sidebar-open) .sidebar li.nav-group:hover > .nav-group-children { max-height: 1000px; }
+
+/* Expanded mode (html.sidebar-open): no flyout, inline expansion only. */
+html.sidebar-open .sidebar li.nav-group > .nav-group-children {
+    position: static;
+    background: transparent;
+    border: 0;
+    box-shadow: none;
+    padding: 0;
+    opacity: 1;
+    pointer-events: auto;
+    min-width: 0;
+}
 
 </style>
 </head>
 
 <body>
-    <div class="sidebar">
+    <!-- Mobile hamburger toggle (only shown ≤ 768px via CSS) -->
+    <button type="button" class="pc-mobile-menu-btn" id="pcMobileMenuBtn" aria-label="Open navigation menu" aria-controls="pcSidebar" aria-expanded="false">
+        <i class="bx bx-menu"></i>
+    </button>
+    <div class="pc-sidebar-backdrop" id="pcSidebarBackdrop"></div>
+
+    <div class="sidebar" id="pcSidebar">
         <div class="logo-details">
             <div class="logo_name">
                 <img src="images/MCC_login_logo.png" alt="Logo">
@@ -588,8 +731,20 @@ ul, ol {
         // Auto-check for deadline notifications (runs on every page load)
         include_once __DIR__ . '/check_deadlines_on_load.php';
 
-        // Fetch unread notification count
-        $notification_count_query = "SELECT COUNT(*) as count FROM admin_notifications WHERE is_read = 0";
+        // Fetch unread notification count for the currently selected academic year.
+        // System / reminder notifications without a drive are always counted.
+        $hdr_ay = $_SESSION['selected_academic_year'] ?? null;
+        if ($hdr_ay) {
+            $notification_count_query = "
+                SELECT COUNT(*) AS count
+                FROM admin_notifications an
+                LEFT JOIN drives d ON an.drive_id = d.drive_id
+                WHERE an.is_read = 0
+                  AND (an.drive_id IS NULL OR d.academic_year = '" . $conn->real_escape_string($hdr_ay) . "')
+            ";
+        } else {
+            $notification_count_query = "SELECT COUNT(*) AS count FROM admin_notifications WHERE is_read = 0";
+        }
         $notification_count_result = $conn->query($notification_count_query);
         $unread_notification_count = 0;
         if ($notification_count_result) {
@@ -655,228 +810,284 @@ ul, ol {
         <!-- Fixed-width alignment wrapper -->
         <div class="nav-wrapper">
             <ul class="nav-list">
-                <?php $currentPage = basename($_SERVER['PHP_SELF']); ?>
+                <?php
+                    $currentPage = basename($_SERVER['PHP_SELF']);
+                    $enrolled_type = $_GET['type'] ?? '';
+                    $is_enrolled_page = $currentPage === 'enrolled_students.php';
+                    $is_ft_apps  = $is_enrolled_page && $enrolled_type === 'fulltime';
+                    $is_int_apps = $is_enrolled_page && $enrolled_type === 'internship';
 
-            <li>
-                <a href="dashboard.php" class="<?= $currentPage === 'dashboard.php' ? 'active' : '' ?>">
-                    <i class="bi bi-grid"></i>
-                    <span class="links_name">Dashboard</span>
-                </a>
-                <span class="tooltip">Dashboard</span>
-            </li>
+                    // Pages that belong to each group — used for active-cascade highlight.
+                    $ft_pages = [
+                        'fulltime_round_results.php',
+                        'fulltime_progress_tracker.php',
+                        'fulltime_company_data.php',
+                        'registered_students.php',
+                        'placed_students.php',
+                        'on_off_campus.php',
+                    ];
+                    $int_pages = [
+                        'internship_round_results.php',
+                        'internship_progress_tracker.php',
+                        'internship_company_data.php',
+                        'internship_registered_students.php',
+                        'internship_placed_students.php',
+                        'internship_offer_letters.php',
+                    ];
+                    $vantage_pages = [
+                        'vantage_registered_students.php',
+                        'vantage_placed_students.php',
+                    ];
+                    $other_pages = [
+                        'old_files_storage.php',
+                        'manage_courses.php',
+                        'data_migration.php',
+                        'backup_module.php',
+                        'admin_student_progress.php',
+                        'users.php',
+                    ];
 
-            <li>
-                <a href="add_drive.php" class="<?= $currentPage === 'add_drive.php' ? 'active' : '' ?>">
-                    <i class="bi bi-plus-square"></i>
-                    <span class="links_name">Add Drive</span>
-                </a>
-                <span class="tooltip">Add Drive</span>
-            </li>
+                    $ft_active      = $is_ft_apps  || in_array($currentPage, $ft_pages, true);
+                    $int_active     = $is_int_apps || in_array($currentPage, $int_pages, true);
+                    $vantage_active = in_array($currentPage, $vantage_pages, true);
+                    $other_active   = in_array($currentPage, $other_pages, true);
+                ?>
 
-            <li>
-                <a href="import_companies.php" class="<?= $currentPage === 'import_companies.php' ? 'active' : '' ?>">
-                    <i class="bi bi-cloud-upload"></i>
-                    <span class="links_name">Import Companies</span>
-                </a>
-                <span class="tooltip">Import Companies</span>
-            </li>
+                <li>
+                    <a href="dashboard.php" class="<?= $currentPage === 'dashboard.php' ? 'active' : '' ?>">
+                        <i class="bi bi-grid"></i>
+                        <span class="links_name">Dashboard</span>
+                    </a>
+                    <span class="tooltip">Dashboard</span>
+                </li>
 
-            <li>
-                <a href="enrolled_students.php" class="<?= $currentPage === 'enrolled_students.php' ? 'active' : '' ?>">
-                    <i class="bi bi-card-list"></i>
-                    <span class="links_name">Applications List</span>
-                </a>
-                <span class="tooltip">Applications List</span>
-            </li>
+                <li>
+                    <a href="add_drive.php" class="<?= $currentPage === 'add_drive.php' ? 'active' : '' ?>">
+                        <i class="bi bi-plus-square"></i>
+                        <span class="links_name">Add Drive</span>
+                    </a>
+                    <span class="tooltip">Add Drive</span>
+                </li>
 
-            <li>
-                <a href="manage_rounds.php" class="<?= $currentPage === 'manage_rounds.php' ? 'active' : '' ?>">
-                    <i class="bi bi-diagram-3"></i>
-                    <span class="links_name">Manage Round Results</span>
-                </a>
-                <span class="tooltip">Manage Round Results</span>
-            </li>
+                <!-- ===== Full Time group ===== -->
+                <li class="nav-group <?= $ft_active ? 'has-active open' : '' ?>" data-group="fulltime">
+                    <button type="button" class="nav-group-header">
+                        <i class="bi bi-briefcase-fill group-icon"></i>
+                        <span class="links_name">Full Time</span>
+                        <i class="bi bi-chevron-right chev"></i>
+                    </button>
+                    <span class="tooltip">Full Time</span>
+                    <ul class="nav-group-children">
+                        <li>
+                            <a href="enrolled_students.php?type=fulltime" class="<?= $is_ft_apps ? 'active' : '' ?>">
+                                <i class="bi bi-card-list"></i>
+                                <span class="links_name">Full Time Applications</span>
+                            </a>
+                            <span class="tooltip">Full Time Applications</span>
+                        </li>
+                        <li>
+                            <a href="fulltime_round_results.php" class="<?= $currentPage === 'fulltime_round_results.php' ? 'active' : '' ?>">
+                                <i class="bi bi-list-check"></i>
+                                <span class="links_name">Full-Time Round Results</span>
+                            </a>
+                            <span class="tooltip">Full-Time Round Results</span>
+                        </li>
+                        <li>
+                            <a href="fulltime_progress_tracker.php" class="<?= $currentPage === 'fulltime_progress_tracker.php' ? 'active' : '' ?>">
+                                <i class="bi bi-bar-chart-line"></i>
+                                <span class="links_name">Full-Time Progress Tracker</span>
+                            </a>
+                            <span class="tooltip">Full-Time Progress Tracker</span>
+                        </li>
+                        <li>
+                            <a href="fulltime_company_data.php" class="<?= $currentPage === 'fulltime_company_data.php' ? 'active' : '' ?>">
+                                <i class="bi bi-building"></i>
+                                <span class="links_name">Full-Time Company Data</span>
+                            </a>
+                            <span class="tooltip">Full-Time Company Data</span>
+                        </li>
+                        <li>
+                            <a href="registered_students.php" class="<?= $currentPage === 'registered_students.php' ? 'active' : '' ?>">
+                                <i class="bi bi-person-vcard"></i>
+                                <span class="links_name">Final Year Registered Students</span>
+                            </a>
+                            <span class="tooltip">Final Year Registered</span>
+                        </li>
+                        <li>
+                            <a href="placed_students.php" class="<?= $currentPage === 'placed_students.php' ? 'active' : '' ?>">
+                                <i class="bi bi-briefcase"></i>
+                                <span class="links_name">Final Year Placed Students</span>
+                            </a>
+                            <span class="tooltip">Final Year Placed</span>
+                        </li>
+                        <li>
+                            <a href="on_off_campus.php" class="<?= $currentPage === 'on_off_campus.php' ? 'active' : '' ?>">
+                                <i class="bi bi-buildings"></i>
+                                <span class="links_name">Offer Letter Collection</span>
+                            </a>
+                            <span class="tooltip">Offer Letter Collection</span>
+                        </li>
+                    </ul>
+                </li>
 
-            <li>
-                <a href="fulltime_round_results.php" class="<?= $currentPage === 'fulltime_round_results.php' ? 'active' : '' ?>">
-                    <i class="bi bi-briefcase-fill"></i>
-                    <span class="links_name">Full-Time Round Results</span>
-                </a>
-                <span class="tooltip">Full-Time Round Results</span>
-            </li>
+                <!-- ===== Internship group ===== -->
+                <li class="nav-group <?= $int_active ? 'has-active open' : '' ?>" data-group="internship">
+                    <button type="button" class="nav-group-header">
+                        <i class="bi bi-clock-history group-icon"></i>
+                        <span class="links_name">Internship</span>
+                        <i class="bi bi-chevron-right chev"></i>
+                    </button>
+                    <span class="tooltip">Internship</span>
+                    <ul class="nav-group-children">
+                        <li>
+                            <a href="enrolled_students.php?type=internship" class="<?= $is_int_apps ? 'active' : '' ?>">
+                                <i class="bi bi-card-list"></i>
+                                <span class="links_name">Internship Applications</span>
+                            </a>
+                            <span class="tooltip">Internship Applications</span>
+                        </li>
+                        <li>
+                            <a href="internship_round_results.php" class="<?= $currentPage === 'internship_round_results.php' ? 'active' : '' ?>">
+                                <i class="bi bi-list-check"></i>
+                                <span class="links_name">Internship Round Results</span>
+                            </a>
+                            <span class="tooltip">Internship Round Results</span>
+                        </li>
+                        <li>
+                            <a href="internship_progress_tracker.php" class="<?= $currentPage === 'internship_progress_tracker.php' ? 'active' : '' ?>">
+                                <i class="bi bi-bar-chart-line"></i>
+                                <span class="links_name">Internship Progress Tracker</span>
+                            </a>
+                            <span class="tooltip">Internship Progress Tracker</span>
+                        </li>
+                        <li>
+                            <a href="internship_company_data.php" class="<?= $currentPage === 'internship_company_data.php' ? 'active' : '' ?>">
+                                <i class="bi bi-building-fill"></i>
+                                <span class="links_name">Internship Company Data</span>
+                            </a>
+                            <span class="tooltip">Internship Company Data</span>
+                        </li>
+                        <li>
+                            <a href="internship_registered_students.php" class="<?= $currentPage === 'internship_registered_students.php' ? 'active' : '' ?>">
+                                <i class="bi bi-journal-code"></i>
+                                <span class="links_name">Internship Registered Students</span>
+                            </a>
+                            <span class="tooltip">Internship Registered</span>
+                        </li>
+                        <li>
+                            <a href="internship_placed_students.php" class="<?= $currentPage === 'internship_placed_students.php' ? 'active' : '' ?>">
+                                <i class="bi bi-file-earmark-check"></i>
+                                <span class="links_name">Internship Placed Students</span>
+                            </a>
+                            <span class="tooltip">Internship Placed</span>
+                        </li>
+                        <li>
+                            <a href="internship_offer_letters.php" class="<?= $currentPage === 'internship_offer_letters.php' ? 'active' : '' ?>">
+                                <i class="bi bi-file-earmark-text"></i>
+                                <span class="links_name">Internship Letter Collection</span>
+                            </a>
+                            <span class="tooltip">Internship Letter Collection</span>
+                        </li>
+                    </ul>
+                </li>
 
-            <li>
-                <a href="internship_round_results.php" class="<?= $currentPage === 'internship_round_results.php' ? 'active' : '' ?>">
-                    <i class="bi bi-clock-history"></i>
-                    <span class="links_name">Internship Round Results</span>
-                </a>
-                <span class="tooltip">Internship Round Results</span>
-            </li>
+                <!-- ===== Vantage group ===== -->
+                <li class="nav-group <?= $vantage_active ? 'has-active open' : '' ?>" data-group="vantage">
+                    <button type="button" class="nav-group-header">
+                        <i class="bi bi-star group-icon"></i>
+                        <span class="links_name">Vantage</span>
+                        <i class="bi bi-chevron-right chev"></i>
+                    </button>
+                    <span class="tooltip">Vantage</span>
+                    <ul class="nav-group-children">
+                        <li>
+                            <a href="vantage_registered_students.php" class="<?= $currentPage === 'vantage_registered_students.php' ? 'active' : '' ?>">
+                                <i class="bi bi-star"></i>
+                                <span class="links_name">Vantage Registered Students</span>
+                            </a>
+                            <span class="tooltip">Vantage Registered</span>
+                        </li>
+                        <li>
+                            <a href="vantage_placed_students.php" class="<?= $currentPage === 'vantage_placed_students.php' ? 'active' : '' ?>">
+                                <i class="bi bi-star-fill"></i>
+                                <span class="links_name">Vantage Placed Students</span>
+                            </a>
+                            <span class="tooltip">Vantage Placed</span>
+                        </li>
+                    </ul>
+                </li>
 
-            <li>
-                <a href="registered_students.php" class="<?= $currentPage === 'registered_students.php' ? 'active' : '' ?>">
-                    <i class="bi bi-person-vcard"></i>
-                    <span class="links_name">Final Year Registered Students</span>
-                </a>
-                <span class="tooltip">Final Year Registered</span>
-            </li>
+                <li>
+                    <a href="generate_course_report.php" class="<?= $currentPage === "generate_course_report.php" ? 'active' : '' ?>">
+                        <i class="bi bi-pie-chart"></i>
+                        <span class="links_name">Generate Report</span>
+                    </a>
+                    <span class="tooltip">Report</span>
+                </li>
 
-            <li>
-                <a href="placed_students.php" class="<?= $currentPage === 'placed_students.php' ? 'active' : '' ?>">
-                    <i class="bi bi-briefcase"></i>
-                    <span class="links_name">Final Year Placed Students</span>
-                </a>
-                <span class="tooltip">Final Year Placed</span>
-            </li>
+                <li>
+                    <a href="send_notification.php" class="<?= $currentPage === 'send_notification.php' ? 'active' : '' ?>">
+                        <i class='bx bx-send'></i>
+                        <span class="links_name">Send Notification</span>
+                    </a>
+                    <span class="tooltip">Send Notification</span>
+                </li>
 
-            <li>
-                <a href="internship_registered_students.php" class="<?= $currentPage === 'internship_registered_students.php' ? 'active' : '' ?>">
-                    <i class="bi bi-journal-code"></i>
-                    <span class="links_name">Internship Registered Students</span>
-                </a>
-                <span class="tooltip">Internship Registered</span>
-            </li>
-
-            <li>
-                <a href="internship_placed_students.php" class="<?= $currentPage === 'internship_placed_students.php' ? 'active' : '' ?>">
-                    <i class="bi bi-file-earmark-check"></i>
-                    <span class="links_name">Internship Placed Students</span>
-                </a>
-                <span class="tooltip">Internship Placed</span>
-            </li>
-
-            <li>
-                <a href="vantage_registered_students.php" class="<?= $currentPage === 'vantage_registered_students.php' ? 'active' : '' ?>">
-                    <i class="bi bi-star"></i>
-                    <span class="links_name">Vantage Registered Students</span>
-                </a>
-                <span class="tooltip">Vantage Registered</span>
-            </li>
-
-            <li>
-                <a href="vantage_placed_students.php" class="<?= $currentPage === 'vantage_placed_students.php' ? 'active' : '' ?>">
-                    <i class="bi bi-star-fill"></i>
-                    <span class="links_name">Vantage Placed Students</span>
-                </a>
-                <span class="tooltip">Vantage Placed</span>
-            </li>
-
-            <li>
-                <a href="admin_student_progress.php" class="<?= $currentPage === 'admin_student_progress.php' ? 'active' : '' ?>">
-                    <i class="bi bi-search"></i>
-                    <span class="links_name">Student Progress Lookup</span>
-                </a>
-                <span class="tooltip">Student Progress Lookup</span>
-            </li>
-
-            <li>
-                <a href="send_notification.php" class="<?= $currentPage === 'send_notification.php' ? 'active' : '' ?>">
-                    <i class='bx bx-send'></i>
-                    <span class="links_name">Send Notification</span>
-                </a>
-                <span class="tooltip">Send Notification</span>
-            </li>
-
-            <li>
-                <a href="on_off_campus.php" class="<?= $currentPage === 'on_off_campus.php' ? 'active' : '' ?>">
-                    <i class="bi bi-buildings"></i>
-                    <span class="links_name">Offer Letter Collection</span>
-                </a>
-                <span class="tooltip">Offer Letter Collection</span>
-            </li>
-
-            <li>
-                <a href="internship_offer_letters.php" class="<?= $currentPage === 'internship_offer_letters.php' ? 'active' : '' ?>">
-                    <i class="bi bi-file-earmark-text"></i>
-                    <span class="links_name">Internship Letter Collection</span>
-                </a>
-                <span class="tooltip">Internship Letter Collection</span>
-            </li>
-
-            <li>
-                <a href="fulltime_progress_tracker.php" class="<?= $currentPage === 'fulltime_progress_tracker.php' ? 'active' : '' ?>">
-                    <i class="bi bi-briefcase"></i>
-                    <span class="links_name">Full-Time Progress Tracker</span>
-                </a>
-                <span class="tooltip">Full-Time Progress Tracker</span>
-            </li>
-
-            <li>
-                <a href="fulltime_company_data.php" class="<?= $currentPage === 'fulltime_company_data.php' ? 'active' : '' ?>">
-                    <i class="bi bi-building"></i>
-                    <span class="links_name">Full-Time Company Data</span>
-                </a>
-                <span class="tooltip">Full-Time Company Data</span>
-            </li>
-
-            <li>
-                <a href="internship_progress_tracker.php" class="<?= $currentPage === 'internship_progress_tracker.php' ? 'active' : '' ?>">
-                    <i class="bi bi-clock-history"></i>
-                    <span class="links_name">Internship Progress Tracker</span>
-                </a>
-                <span class="tooltip">Internship Progress Tracker</span>
-            </li>
-
-            <li>
-                <a href="internship_company_data.php" class="<?= $currentPage === 'internship_company_data.php' ? 'active' : '' ?>">
-                    <i class="bi bi-building-fill"></i>
-                    <span class="links_name">Internship Company Data</span>
-                </a>
-                <span class="tooltip">Internship Company Data</span>
-            </li>
-
-<li>
-    <a href="old_files_storage.php" class="<?= basename($_SERVER['PHP_SELF']) === 'old_files_storage.php' ? 'active' : '' ?>">
-        <i class="bi bi-archive"></i>
-        <span class="links_name">Previous Years Data</span>
-    </a>
-    <span class="tooltip">Previous Years Data</span>
-</li>
-
-
-            <li>
-                <a href="backup_module.php" class="<?= basename($_SERVER['PHP_SELF']) === 'backup_module.php' ? 'active' : '' ?>">
-                    <i class="bi bi-database"></i>
-                    <span class="links_name">Backup</span>
-                </a>
-                <span class="tooltip">Backup</span>
-            </li>
-
-
-             <li>
-                <a href="generate_course_report.php" class="<?= $currentPage === "generate_course_report.php" ? 'active' : '' ?>">
-                    <i class="bi bi-pie-chart"></i>
-                    <span class="links_name">Generate Report</span>
-                </a>
-                <span class="tooltip">Report</span>
-            </li>
-
-            <li>
-                <a href="manage_courses.php" class="<?= $currentPage === 'manage_courses.php' ? 'active' : '' ?>">
-                    <i class="bi bi-book"></i>
-                    <span class="links_name">Manage Courses</span>
-                </a>
-                <span class="tooltip">Manage Courses</span>
-            </li>
-
-            <li>
-                <a href="data_migration.php" class="<?= $currentPage === 'data_migration.php' ? 'active' : '' ?>">
-                    <i class="bi bi-arrow-left-right"></i>
-                    <span class="links_name">Data Migration</span>
-                </a>
-                <span class="tooltip">Import/Export Data</span>
-            </li>
-
-
-            <?php if (isset($_SESSION['username']) && in_array($_SESSION['username'], $users_module_admins)): ?>
-<li>
-    <a href="users.php" class="<?= $currentPage === 'users.php' ? 'active' : '' ?>">
-        <i class="bi bi-people"></i>
-        <span class="links_name">Users</span>
-    </a>
-    <span class="tooltip">Users</span>
-</li>
-<?php endif; ?>
+                <!-- ===== Other group ===== -->
+                <li class="nav-group <?= $other_active ? 'has-active open' : '' ?>" data-group="other">
+                    <button type="button" class="nav-group-header">
+                        <i class="bi bi-three-dots group-icon"></i>
+                        <span class="links_name">Other</span>
+                        <i class="bi bi-chevron-right chev"></i>
+                    </button>
+                    <span class="tooltip">Other</span>
+                    <ul class="nav-group-children">
+                        <li>
+                            <a href="old_files_storage.php" class="<?= $currentPage === 'old_files_storage.php' ? 'active' : '' ?>">
+                                <i class="bi bi-archive"></i>
+                                <span class="links_name">Previous Years Data</span>
+                            </a>
+                            <span class="tooltip">Previous Years Data</span>
+                        </li>
+                        <li>
+                            <a href="manage_courses.php" class="<?= $currentPage === 'manage_courses.php' ? 'active' : '' ?>">
+                                <i class="bi bi-book"></i>
+                                <span class="links_name">Manage Courses</span>
+                            </a>
+                            <span class="tooltip">Manage Courses</span>
+                        </li>
+                        <li>
+                            <a href="data_migration.php" class="<?= $currentPage === 'data_migration.php' ? 'active' : '' ?>">
+                                <i class="bi bi-arrow-left-right"></i>
+                                <span class="links_name">Data Migration</span>
+                            </a>
+                            <span class="tooltip">Import/Export Data</span>
+                        </li>
+                        <li>
+                            <a href="backup_module.php" class="<?= $currentPage === 'backup_module.php' ? 'active' : '' ?>">
+                                <i class="bi bi-database"></i>
+                                <span class="links_name">Backup</span>
+                            </a>
+                            <span class="tooltip">Backup</span>
+                        </li>
+                        <li>
+                            <a href="admin_student_progress.php" class="<?= $currentPage === 'admin_student_progress.php' ? 'active' : '' ?>">
+                                <i class="bi bi-search"></i>
+                                <span class="links_name">Student Progress Lookup</span>
+                            </a>
+                            <span class="tooltip">Student Progress Lookup</span>
+                        </li>
+                        <?php if (isset($_SESSION['username']) && in_array($_SESSION['username'], $users_module_admins)): ?>
+                        <li>
+                            <a href="users.php" class="<?= $currentPage === 'users.php' ? 'active' : '' ?>">
+                                <i class="bi bi-people"></i>
+                                <span class="links_name">Users</span>
+                            </a>
+                            <span class="tooltip">Users</span>
+                        </li>
+                        <?php endif; ?>
+                    </ul>
+                </li>
             </ul>
         </div>
 
@@ -969,22 +1180,67 @@ document.querySelectorAll('.nav-list li').forEach(li => {
 // Preserve sidebar scroll position across page reloads
 document.addEventListener("DOMContentLoaded", function () {
     const navWrapper = document.querySelector(".nav-wrapper");
-
-    // Restore previous scroll position
-    const savedScrollTop = localStorage.getItem("sidebarScrollTop");
-    if (savedScrollTop) {
-        navWrapper.scrollTop = parseInt(savedScrollTop, 10);
+    if (navWrapper) {
+        const savedScrollTop = localStorage.getItem("sidebarScrollTop");
+        if (savedScrollTop) navWrapper.scrollTop = parseInt(savedScrollTop, 10);
+        navWrapper.addEventListener("scroll", function () {
+            localStorage.setItem("sidebarScrollTop", navWrapper.scrollTop);
+        });
+        document.querySelectorAll(".nav-list a").forEach(link => {
+            link.addEventListener("click", () => {
+                localStorage.setItem("sidebarScrollTop", navWrapper.scrollTop);
+            });
+        });
     }
 
-    // Save current scroll position before leaving page
-    navWrapper.addEventListener("scroll", function () {
-        localStorage.setItem("sidebarScrollTop", navWrapper.scrollTop);
+    // === Mobile sidebar drawer toggle ===
+    const mobileBtn = document.getElementById('pcMobileMenuBtn');
+    const sidebarEl = document.getElementById('pcSidebar');
+    const backdrop  = document.getElementById('pcSidebarBackdrop');
+    function pcSetSidebar(open) {
+        if (!sidebarEl || !backdrop) return;
+        sidebarEl.classList.toggle('mobile-open', open);
+        backdrop.classList.toggle('show', open);
+        if (mobileBtn) mobileBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
+    }
+    if (mobileBtn) mobileBtn.addEventListener('click', () => {
+        pcSetSidebar(!sidebarEl.classList.contains('mobile-open'));
+    });
+    if (backdrop) backdrop.addEventListener('click', () => pcSetSidebar(false));
+    // Close drawer on link click in mobile mode so the user lands on the new
+    // page with chrome out of the way.
+    document.querySelectorAll('.sidebar .nav-list a').forEach(a => {
+        a.addEventListener('click', () => {
+            if (window.matchMedia('(max-width: 768px)').matches) pcSetSidebar(false);
+        });
     });
 
-    // Also store scroll position just before navigating away
-    document.querySelectorAll(".nav-list a").forEach(link => {
-        link.addEventListener("click", () => {
-            localStorage.setItem("sidebarScrollTop", navWrapper.scrollTop);
+    // === Collapsible nav-group toggle + localStorage persistence ===
+    // Server-side rendering already opens the group containing the active page
+    // (.has-active gets .open). We layer manual user choices on top, so the
+    // active group stays open even if the user previously collapsed it.
+    const STORAGE_KEY = 'navGroupsOpen';
+    let savedGroups = {};
+    try { savedGroups = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}'); } catch (e) { savedGroups = {}; }
+
+    document.querySelectorAll('.nav-group').forEach(group => {
+        const key = group.dataset.group;
+        const hasActive = group.classList.contains('has-active');
+        // Apply saved state, but always keep the active group's group expanded.
+        if (!hasActive && savedGroups[key] === false) {
+            group.classList.remove('open');
+        } else if (savedGroups[key] === true) {
+            group.classList.add('open');
+        }
+
+        const header = group.querySelector(':scope > .nav-group-header');
+        if (!header) return;
+        header.addEventListener('click', function (e) {
+            e.preventDefault();
+            const willOpen = !group.classList.contains('open');
+            group.classList.toggle('open', willOpen);
+            savedGroups[key] = willOpen;
+            try { localStorage.setItem(STORAGE_KEY, JSON.stringify(savedGroups)); } catch (e) {}
         });
     });
 });

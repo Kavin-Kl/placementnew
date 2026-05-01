@@ -28,18 +28,30 @@ function romanize($num) {
 $success = "";
 $created_by = trim($_POST["created_by"] ?? '');
 
-if ($_SERVER["REQUEST_METHOD"] === "POST") {
+if ($_SERVER["REQUEST_METHOD"] === "POST" && !empty($_POST['company_name'])) {
     $conn->begin_transaction(); // START TRANSACTION
 
     try {
-        $company = $_POST["company_name"];
+        $company = trim($_POST["company_name"] ?? '');
         $company_sector = trim($_POST['company_sector'] ?? '');
         // Handle "Others" with custom input
         if ($company_sector === 'Others' && !empty($_POST['company_sector_custom'])) {
             $company_sector = trim($_POST['company_sector_custom']);
         }
-        $open = $_POST['open_date'] ? date('Y-m-d H:i:s', strtotime($_POST['open_date'])) : null;
-        $close = $_POST['close_date'] ? date('Y-m-d H:i:s', strtotime($_POST['close_date'])) : null;
+        $rawOpen  = $_POST['open_date']  ?? '';
+        $rawClose = $_POST['close_date'] ?? '';
+        $open  = !empty($rawOpen)  ? date('Y-m-d H:i:s', strtotime($rawOpen))  : null;
+        $close = !empty($rawClose) ? date('Y-m-d H:i:s', strtotime($rawClose)) : null;
+
+        if (empty($company)) {
+            throw new Exception("Company name is required.");
+        }
+        if (empty($open)) {
+            throw new Exception("Form open date & time is required.");
+        }
+        if (empty($close)) {
+            throw new Exception("Form close date & time is required.");
+        }
 
         if ($open && $close && strtotime($close) < strtotime($open)) {
             throw new Exception("Close date & time cannot be earlier than open date & time.");
@@ -63,9 +75,12 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         $jd_file_json = json_encode($jd_files);
         $extra_details = $_POST["extra_details"] ?? '';
 
-        // Get existing drives for numbering
-        $stmt = $conn->prepare("SELECT drive_id, open_date FROM drives WHERE company_name = ? ORDER BY open_date ASC");
-        $stmt->bind_param("s", $company);
+        // Get existing drives for numbering — scope by academic_year so Drive
+        // numbering restarts per year (the same company can be Drive 1 in
+        // 2026-2027 and Drive 1 again in 2027-2028).
+        $numbering_ay = trim($_POST['academic_year'] ?? ($_SESSION['selected_academic_year'] ?? '2026-2027'));
+        $stmt = $conn->prepare("SELECT drive_id, open_date FROM drives WHERE company_name = ? AND academic_year = ? ORDER BY open_date ASC");
+        $stmt->bind_param("ss", $company, $numbering_ay);
         $stmt->execute();
         $result = $stmt->get_result();
 
@@ -146,9 +161,9 @@ $stmt->bind_param(
             if (!$stmt->execute()) throw new Exception("SQL Error (jd_link update): " . $stmt->error);
         }
 
-        // Renumber all drives
-        $allDrivesStmt = $conn->prepare("SELECT drive_id, open_date FROM drives WHERE company_name = ? ORDER BY open_date ASC");
-        $allDrivesStmt->bind_param("s", $company);
+        // Renumber all drives — scoped to the same academic year as the new drive.
+        $allDrivesStmt = $conn->prepare("SELECT drive_id, open_date FROM drives WHERE company_name = ? AND academic_year = ? ORDER BY open_date ASC");
+        $allDrivesStmt->bind_param("ss", $company, $numbering_ay);
         $allDrivesStmt->execute();
         $allDrivesResult = $allDrivesStmt->get_result();
 
@@ -404,7 +419,7 @@ $stmt->bind_param(
 
   <label>WhatsApp Group Link:</label>
   <input type="text" id="whatsapp"><br>
-  <small style="display:block;color:#555;margin-top:-4px;margin-bottom:8px;">Students who apply to this drive will see this link and be able to join the WhatsApp group.</small>
+  <small style="display:block;color:#555;margin-top:-4px;margin-bottom:8px;">Students viewing this drive will see this link and be able to join the WhatsApp group.</small>
 
   <label>Additional Info:</label>
 <input type="text" id="additionalInfo"><br>

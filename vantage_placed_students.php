@@ -199,6 +199,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['ajax_row'], $_GET['plac
 
 // === Handle Excel/CSV Import for Placed Students ===
 if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["csv_file_placed"])) {
+    require_once __DIR__ . '/placed_import_helper.php';
     require 'vendor/autoload.php';
 
     $file = $_FILES["csv_file_placed"];
@@ -315,6 +316,10 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["csv_file_placed"])) 
 
         $inserted = 0;
         $skipped = 0;
+        $drives_created = 0;
+        $roles_created  = 0;
+        $touched_pairs  = [];
+        $resolveErrors  = [];
 
         foreach ($dataRows as $data) {
             $upid          = trim($data[$headerMap['upid']] ?? '');
@@ -389,20 +394,36 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["csv_file_placed"])) 
 
             // Insert placement record — stamp academic_year.
             $row_ay = $_SESSION['selected_academic_year'] ?? '2026-2027';
+
+            $resolved = pi_resolve_drive_role(
+                $conn, $company_name, $drive_no, $role, $offer_type,
+                $ctc, $stipend, $row_ay,
+                $drives_created, $roles_created, $resolveErrors
+            );
+            $drive_id_resolved = $resolved[0] ?? null;
+            $role_id_resolved  = $resolved[1] ?? null;
+
             $stmt = $conn->prepare("INSERT INTO placed_students
-                (student_id, upid, program_type, program, course, reg_no, student_name, email, phone_no,
+                (student_id, drive_id, role_id, upid, program_type, program, course, reg_no, student_name, email, phone_no,
                  offer_type, drive_no, company_name, role, ctc, stipend, academic_year)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
 
             if ($stmt) {
-                $stmt->bind_param("isssssssssssssss",
-                    $student_id, $upid, $program_type, $program, $course,
+                $stmt->bind_param("iiisssssssssssssss",
+                    $student_id, $drive_id_resolved, $role_id_resolved,
+                    $upid, $program_type, $program, $course,
                     $reg_no, $student_name, $email, $phone_no,
                     $offer_type, $drive_no, $company_name, $role, $ctc, $stipend, $row_ay
                 );
 
                 if ($stmt->execute()) {
                     $inserted++;
+                    if ($drive_id_resolved && $role_id_resolved) {
+                        $touched_pairs[$drive_id_resolved . ':' . $role_id_resolved] = [$drive_id_resolved, $role_id_resolved];
+                        if (!empty($course)) {
+                            pi_add_course_to_role($conn, (int)$drive_id_resolved, (int)$role_id_resolved, (string)$course);
+                        }
+                    }
                     // If this vantage placement is a full-time offer, also lock the student.
                     require_once __DIR__ . '/academic_year_helper.php';
                     $yopRow = $conn->query("SELECT year_of_passing FROM students WHERE student_id = " . intval($student_id));
@@ -417,7 +438,13 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["csv_file_placed"])) 
             }
         }
 
-        $_SESSION['import_message'] = "Import completed. Inserted: $inserted rows. Skipped: $skipped rows.";
+        pi_recompute_hired_counts($conn, $touched_pairs);
+
+        $msg = "Import completed. Inserted: $inserted rows. Skipped: $skipped rows.";
+        if ($drives_created > 0 || $roles_created > 0) {
+            $msg .= " Auto-created $drives_created drive(s) and $roles_created role(s) — they now appear in the trackers and Company Data tabs.";
+        }
+        $_SESSION['import_message'] = $msg;
         $_SESSION['import_status'] = "success";
 
     } catch (Exception $e) {

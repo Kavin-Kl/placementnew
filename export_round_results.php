@@ -23,7 +23,7 @@ if (!$drive_id) {
 }
 
 // Get drive details
-$drive_stmt = $conn->prepare("SELECT company_name, drive_no FROM drives WHERE drive_id = ?");
+$drive_stmt = $conn->prepare("SELECT company_name, drive_no, academic_year FROM drives WHERE drive_id = ?");
 $drive_stmt->bind_param("i", $drive_id);
 $drive_stmt->execute();
 $drive_result = $drive_stmt->get_result();
@@ -31,6 +31,13 @@ $drive = $drive_result->fetch_assoc();
 
 if (!$drive) {
     die("Error: Drive not found");
+}
+
+// Refuse to export drives that belong to a different academic year than the
+// admin currently has selected — prevents URL-tampering exports across years.
+$selected_ay = $_SESSION['selected_academic_year'] ?? null;
+if ($selected_ay && !empty($drive['academic_year']) && $drive['academic_year'] !== $selected_ay) {
+    die("Error: This drive belongs to academic year " . htmlspecialchars($drive['academic_year']) . ", but you are currently viewing " . htmlspecialchars($selected_ay) . ". Switch academic year to export this drive.");
 }
 
 // Get applications with round results for this drive

@@ -11,7 +11,7 @@ if (!isset($_SESSION['username'])) {
 $admin_username = $_SESSION['username'] ?? null;
 
 // Handle AJAX requests
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST['action'])) {
     header('Content-Type: application/json');
 
     $action = $_POST['action'] ?? '';
@@ -54,7 +54,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     if ($action === 'get_count') {
-        $stmt = $conn->prepare("SELECT COUNT(*) as count FROM admin_notifications WHERE is_read = 0");
+        $ay = $_SESSION['selected_academic_year'] ?? null;
+        if ($ay) {
+            $stmt = $conn->prepare("
+                SELECT COUNT(*) AS count
+                FROM admin_notifications an
+                LEFT JOIN drives d ON an.drive_id = d.drive_id
+                WHERE an.is_read = 0
+                  AND (an.drive_id IS NULL OR d.academic_year = ?)
+            ");
+            $stmt->bind_param('s', $ay);
+        } else {
+            $stmt = $conn->prepare("SELECT COUNT(*) as count FROM admin_notifications WHERE is_read = 0");
+        }
         $stmt->execute();
         $result = $stmt->get_result()->fetch_assoc();
         echo json_encode(['count' => $result['count']]);
@@ -62,9 +74,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-// Fetch all notifications (paginated, 10 per page)
+// Fetch notifications for the currently selected academic year. Admin
+// notifications without a drive (system / reminder) are always shown; ones tied
+// to a drive are filtered to that drive's academic_year so old years don't leak
+// in after the user switches years.
+$ay = $_SESSION['selected_academic_year'] ?? null;
+$ay_clause = $ay ? "AND (an.drive_id IS NULL OR d.academic_year = '" . $conn->real_escape_string($ay) . "')" : "";
+
 require_once __DIR__ . '/pagination_helper.php';
-$total_notif = (int)$conn->query("SELECT COUNT(*) AS c FROM admin_notifications")->fetch_assoc()['c'];
+$total_notif_sql = "
+    SELECT COUNT(*) AS c
+    FROM admin_notifications an
+    LEFT JOIN drives d ON an.drive_id = d.drive_id
+    WHERE 1=1 $ay_clause
+";
+$total_notif = (int)$conn->query($total_notif_sql)->fetch_assoc()['c'];
 $pg = paginate_setup($total_notif, 10, 'page');
 $notifications_query = "
     SELECT
@@ -73,13 +97,19 @@ $notifications_query = "
         d.drive_no
     FROM admin_notifications an
     LEFT JOIN drives d ON an.drive_id = d.drive_id
+    WHERE 1=1 $ay_clause
     ORDER BY an.created_at DESC
     LIMIT {$pg['per_page']} OFFSET {$pg['offset']}
 ";
 $notifications_result = $conn->query($notifications_query);
 
-// Get unread count
-$unread_count_query = "SELECT COUNT(*) as count FROM admin_notifications WHERE is_read = 0";
+// Get unread count (also AY-scoped).
+$unread_count_query = "
+    SELECT COUNT(*) AS count
+    FROM admin_notifications an
+    LEFT JOIN drives d ON an.drive_id = d.drive_id
+    WHERE an.is_read = 0 $ay_clause
+";
 $unread_count = $conn->query($unread_count_query)->fetch_assoc()['count'];
 
 require 'header.php';

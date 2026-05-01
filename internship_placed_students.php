@@ -205,6 +205,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["csv_file_placed"])) 
     error_log("[PLACED IMPORT] FILES data: " . print_r($_FILES, true));
 
     require 'vendor/autoload.php';
+    require_once __DIR__ . '/placed_import_helper.php';
 
     $file = $_FILES["csv_file_placed"];
     $fileName = $file["name"];
@@ -322,6 +323,10 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["csv_file_placed"])) 
 
         $inserted = 0;
         $skipped = 0;
+        $drives_created = 0;
+        $roles_created  = 0;
+        $touched_pairs  = [];
+        $resolveErrors  = [];
         $skipReasons = [
             'empty_fields' => 0,
             'student_not_found' => 0,
@@ -424,20 +429,36 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["csv_file_placed"])) 
             // Insert placement record — stamp academic_year.
             error_log("[PLACED IMPORT] Inserting record for UPID '$upid', company='$company_name'");
             $row_ay = $_SESSION['selected_academic_year'] ?? '2026-2027';
+
+            $resolved = pi_resolve_drive_role(
+                $conn, $company_name, $drive_no, $role, $offer_type,
+                $ctc, $stipend, $row_ay,
+                $drives_created, $roles_created, $resolveErrors
+            );
+            $drive_id_resolved = $resolved[0] ?? null;
+            $role_id_resolved  = $resolved[1] ?? null;
+
             $stmt = $conn->prepare("INSERT INTO placed_students
-                (student_id, upid, program_type, program, course, reg_no, student_name, email, phone_no,
+                (student_id, drive_id, role_id, upid, program_type, program, course, reg_no, student_name, email, phone_no,
                  offer_type, drive_no, company_name, role, ctc, stipend, academic_year)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
 
             if ($stmt) {
-                $stmt->bind_param("isssssssssssssss",
-                    $student_id, $upid, $program_type, $program, $course,
+                $stmt->bind_param("iiisssssssssssssss",
+                    $student_id, $drive_id_resolved, $role_id_resolved,
+                    $upid, $program_type, $program, $course,
                     $reg_no, $student_name, $email, $phone_no,
                     $offer_type, $drive_no, $company_name, $role, $ctc, $stipend, $row_ay
                 );
 
                 if ($stmt->execute()) {
                     $inserted++;
+                    if ($drive_id_resolved && $role_id_resolved) {
+                        $touched_pairs[$drive_id_resolved . ':' . $role_id_resolved] = [$drive_id_resolved, $role_id_resolved];
+                        if (!empty($course)) {
+                            pi_add_course_to_role($conn, (int)$drive_id_resolved, (int)$role_id_resolved, (string)$course);
+                        }
+                    }
                     error_log("[PLACED IMPORT] INSERT SUCCESSFUL for UPID '$upid'");
                     // Internship + PPO with final-year YoP also locks (full-time semantics).
                     require_once __DIR__ . '/academic_year_helper.php';
@@ -455,6 +476,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["csv_file_placed"])) 
             }
             $rowNumber++;
         }
+
+        pi_recompute_hired_counts($conn, $touched_pairs);
 
         // Build detailed message
         $message = "Import completed. Inserted: $inserted rows";
@@ -477,6 +500,9 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["csv_file_placed"])) 
             if (!empty($details)) {
                 $message .= " (" . implode(', ', $details) . ")";
             }
+        }
+        if ($drives_created > 0 || $roles_created > 0) {
+            $message .= ". Auto-created $drives_created drive(s) and $roles_created role(s) — they now appear in the Internship Progress Tracker and Internship Company Data tabs.";
         }
 
         $_SESSION['import_message'] = $message;

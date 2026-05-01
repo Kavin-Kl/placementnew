@@ -233,7 +233,7 @@ if ($course === 'ALL') {
 // Build offer type filter
 $offer_type_condition = "";
 if ($offer_type_filter === 'FULLTIME') {
-    $offer_type_condition = " AND (dr.offer_type IN ('FTE', 'Internship + PPO', 'Internship+PPO', 'Internship + PPO (Final Year)', 'Apprenticeship (Part Time)') OR dr.offer_type IS NULL)";
+    $offer_type_condition = " AND (dr.offer_type IN ('FTE', 'Apprenticeship (Full time)', 'Internship + PPO', 'Internship+PPO', 'Internship + PPO (Final Year)') OR dr.offer_type IS NULL)";
 } elseif ($offer_type_filter === 'INTERNSHIP') {
     $offer_type_condition = " AND dr.offer_type = 'Internship'";
 }
@@ -363,7 +363,7 @@ $ctc_values = [];
 // Build offer type filter for CTC query
 $ctc_offer_type_condition = "";
 if ($offer_type_filter === 'FULLTIME') {
-    $ctc_offer_type_condition = " AND (offer_type IN ('FTE', 'Internship + PPO', 'Internship+PPO', 'Internship + PPO (Final Year)', 'Apprenticeship (Part Time)') OR offer_type IS NULL)";
+    $ctc_offer_type_condition = " AND (offer_type IN ('FTE', 'Apprenticeship (Full time)', 'Internship + PPO', 'Internship+PPO', 'Internship + PPO (Final Year)') OR offer_type IS NULL)";
 } elseif ($offer_type_filter === 'INTERNSHIP') {
     $ctc_offer_type_condition = " AND offer_type = 'Internship'";
 }
@@ -438,7 +438,7 @@ $highest_ctc = $ctc_values ? max($ctc_values) : 0;
 // Build offer type filter for companies query
 $companies_offer_type_condition = "";
 if ($offer_type_filter === 'FULLTIME') {
-    $companies_offer_type_condition = " AND (dr.offer_type IN ('FTE', 'Internship + PPO', 'Internship+PPO', 'Internship + PPO (Final Year)', 'Apprenticeship (Part Time)') OR dr.offer_type IS NULL)";
+    $companies_offer_type_condition = " AND (dr.offer_type IN ('FTE', 'Apprenticeship (Full time)', 'Internship + PPO', 'Internship+PPO', 'Internship + PPO (Final Year)') OR dr.offer_type IS NULL)";
 } elseif ($offer_type_filter === 'INTERNSHIP') {
     $companies_offer_type_condition = " AND dr.offer_type = 'Internship'";
 }
@@ -562,7 +562,7 @@ if ($stmtList) {
 // Build offer type filter for companies hired query
 $hired_offer_type_condition = "";
 if ($offer_type_filter === 'FULLTIME') {
-    $hired_offer_type_condition = " AND (dr.offer_type IN ('FTE', 'Internship + PPO', 'Internship+PPO', 'Internship + PPO (Final Year)', 'Apprenticeship (Part Time)') OR dr.offer_type IS NULL)";
+    $hired_offer_type_condition = " AND (dr.offer_type IN ('FTE', 'Apprenticeship (Full time)', 'Internship + PPO', 'Internship+PPO', 'Internship + PPO (Final Year)') OR dr.offer_type IS NULL)";
 } elseif ($offer_type_filter === 'INTERNSHIP') {
     $hired_offer_type_condition = " AND dr.offer_type = 'Internship'";
 }

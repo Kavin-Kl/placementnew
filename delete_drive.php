@@ -45,32 +45,37 @@ $tables = [
         WHERE student_id NOT IN (SELECT student_id FROM placed_students)
     ");
 
-    // Step 3: Renumber remaining drives for this company
+    // Step 3: Renumber remaining drives for this company, scoped per academic
+    // year so deleting a drive in 2026-2027 doesn't disturb numbers in 2027-2028.
+    $ayStmt = $conn->prepare("SELECT DISTINCT academic_year FROM drives WHERE company_name = ?");
+    $ayStmt->bind_param("s", $company);
+    $ayStmt->execute();
+    $ayResult = $ayStmt->get_result();
+    $years = [];
+    while ($r = $ayResult->fetch_assoc()) { $years[] = $r['academic_year']; }
+    $ayStmt->close();
 
+    foreach ($years as $year) {
+        $stmt = $conn->prepare("SELECT drive_id FROM drives WHERE company_name = ? AND academic_year <=> ? ORDER BY open_date ASC");
+        $stmt->bind_param("ss", $company, $year);
+        $stmt->execute();
+        $result = $stmt->get_result();
 
-    // Step 3: Renumber remaining drives for this company
-    $stmt = $conn->prepare("SELECT drive_id FROM drives WHERE company_name = ? ORDER BY open_date ASC");
-    $stmt->bind_param("s", $company);
-    $stmt->execute();
-    $result = $stmt->get_result();
+        $count = 1;
+        while ($row = $result->fetch_assoc()) {
+            $newDriveNo = "Drive " . $count++;
+            $driveId = $row['drive_id'];
 
-    $count = 1;
-    while ($row = $result->fetch_assoc()) {
-        $newDriveNo = "Drive " . $count++;
-        $driveId = $row['drive_id'];
+            $upd1 = $conn->prepare("UPDATE drives SET drive_no = ? WHERE drive_id = ?");
+            $upd1->bind_param("si", $newDriveNo, $driveId);
+            $upd1->execute();
+            $upd1->close();
 
-        $upd1 = $conn->prepare("UPDATE drives SET drive_no = ? WHERE drive_id = ?");
-        $upd1->bind_param("si", $newDriveNo, $driveId);
-        $upd1->execute();
-        $upd1->close();
-
-        //$upd2 = $conn->prepare("UPDATE company_followup SET drive_no = ? WHERE drive_id = ?");
-       // if ($upd2) { $upd2->bind_param("si", $newDriveNo, $driveId); $upd2->execute(); $upd2->close(); }
-
-        $upd3 = $conn->prepare("UPDATE drive_data SET drive_no = ? WHERE drive_id = ?");
-        if ($upd3) { $upd3->bind_param("si", $newDriveNo, $driveId); $upd3->execute(); $upd3->close(); }
+            $upd3 = $conn->prepare("UPDATE drive_data SET drive_no = ? WHERE drive_id = ?");
+            if ($upd3) { $upd3->bind_param("si", $newDriveNo, $driveId); $upd3->execute(); $upd3->close(); }
+        }
+        $stmt->close();
     }
-    $stmt->close();
 }
 
 header("Location: dashboard");

@@ -1775,7 +1775,7 @@ $field_types = ['text', 'number', 'email', 'textarea', 'select', 'file', 'checkb
                         <div class="form-group">
                             <label class="form-label">WhatsApp Group Link</label>
                             <input type="text" id="whatsapp" class="form-input">
-                            <small style="display:block;color:#555;margin-top:4px;">Students who apply to this drive will see this link and be able to join the WhatsApp group.</small>
+                            <small style="display:block;color:#555;margin-top:4px;">Students viewing this drive will see this link and be able to join the WhatsApp group.</small>
                         </div>
                         <div class="form-group">
                             <label class="form-label">Additional Info</label>

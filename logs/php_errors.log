@@ -1,0 +1,12 @@
+[01-May-2026 21:50:36 Europe/Berlin] PHP Fatal error:  Uncaught ArgumentCountError: strpos() expects at least 2 arguments, 0 given in C:\Users\Kavin\AppData\Local\Temp\handler_test.php:7
+Stack trace:
+#0 C:\Users\Kavin\AppData\Local\Temp\handler_test.php(7): strpos()
+#1 Command line code(1): require('C:\\Users\\Kavin\\...')
+#2 {main}
+  thrown in C:\Users\Kavin\AppData\Local\Temp\handler_test.php on line 7
+[01-May-2026 21:50:36 Europe/Berlin] [FATAL] Uncaught ArgumentCountError: strpos() expects at least 2 arguments, 0 given in C:\Users\Kavin\AppData\Local\Temp\handler_test.php:7
+Stack trace:
+#0 C:\Users\Kavin\AppData\Local\Temp\handler_test.php(7): strpos()
+#1 Command line code(1): require('C:\\Users\\Kavin\\...')
+#2 {main}
+  thrown in C:\Users\Kavin\AppData\Local\Temp\handler_test.php:7

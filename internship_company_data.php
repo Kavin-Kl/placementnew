@@ -26,10 +26,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_company_data_row
     }
 }
 
-include("header.php");
-
-$page_title = "Internship Company Data";
-
 $academic_year = $_SESSION['selected_academic_year'] ?? null;
 $ay_clause = $academic_year ? "AND drv.academic_year = '" . $conn->real_escape_string($academic_year) . "'" : "";
 
@@ -47,7 +43,7 @@ SELECT
   drv.company_sector,
   dr.sector AS role_sector
 FROM drive_data d
-LEFT JOIN drives drv ON d.company_name = drv.company_name AND d.drive_no = drv.drive_no
+INNER JOIN drives drv ON d.drive_id = drv.drive_id
 LEFT JOIN drive_roles dr ON drv.drive_id = dr.drive_id AND TRIM(d.role) = TRIM(dr.designation_name)
 WHERE d.offer_type IN ('Internship','Apprenticeship (Part Time)','Internship + PPO (Pre-Final Year)')
   $ay_clause
@@ -65,8 +61,38 @@ if ($cs) {
 }
 
 function formatCoursesPretty(array $courses): string {
-    $clean = array_filter(array_map('trim', $courses), fn($v) => $v !== '' && strtolower($v) !== 'on');
-    return implode(', ', $clean);
+    global $UG_COURSES, $PG_COURSES;
+
+    $clean = array_values(array_filter(array_map('trim', $courses), fn($v) => $v !== '' && strtolower($v) !== 'on'));
+    if (empty($clean)) return '';
+
+    $lower = array_map('strtolower', $clean);
+    $ugLower = is_array($UG_COURSES ?? null) ? array_map('strtolower', $UG_COURSES) : [];
+    $pgLower = is_array($PG_COURSES ?? null) ? array_map('strtolower', $PG_COURSES) : [];
+
+    $hasAllUG = (bool) array_intersect($lower, ['all ug', 'all ug courses']);
+    $hasAllPG = (bool) array_intersect($lower, ['all pg', 'all pg courses']);
+
+    if (!$hasAllUG && !empty($ugLower) && count(array_intersect($ugLower, $lower)) === count($ugLower)) {
+        $hasAllUG = true;
+    }
+    if (!$hasAllPG && !empty($pgLower) && count(array_intersect($pgLower, $lower)) === count($pgLower)) {
+        $hasAllPG = true;
+    }
+
+    $display = [];
+    if ($hasAllUG) $display[] = 'All UG Courses';
+    if ($hasAllPG) $display[] = 'All PG Courses';
+
+    foreach ($clean as $i => $c) {
+        $lc = $lower[$i];
+        if (in_array($lc, ['all ug', 'all pg', 'all ug courses', 'all pg courses'])) continue;
+        if ($hasAllUG && in_array($lc, $ugLower)) continue;
+        if ($hasAllPG && in_array($lc, $pgLower)) continue;
+        $display[] = $c;
+    }
+
+    return implode(', ', $display);
 }
 
 function deriveSchools(array $courses, array $map): string {
@@ -79,6 +105,80 @@ function deriveSchools(array $courses, array $map): string {
     }
     return implode(', ', array_keys($found));
 }
+
+// Materialize rows so we can filter, export, and render from the same set.
+$rows = [];
+if ($result) {
+    while ($r = $result->fetch_assoc()) {
+        $courses = json_decode($r['eligible_courses'] ?? '[]', true);
+        if (!is_array($courses)) $courses = [];
+        $r['_courses_arr'] = $courses;
+        $r['_courses_str'] = formatCoursesPretty($courses);
+        $r['_school_str']  = deriveSchools($courses, $courseSchoolMap);
+        $rows[] = $r;
+    }
+}
+
+$companySectors = array_values(array_unique(array_filter(array_map(fn($r)=>trim((string)($r['company_sector']??'')), $rows))));
+$roleSectors    = array_values(array_unique(array_filter(array_map(fn($r)=>trim((string)($r['role_sector']??'')),    $rows))));
+$offerTypes     = array_values(array_unique(array_filter(array_map(fn($r)=>trim((string)($r['offer_type']??'')),     $rows))));
+$finalStatuses  = array_values(array_unique(array_filter(array_map(fn($r)=>trim((string)($r['final_status']??'')),   $rows))));
+$driveNos       = array_values(array_unique(array_filter(array_map(fn($r)=>trim((string)($r['drive_number']??'')),   $rows))));
+sort($companySectors); sort($roleSectors); sort($offerTypes); sort($finalStatuses); sort($driveNos);
+
+$filter = $_GET;
+$filtered = array_values(array_filter($rows, function($r) use ($filter) {
+    if (!empty($filter['company_name']) && stripos((string)$r['company_name'], $filter['company_name']) === false) return false;
+    if (!empty($filter['role'])         && stripos((string)$r['role'],         $filter['role'])         === false) return false;
+    foreach (['company_sector','role_sector','offer_type','final_status','drive_number'] as $f) {
+        if (!empty($filter[$f]) && (string)($r[$f] ?? '') !== (string)$filter[$f]) return false;
+    }
+    if (!empty($filter['min_stipend_min']) && is_numeric($filter['min_stipend_min']) && (float)($r['min_stipend'] ?? 0) < (float)$filter['min_stipend_min']) return false;
+    if (!empty($filter['max_stipend_max']) && is_numeric($filter['max_stipend_max']) && (float)($r['max_stipend'] ?? 0) > (float)$filter['max_stipend_max']) return false;
+    if (!empty($filter['course'])) {
+        $needle = strtolower(trim($filter['course']));
+        $hay = strtolower($r['_courses_str']);
+        if ($needle !== '' && strpos($hay, $needle) === false) return false;
+    }
+    return true;
+}));
+
+if (isset($_GET['action']) && $_GET['action'] === 'export') {
+    require __DIR__ . '/vendor/autoload.php';
+    $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+    $sheet = $spreadsheet->getActiveSheet();
+    $headerRow = ['Sl No','Company Name','Sector of Company','Drive Number','Role','Sector of Role','Offer Type','Final Status','Min Stipend','Max Stipend','Courses','School'];
+    $sheet->fromArray($headerRow, null, 'A1');
+    $rowNum = 2; $sl = 1;
+    foreach ($filtered as $r) {
+        $sheet->fromArray([
+            $sl++,
+            $r['company_name'] ?? '',
+            $r['company_sector'] ?? '',
+            $r['drive_number'] ?? '',
+            $r['role'] ?? '',
+            $r['role_sector'] ?? '',
+            $r['offer_type'] ?? '',
+            $r['final_status'] ?? '',
+            $r['min_stipend'] ?? '',
+            $r['max_stipend'] ?? '',
+            $r['_courses_str'] ?? '',
+            $r['_school_str'] ?? '',
+        ], null, 'A' . $rowNum++);
+    }
+    foreach (range('A','L') as $col) { $sheet->getColumnDimension($col)->setAutoSize(true); }
+    $sheet->freezePane('A2');
+    $filename = 'Internship_Company_Data_' . date('Ymd_His') . '.xlsx';
+    header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    header('Content-Disposition: attachment; filename="' . $filename . '"');
+    header('Cache-Control: max-age=0');
+    (new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet))->save('php://output');
+    exit;
+}
+
+include("header.php");
+
+$page_title = "Internship Company Data";
 ?>
 
 <style>
@@ -132,6 +232,27 @@ function deriveSchools(array $courses, array $map): string {
 }
 .icd-save-btn:hover { background:#198754; color:#fff; }
 .icd-saved { color:#198754; font-size:12px; margin-left:6px; }
+
+.icd-toolbar { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; margin: 12px 0; }
+.icd-toolbar .icd-search { height: 36px; padding: 6px 10px; border: 1px solid #ccc; border-radius: 6px; min-width: 220px; }
+.icd-btn {
+    height: 36px; padding: 6px 14px; border-radius: 6px; border: 1px solid #650000;
+    background: #fff; color: #650000; font-weight: 500; cursor: pointer; display: inline-flex;
+    align-items: center; gap: 6px;
+}
+.icd-btn:hover { background: #650000; color: #fff; }
+.icd-btn.primary { background: #650000; color: #fff; }
+.icd-btn.primary:hover { background: #4a0000; }
+.icd-summary { color: #666; font-size: 12px; margin-left: auto; }
+
+#icdFilterModal .filter-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
+#icdFilterModal .filter-grid label { display: flex; flex-direction: column; font-size: 12px; color: #444; gap: 4px; }
+#icdFilterModal .filter-grid input,
+#icdFilterModal .filter-grid select { height: 34px; padding: 4px 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 13px; }
+#icdFilterModal .filter-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px; }
+
+.home-section .container1 { min-height: calc(100vh - 120px); display: flex; flex-direction: column; }
+.home-section .cd-scroll-wrap { flex: 1 1 auto; min-height: 320px; }
 </style>
 
 <div class="home-section">
@@ -139,6 +260,19 @@ function deriveSchools(array $courses, array $map): string {
     <h2 class="headings"><?= htmlspecialchars($page_title) ?></h2>
     <p>Read-only company catalog. Final Status mirrors the Progress Tracker. Min Stipend is editable here.</p>
     <p style="font-size:12px;color:#666;">Academic Year: <strong><?= htmlspecialchars($academic_year ?? 'All') ?></strong></p>
+
+    <?php
+      $exportParams = $_GET;
+      $exportParams['action'] = 'export';
+      $exportUrl = '?' . http_build_query($exportParams);
+    ?>
+    <div class="icd-toolbar">
+        <input type="text" id="icdLiveSearch" class="icd-search" placeholder="Quick search visible rows...">
+        <button type="button" class="icd-btn" onclick="icdOpenFilter()"><i class="fas fa-filter"></i> Filter</button>
+        <button type="button" class="icd-btn" onclick="window.location.href = window.location.pathname;"><i class="fas fa-undo"></i> Reset</button>
+        <a class="icd-btn primary" href="<?= htmlspecialchars($exportUrl) ?>"><i class="fas fa-file-export"></i> Export</a>
+        <span class="icd-summary">Showing <?= count($filtered) ?> of <?= count($rows) ?> drives</span>
+    </div>
 
     <div class="cd-scroll-wrap">
       <table class="table table-bordered table-striped company-data-table">
@@ -162,12 +296,10 @@ function deriveSchools(array $courses, array $map): string {
         <tbody>
         <?php
         $i = 1;
-        if ($result && $result->num_rows > 0):
-            while ($row = $result->fetch_assoc()):
-                $courses = json_decode($row['eligible_courses'] ?? '[]', true);
-                if (!is_array($courses)) $courses = [];
-                $coursesDisplay = formatCoursesPretty($courses);
-                $schoolDisplay  = deriveSchools($courses, $courseSchoolMap);
+        if (!empty($filtered)):
+            foreach ($filtered as $row):
+                $coursesDisplay = $row['_courses_str'] ?? '';
+                $schoolDisplay  = $row['_school_str']  ?? '';
         ?>
           <tr id="icd-row-<?= (int)$row['id'] ?>">
             <td><?= $i++ ?></td>
@@ -188,10 +320,10 @@ function deriveSchools(array $courses, array $map): string {
             </td>
           </tr>
         <?php
-            endwhile;
+            endforeach;
         else:
         ?>
-          <tr><td colspan="13" class="text-center text-muted">No drives found for the selected academic year.</td></tr>
+          <tr><td colspan="13" class="text-center text-muted">No drives match the current filters.</td></tr>
         <?php endif; ?>
         </tbody>
       </table>
@@ -199,7 +331,91 @@ function deriveSchools(array $courses, array $map): string {
   </div>
 </div>
 
+<div id="icdFilterModal" class="modal fade" tabindex="-1" role="dialog">
+  <div class="modal-dialog modal-lg" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Filter Internship Company Data</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form method="GET" class="modal-body">
+        <div class="filter-grid">
+          <label>Company Name<input type="text" name="company_name" value="<?= htmlspecialchars($filter['company_name'] ?? '') ?>"></label>
+          <label>Role<input type="text" name="role" value="<?= htmlspecialchars($filter['role'] ?? '') ?>"></label>
+          <label>Sector of Company
+            <select name="company_sector">
+              <option value="">All</option>
+              <?php foreach ($companySectors as $s): ?>
+                <option value="<?= htmlspecialchars($s) ?>" <?= ($filter['company_sector'] ?? '') === $s ? 'selected' : '' ?>><?= htmlspecialchars($s) ?></option>
+              <?php endforeach; ?>
+            </select>
+          </label>
+          <label>Sector of Role
+            <select name="role_sector">
+              <option value="">All</option>
+              <?php foreach ($roleSectors as $s): ?>
+                <option value="<?= htmlspecialchars($s) ?>" <?= ($filter['role_sector'] ?? '') === $s ? 'selected' : '' ?>><?= htmlspecialchars($s) ?></option>
+              <?php endforeach; ?>
+            </select>
+          </label>
+          <label>Drive Number
+            <select name="drive_number">
+              <option value="">All</option>
+              <?php foreach ($driveNos as $d): ?>
+                <option value="<?= htmlspecialchars($d) ?>" <?= ($filter['drive_number'] ?? '') === $d ? 'selected' : '' ?>><?= htmlspecialchars($d) ?></option>
+              <?php endforeach; ?>
+            </select>
+          </label>
+          <label>Offer Type
+            <select name="offer_type">
+              <option value="">All</option>
+              <?php foreach ($offerTypes as $o): ?>
+                <option value="<?= htmlspecialchars($o) ?>" <?= ($filter['offer_type'] ?? '') === $o ? 'selected' : '' ?>><?= htmlspecialchars($o) ?></option>
+              <?php endforeach; ?>
+            </select>
+          </label>
+          <label>Final Status
+            <select name="final_status">
+              <option value="">All</option>
+              <?php foreach ($finalStatuses as $s): ?>
+                <option value="<?= htmlspecialchars($s) ?>" <?= ($filter['final_status'] ?? '') === $s ? 'selected' : '' ?>><?= htmlspecialchars($s) ?></option>
+              <?php endforeach; ?>
+            </select>
+          </label>
+          <label>Min Stipend ≥<input type="number" step="any" name="min_stipend_min" value="<?= htmlspecialchars($filter['min_stipend_min'] ?? '') ?>"></label>
+          <label>Max Stipend ≤<input type="number" step="any" name="max_stipend_max" value="<?= htmlspecialchars($filter['max_stipend_max'] ?? '') ?>"></label>
+          <label>Course contains<input type="text" name="course" value="<?= htmlspecialchars($filter['course'] ?? '') ?>" placeholder="e.g. BCA"></label>
+        </div>
+        <div class="filter-actions">
+          <button type="button" class="icd-btn" onclick="document.querySelectorAll('#icdFilterModal input, #icdFilterModal select').forEach(el => el.tagName === 'SELECT' ? el.selectedIndex = 0 : el.value = '')">Clear</button>
+          <button type="submit" class="icd-btn primary">Apply Filters</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
 <script>
+function icdOpenFilter() {
+    if (window.bootstrap && bootstrap.Modal) {
+        new bootstrap.Modal(document.getElementById('icdFilterModal')).show();
+    } else {
+        document.getElementById('icdFilterModal').classList.add('show');
+        document.getElementById('icdFilterModal').style.display = 'block';
+    }
+}
+document.addEventListener('DOMContentLoaded', function() {
+    const ls = document.getElementById('icdLiveSearch');
+    if (!ls) return;
+    ls.addEventListener('input', function() {
+        const v = this.value.toLowerCase();
+        document.querySelectorAll('.company-data-table tbody tr').forEach(tr => {
+            let txt = tr.textContent.toLowerCase();
+            tr.querySelectorAll('input').forEach(el => txt += ' ' + (el.value || '').toLowerCase());
+            tr.style.display = txt.includes(v) ? '' : 'none';
+        });
+    });
+});
 function icdSave(rowId) {
     const row = document.getElementById('icd-row-' + rowId);
     const data = new FormData();

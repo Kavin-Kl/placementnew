@@ -11,6 +11,10 @@ if (!isset($_SESSION['username'])) {
 $success_message = '';
 $error_message = '';
 
+// Notifications must be scoped to the selected academic year so old graduated
+// batches don't receive new placement cycle messages.
+$active_academic_year = $_SESSION['selected_academic_year'] ?? null;
+
 // Handle form submission
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['send_notification'])) {
     $title = trim($_POST['title']);
@@ -21,11 +25,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['send_notification']))
 
     if (empty($title) || empty($message)) {
         $error_message = "Title and message are required.";
+    } elseif (empty($active_academic_year)) {
+        $error_message = "Please select an academic year before sending notifications.";
     } else {
-        // Build query based on recipient type
-        $student_query = "SELECT student_id, student_name, email FROM students WHERE 1=1";
-        $params = [];
-        $types = '';
+        // Build query based on recipient type, always scoped to the active academic year.
+        $student_query = "SELECT student_id, student_name, email FROM students WHERE academic_year = ?";
+        $params = [$active_academic_year];
+        $types = 's';
 
         if ($recipient_type === 'specific_course' && !empty($selected_courses)) {
             $placeholders = implode(',', array_fill(0, count($selected_courses), '?'));
@@ -38,12 +44,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['send_notification']))
             $params = array_merge($params, $selected_program_types);
             $types .= str_repeat('s', count($selected_program_types));
         }
-        // If 'all', no additional filter needed
 
         $stmt = $conn->prepare($student_query);
-        if (!empty($params)) {
-            $stmt->bind_param($types, ...$params);
-        }
+        $stmt->bind_param($types, ...$params);
         $stmt->execute();
         $students = $stmt->get_result();
 
@@ -61,11 +64,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['send_notification']))
         }
 
         if ($sent_count > 0) {
-            $success_message = "Notification sent successfully to $sent_count student(s)!";
+            $success_message = "Notification sent successfully to $sent_count student(s) in academic year $active_academic_year.";
         } else {
-            $error_message = "No students matched the selected criteria.";
+            $error_message = "No students matched the selected criteria for academic year $active_academic_year.";
         }
     }
+}
+
+// Counts shown in the form so admin can see who'll receive the message.
+$year_total = 0;
+if (!empty($active_academic_year)) {
+    $cnt_stmt = $conn->prepare("SELECT COUNT(*) FROM students WHERE academic_year = ?");
+    $cnt_stmt->bind_param('s', $active_academic_year);
+    $cnt_stmt->execute();
+    $cnt_stmt->bind_result($year_total);
+    $cnt_stmt->fetch();
+    $cnt_stmt->close();
 }
 
 // Get course list
@@ -202,6 +216,11 @@ require 'header.php';
             <div class="notification-card">
                 <h3><i class='bx bx-send'></i> Send Notification to Students</h3>
                 <p class="text-muted">Create and send custom notifications to all students or specific groups</p>
+                <p class="text-muted" style="font-size:13px;">
+                    <strong>Scope:</strong> Notifications go only to students in the currently selected academic year
+                    <strong><?= htmlspecialchars($active_academic_year ?? '— not set —') ?></strong>
+                    (<?= (int)$year_total ?> student<?= $year_total === 1 ? '' : 's' ?> in this batch).
+                </p>
 
                 <?php if ($success_message): ?>
                     <div class="alert alert-success alert-dismissible fade show">

@@ -518,7 +518,7 @@ require 'header.php';
                         <?php while ($drive = $drives->fetch_assoc()): ?>
                             <div class="drive-card <?= $selected_drive == $drive['drive_id'] ? 'active' : '' ?>"
                                  data-company="<?= htmlspecialchars(strtolower($drive['company_name'])) ?>"
-                                 onclick="window.location.href='manage_rounds.php?drive_id=<?= $drive['drive_id'] ?>'">
+                                 onclick="window.location.href='internship_round_results.php?drive_id=<?= $drive['drive_id'] ?>'">
                                 <h6 class="mb-1"><?= htmlspecialchars($drive['company_name']) ?></h6>
                                 <small class="text-muted">
                                     Drive #<?= $drive['drive_no'] ?> • <?= $drive['app_count'] ?> applications

@@ -67,18 +67,27 @@ function formatCourseDisplay($courses) {
     global $UG_COURSES, $PG_COURSES;
 
     $selected = is_array($courses) ? $courses : [];
-    $selected = array_filter($selected, fn($v) => $v !== "on" && trim($v) !== "");
+    $selected = array_values(array_filter($selected, fn($v) => $v !== "on" && trim($v) !== ""));
 
     $selected_lower = array_map('strtolower', $selected);
     $ug_lower = array_map('strtolower', $UG_COURSES);
     $pg_lower = array_map('strtolower', $PG_COURSES);
 
+    $marker_tokens = ['all ug', 'all pg', 'all ug courses', 'all pg courses'];
+
+    $hasAllUG = (bool) array_intersect($selected_lower, ['all ug', 'all ug courses']);
+    $hasAllPG = (bool) array_intersect($selected_lower, ['all pg', 'all pg courses']);
+
+    if (!$hasAllUG && !empty($ug_lower) && count(array_intersect($selected_lower, $ug_lower)) === count($ug_lower)) {
+        $hasAllUG = true;
+    }
+    if (!$hasAllPG && !empty($pg_lower) && count(array_intersect($selected_lower, $pg_lower)) === count($pg_lower)) {
+        $hasAllPG = true;
+    }
+
     $display = [];
 
-    $ugMatch = array_intersect($selected_lower, $ug_lower);
-    $pgMatch = array_intersect($selected_lower, $pg_lower);
-
-    if (count($ugMatch) === count($UG_COURSES)) {
+    if ($hasAllUG) {
         $display[] = "All UG Courses";
     } else {
         foreach ($UG_COURSES as $ug) {
@@ -88,7 +97,7 @@ function formatCourseDisplay($courses) {
         }
     }
 
-    if (count($pgMatch) === count($PG_COURSES)) {
+    if ($hasAllPG) {
         $display[] = "All PG Courses";
     } else {
         foreach ($PG_COURSES as $pg) {
@@ -100,6 +109,7 @@ function formatCourseDisplay($courses) {
 
     foreach ($selected as $item) {
         $lower = strtolower($item);
+        if (in_array($lower, $marker_tokens)) continue;
         if (!in_array($lower, $ug_lower) && !in_array($lower, $pg_lower)) {
             $display[] = $item;
         }
@@ -155,13 +165,13 @@ SELECT
     WHERE
       ps.company_name = d.company_name
       AND ps.role = d.role
-      AND ps.offer_type IN ('FTE', 'Apprenticeship (Full time)', 'Internship + PPO', 'Internship+PPO', 'Internship + PPO (Final Year)', 'Apprenticeship (Part Time)')
+      AND ps.offer_type IN ('FTE', 'Apprenticeship (Full time)', 'Internship + PPO', 'Internship+PPO', 'Internship + PPO (Final Year)')
       " . ($graduation_year ? "AND s.year_of_passing = $graduation_year" : "") . "
   ) AS hired_count
 FROM drive_data d
-LEFT JOIN drives drv ON d.company_name = drv.company_name AND d.drive_no = drv.drive_no
+INNER JOIN drives drv ON d.drive_id = drv.drive_id
 LEFT JOIN drive_roles dr ON drv.drive_id = dr.drive_id AND TRIM(d.role) = TRIM(dr.designation_name)
-WHERE d.offer_type IN ('FTE', 'Apprenticeship (Full time)', 'Internship + PPO', 'Internship+PPO', 'Internship + PPO (Final Year)', 'Apprenticeship (Part Time)')
+WHERE d.offer_type IN ('FTE', 'Apprenticeship (Full time)', 'Internship + PPO', 'Internship+PPO', 'Internship + PPO (Final Year)')
   " . ($academic_year ? "AND drv.academic_year = '$academic_year'" : "") . "
 GROUP BY d.id
 ORDER BY d.company_name ASC, d.id ASC
@@ -907,6 +917,30 @@ table.company-table th.sticky-col { background: #650000; z-index: 5; }
 }
 
 /* Remove old nth-child sticky rules (replaced by JS offsets) */
+
+/* Reduce the empty-bottom slab when the table has few rows.
+   Let the table region grow to fill the viewport instead of leaving a big
+   white gap below the table. */
+body { display: flex; flex-direction: column; min-height: 100vh; }
+.container1 {
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+.container1 > .table-responsive {
+    flex: 1 1 auto;
+    min-height: 320px;
+    overflow: auto;
+}
+.tracker-footer {
+    padding: 10px 4px;
+    border-top: 1px solid #eee;
+    color: #666;
+    font-size: 12px;
+    background: #fafafa;
+    text-align: right;
+}
 </style>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
   <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
@@ -946,6 +980,9 @@ table.company-table th.sticky-col { background: #650000; z-index: 5; }
 
 </div>
 <div class="container1">
+    <div class="tracker-footer" style="margin-bottom:8px; text-align:left; background:transparent; border:none; padding:0;">
+        Showing <strong><?= count($filtered) ?></strong> of <?= count($data) ?> drives<?= !empty($academic_year) ? ' for academic year <strong>' . htmlspecialchars($academic_year) . '</strong>' : '' ?>.
+    </div>
     <div class="table-responsive">
         <table class="table table-bordered  custom-table company-table">
             <thead>

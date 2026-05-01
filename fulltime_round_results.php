@@ -135,7 +135,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['bulk_update_result'])
 
 // Get all drives with applications (FULL-TIME ONLY: FTE, Internship+PPO, Apprentice) — paginated
 require_once __DIR__ . '/pagination_helper.php';
-$ft_where = "(dr.offer_type IN ('FTE', 'Internship + PPO', 'Internship+PPO', 'Internship + PPO (Final Year)', 'Apprenticeship (Part Time)') OR dr.offer_type IS NULL)";
+$ft_where = "(dr.offer_type IN ('FTE', 'Apprenticeship (Full time)', 'Internship + PPO', 'Internship+PPO', 'Internship + PPO (Final Year)') OR dr.offer_type IS NULL)";
 $ay_filter_sql = '';
 $ay_value = $_SESSION['selected_academic_year'] ?? null;
 if ($ay_value) {
@@ -190,7 +190,7 @@ if ($selected_drive) {
         LEFT JOIN drive_roles dr ON a.role_id = dr.role_id
         LEFT JOIN placed_students ps ON a.student_id = ps.student_id
         WHERE a.drive_id = ?
-        AND (dr.offer_type IN ('FTE', 'Internship + PPO', 'Internship+PPO', 'Internship + PPO (Final Year)', 'Apprenticeship (Part Time)') OR dr.offer_type IS NULL)
+        AND (dr.offer_type IN ('FTE', 'Apprenticeship (Full time)', 'Internship + PPO', 'Internship+PPO', 'Internship + PPO (Final Year)') OR dr.offer_type IS NULL)
         ORDER BY ps.place_id IS NULL DESC, s.student_name ASC
     ";
 
@@ -519,7 +519,7 @@ require 'header.php';
                         <?php while ($drive = $drives->fetch_assoc()): ?>
                             <div class="drive-card <?= $selected_drive == $drive['drive_id'] ? 'active' : '' ?>"
                                  data-company="<?= htmlspecialchars(strtolower($drive['company_name'])) ?>"
-                                 onclick="window.location.href='manage_rounds.php?drive_id=<?= $drive['drive_id'] ?>'">
+                                 onclick="window.location.href='fulltime_round_results.php?drive_id=<?= $drive['drive_id'] ?>'">
                                 <h6 class="mb-1"><?= htmlspecialchars($drive['company_name']) ?></h6>
                                 <small class="text-muted">
                                     Drive #<?= $drive['drive_no'] ?> • <?= $drive['app_count'] ?> applications

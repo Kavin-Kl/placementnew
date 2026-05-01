@@ -894,6 +894,19 @@ $filterRoleName = $_GET['role_name'] ?? '';
 $filterRegNo = $_GET['reg_no'] ?? '';
 $filterPlacedStatus = $_GET['placed_status'] ?? '';
 
+// ?type=fulltime / ?type=internship splits the Applications List into two tabs.
+// The filter is applied to drive_roles.offer_type so an FT-only view never
+// shows internship applications and vice versa.
+$applicationsType = $_GET['type'] ?? '';
+$ft_offer_types = ['FTE', 'Apprenticeship (Full time)', 'Internship + PPO', 'Internship+PPO', 'Internship + PPO (Final Year)'];
+$internship_offer_types = ['Internship', 'Internship + PPO (Pre-Final Year)', 'Apprenticeship (Part Time)'];
+$applicationsTypeOfferTypes = [];
+if ($applicationsType === 'fulltime') {
+    $applicationsTypeOfferTypes = $ft_offer_types;
+} elseif ($applicationsType === 'internship') {
+    $applicationsTypeOfferTypes = $internship_offer_types;
+}
+
 // === Fetch Filter Options and Applications ===
 $companyList = [];
 $courseList = [];
@@ -934,6 +947,15 @@ if ($fromDashboard) {
         $conditions[] = "d.drive_no = ?";
         $params[] = $filterDriveNo;
         $types .= 's';
+    }
+
+    if (!empty($applicationsTypeOfferTypes)) {
+        $placeholders = implode(',', array_fill(0, count($applicationsTypeOfferTypes), '?'));
+        $conditions[] = "r.offer_type IN ($placeholders)";
+        foreach ($applicationsTypeOfferTypes as $ot) {
+            $params[] = $ot;
+            $types  .= 's';
+        }
     }
 
     if (!empty($conditions)) {
@@ -991,6 +1013,15 @@ else {
         $where[] = "a.status = ?";
         $params[] = $filterPlacedStatus;
         $types .= 's';
+    }
+
+    if (!empty($applicationsTypeOfferTypes)) {
+        $placeholders = implode(',', array_fill(0, count($applicationsTypeOfferTypes), '?'));
+        $where[] = "r.offer_type IN ($placeholders)";
+        foreach ($applicationsTypeOfferTypes as $ot) {
+            $params[] = $ot;
+            $types  .= 's';
+        }
     }
 
     if (!empty($where)) {

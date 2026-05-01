@@ -67,18 +67,27 @@ function formatCourseDisplay($courses) {
     global $UG_COURSES, $PG_COURSES;
 
     $selected = is_array($courses) ? $courses : [];
-    $selected = array_filter($selected, fn($v) => $v !== "on" && trim($v) !== "");
+    $selected = array_values(array_filter($selected, fn($v) => $v !== "on" && trim($v) !== ""));
 
     $selected_lower = array_map('strtolower', $selected);
     $ug_lower = array_map('strtolower', $UG_COURSES);
     $pg_lower = array_map('strtolower', $PG_COURSES);
 
+    $marker_tokens = ['all ug', 'all pg', 'all ug courses', 'all pg courses'];
+
+    $hasAllUG = (bool) array_intersect($selected_lower, ['all ug', 'all ug courses']);
+    $hasAllPG = (bool) array_intersect($selected_lower, ['all pg', 'all pg courses']);
+
+    if (!$hasAllUG && !empty($ug_lower) && count(array_intersect($selected_lower, $ug_lower)) === count($ug_lower)) {
+        $hasAllUG = true;
+    }
+    if (!$hasAllPG && !empty($pg_lower) && count(array_intersect($selected_lower, $pg_lower)) === count($pg_lower)) {
+        $hasAllPG = true;
+    }
+
     $display = [];
 
-    $ugMatch = array_intersect($selected_lower, $ug_lower);
-    $pgMatch = array_intersect($selected_lower, $pg_lower);
-
-    if (count($ugMatch) === count($UG_COURSES)) {
+    if ($hasAllUG) {
         $display[] = "All UG Courses";
     } else {
         foreach ($UG_COURSES as $ug) {
@@ -88,7 +97,7 @@ function formatCourseDisplay($courses) {
         }
     }
 
-    if (count($pgMatch) === count($PG_COURSES)) {
+    if ($hasAllPG) {
         $display[] = "All PG Courses";
     } else {
         foreach ($PG_COURSES as $pg) {
@@ -100,6 +109,7 @@ function formatCourseDisplay($courses) {
 
     foreach ($selected as $item) {
         $lower = strtolower($item);
+        if (in_array($lower, $marker_tokens)) continue;
         if (!in_array($lower, $ug_lower) && !in_array($lower, $pg_lower)) {
             $display[] = $item;
         }
@@ -159,7 +169,7 @@ SELECT
       " . ($graduation_year ? "AND s.year_of_passing = $graduation_year" : "") . "
   ) AS hired_count
 FROM drive_data d
-LEFT JOIN drives drv ON d.company_name = drv.company_name AND d.drive_no = drv.drive_no
+INNER JOIN drives drv ON d.drive_id = drv.drive_id
 LEFT JOIN drive_roles dr ON drv.drive_id = dr.drive_id AND TRIM(d.role) = TRIM(dr.designation_name)
 WHERE d.offer_type IN ('Internship','Apprenticeship (Part Time)','Internship + PPO (Pre-Final Year)')
   " . ($academic_year ? "AND drv.academic_year = '$academic_year'" : "") . "

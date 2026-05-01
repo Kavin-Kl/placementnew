@@ -10,7 +10,45 @@ if (!isset($_SESSION['student_id'])) {
 
 date_default_timezone_set('Asia/Kolkata');
 include("config.php");
+include("course_groups_dynamic.php");
 include("student_header.php");
+
+if (!function_exists('formatStudentCourseList')) {
+    function formatStudentCourseList(array $courses): array {
+        global $UG_COURSES, $PG_COURSES;
+
+        $clean = array_values(array_filter(array_map('trim', $courses), fn($v) => $v !== '' && strtolower($v) !== 'on'));
+        if (empty($clean)) return [];
+
+        $lower = array_map('strtolower', $clean);
+        $ugLower = is_array($UG_COURSES ?? null) ? array_map('strtolower', $UG_COURSES) : [];
+        $pgLower = is_array($PG_COURSES ?? null) ? array_map('strtolower', $PG_COURSES) : [];
+
+        $hasAllUG = (bool) array_intersect($lower, ['all ug', 'all ug courses']);
+        $hasAllPG = (bool) array_intersect($lower, ['all pg', 'all pg courses']);
+
+        if (!$hasAllUG && !empty($ugLower) && count(array_intersect($ugLower, $lower)) === count($ugLower)) {
+            $hasAllUG = true;
+        }
+        if (!$hasAllPG && !empty($pgLower) && count(array_intersect($pgLower, $lower)) === count($pgLower)) {
+            $hasAllPG = true;
+        }
+
+        $display = [];
+        if ($hasAllUG) $display[] = 'All UG Courses';
+        if ($hasAllPG) $display[] = 'All PG Courses';
+
+        foreach ($clean as $i => $c) {
+            $lc = $lower[$i];
+            if (in_array($lc, ['all ug', 'all pg', 'all ug courses', 'all pg courses'])) continue;
+            if ($hasAllUG && in_array($lc, $ugLower)) continue;
+            if ($hasAllPG && in_array($lc, $pgLower)) continue;
+            $display[] = $c;
+        }
+
+        return $display;
+    }
+}
 
 $student_id = $_SESSION['student_id'];
 require_once __DIR__ . '/academic_year_helper.php';
@@ -219,9 +257,8 @@ $selected_drive_id = $_GET['drive_id'] ?? null;
                 <?php endif; ?>
 
                 <?php
-                // WhatsApp group link — visible only after the student has applied to this drive.
                 $whatsapp_link = '';
-                if ($has_applied && !empty($drive['extra_details'])) {
+                if (!empty($drive['extra_details'])) {
                     $ed = json_decode($drive['extra_details'], true);
                     if (is_array($ed) && !empty($ed['whatsapp']) && trim($ed['whatsapp']) !== '') {
                         $whatsapp_link = trim($ed['whatsapp']);
@@ -231,8 +268,7 @@ $selected_drive_id = $_GET['drive_id'] ?? null;
                 <?php if ($whatsapp_link): ?>
                   <div class="alert alert-success mb-3">
                     <i class="bx bxl-whatsapp"></i>
-                    <strong>You'll be added to the WhatsApp group for this drive.</strong>
-                    Join here:
+                    <strong>WhatsApp group for this drive:</strong>
                     <a href="<?= htmlspecialchars($whatsapp_link) ?>" target="_blank" rel="noopener">
                       <?= htmlspecialchars($whatsapp_link) ?>
                     </a>
@@ -325,16 +361,17 @@ $selected_drive_id = $_GET['drive_id'] ?? null;
                             <td><?= $role['min_percentage'] ? $role['min_percentage'] . '%' : 'N/A' ?></td>
                             <td>
                               <?php
-                              $courses_display = array_slice($eligible_courses, 0, 3);
-                              $all_courses = implode(', ', $eligible_courses);
+                              $eligible_display_list = formatStudentCourseList($eligible_courses);
+                              $courses_display = array_slice($eligible_display_list, 0, 3);
+                              $all_courses = implode(', ', $eligible_display_list);
                               ?>
                               <small
                                 title="<?= htmlspecialchars($all_courses) ?>"
                                 style="cursor: help;"
                               >
                                 <?= htmlspecialchars(implode(', ', $courses_display)) ?>
-                                <?php if (count($eligible_courses) > 3): ?>
-                                  <span class="text-muted">... +<?= count($eligible_courses) - 3 ?> more</span>
+                                <?php if (count($eligible_display_list) > 3): ?>
+                                  <span class="text-muted">... +<?= count($eligible_display_list) - 3 ?> more</span>
                                 <?php endif; ?>
                               </small>
                             </td>

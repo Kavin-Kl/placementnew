@@ -69,18 +69,27 @@ function formatCourseDisplay($courses) {
     global $UG_COURSES, $PG_COURSES;
 
     $selected = is_array($courses) ? $courses : [];
-    $selected = array_filter($selected, fn($v) => $v !== "on" && trim($v) !== "");
+    $selected = array_values(array_filter($selected, fn($v) => $v !== "on" && trim($v) !== ""));
 
     $selected_lower = array_map('strtolower', $selected);
     $ug_lower = array_map('strtolower', $UG_COURSES);
     $pg_lower = array_map('strtolower', $PG_COURSES);
 
+    $marker_tokens = ['all ug', 'all pg', 'all ug courses', 'all pg courses'];
+
+    $hasAllUG = (bool) array_intersect($selected_lower, ['all ug', 'all ug courses']);
+    $hasAllPG = (bool) array_intersect($selected_lower, ['all pg', 'all pg courses']);
+
+    if (!$hasAllUG && !empty($ug_lower) && count(array_intersect($selected_lower, $ug_lower)) === count($ug_lower)) {
+        $hasAllUG = true;
+    }
+    if (!$hasAllPG && !empty($pg_lower) && count(array_intersect($selected_lower, $pg_lower)) === count($pg_lower)) {
+        $hasAllPG = true;
+    }
+
     $display = [];
 
-    $ugMatch = array_intersect($selected_lower, $ug_lower);
-    $pgMatch = array_intersect($selected_lower, $pg_lower);
-
-    if (count($ugMatch) === count($UG_COURSES)) {
+    if ($hasAllUG) {
         $display[] = "All UG Courses";
     } else {
         foreach ($UG_COURSES as $ug) {
@@ -90,7 +99,7 @@ function formatCourseDisplay($courses) {
         }
     }
 
-    if (count($pgMatch) === count($PG_COURSES)) {
+    if ($hasAllPG) {
         $display[] = "All PG Courses";
     } else {
         foreach ($PG_COURSES as $pg) {
@@ -102,6 +111,7 @@ function formatCourseDisplay($courses) {
 
     foreach ($selected as $item) {
         $lower = strtolower($item);
+        if (in_array($lower, $marker_tokens)) continue;
         if (!in_array($lower, $ug_lower) && !in_array($lower, $pg_lower)) {
             $display[] = $item;
         }
@@ -135,6 +145,12 @@ $data = [];
 // include_once __DIR__ . '/sync_placed_students.php';
 // sync_placed_students($conn);
 
+// Scope to the currently selected academic year so hired counts and rows
+// don't conflate the same company across multiple years.
+$cs_ay = $_SESSION['selected_academic_year'] ?? null;
+$cs_ay_clause = $cs_ay ? " AND drv.academic_year = '" . $conn->real_escape_string($cs_ay) . "' " : "";
+$cs_ps_ay_clause = $cs_ay ? " AND ps.academic_year = '" . $conn->real_escape_string($cs_ay) . "' " : "";
+
 $sql = "
 SELECT
   d.*,
@@ -146,12 +162,15 @@ SELECT
     SELECT COUNT(DISTINCT student_id)
     FROM placed_students ps
     WHERE
-      ps.company_name = d.company_name
-      AND ps.role = d.role
+      ps.drive_id = d.drive_id
+      AND ps.role_id = d.role_id
+      $cs_ps_ay_clause
   ) AS hired_count
 FROM drive_data d
-LEFT JOIN drives drv ON d.company_name = drv.company_name AND d.drive_no = drv.drive_no
+INNER JOIN drives drv ON d.drive_id = drv.drive_id
 LEFT JOIN drive_roles dr ON drv.drive_id = dr.drive_id AND TRIM(d.role) = TRIM(dr.designation_name)
+WHERE 1=1
+  $cs_ay_clause
 GROUP BY d.id
 ORDER BY d.company_name ASC, d.id ASC
 ";
@@ -165,15 +184,29 @@ while ($row = $result->fetch_assoc()) {
         $row['eligible_courses'] = [];
     }
 
-    // Calculate actual hired count from placed_students table
-    // Match by company_name and role instead of IDs (since drive_id/role_id may be NULL in drive_data)
-    $hiredCountSql = "
-        SELECT COUNT(DISTINCT student_id) as count
-        FROM placed_students
-        WHERE company_name = ? AND role = ?
-    ";
-    $hiredStmt = $conn->prepare($hiredCountSql);
-    $hiredStmt->bind_param("ss", $row['company_name'], $row['role']);
+    // Calculate actual hired count from placed_students, scoped to this drive
+    // and role (and the selected academic year) so cross-year and
+    // cross-company-with-same-role data don't bleed in.
+    if (!empty($row['drive_id']) && !empty($row['role_id'])) {
+        $hiredCountSql = "
+            SELECT COUNT(DISTINCT student_id) as count
+            FROM placed_students
+            WHERE drive_id = ? AND role_id = ?
+        ";
+        $hiredStmt = $conn->prepare($hiredCountSql);
+        $hiredStmt->bind_param("ii", $row['drive_id'], $row['role_id']);
+    } else {
+        // Fallback for legacy rows without drive_id/role_id — still scope to AY
+        // when one is selected.
+        $hiredCountSql = "
+            SELECT COUNT(DISTINCT student_id) as count
+            FROM placed_students
+            WHERE company_name = ? AND role = ?
+              " . ($cs_ay ? "AND academic_year = '" . $conn->real_escape_string($cs_ay) . "'" : "") . "
+        ";
+        $hiredStmt = $conn->prepare($hiredCountSql);
+        $hiredStmt->bind_param("ss", $row['company_name'], $row['role']);
+    }
     $hiredStmt->execute();
     $hiredResult = $hiredStmt->get_result();
     $actualHired = $hiredResult->fetch_assoc()['count'] ?? 0;

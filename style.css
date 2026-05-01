@@ -2496,3 +2496,309 @@ table td:last-child {
         table-layout: fixed;
     }
 }
+
+/* ============================================================
+   GLOBAL POLISH LAYER (added 2026-05-02)
+   - Design tokens, refined typography, modern primitives.
+   - Appended LAST so existing page-specific rules win when they
+     intentionally override; we only set defaults that look better.
+   ============================================================ */
+
+:root {
+    /* Brand */
+    --pc-brand:        #650000;
+    --pc-brand-soft:   #fff5f5;
+    --pc-brand-line:   #e7d4d4;
+    --pc-brand-dark:   #4a0000;
+
+    /* Neutral surface / text */
+    --pc-bg:           #faf8f7;
+    --pc-surface:      #ffffff;
+    --pc-text:         #1f1f1f;
+    --pc-muted:        #6b6b6b;
+    --pc-line:         #e8e8e8;
+
+    /* Status */
+    --pc-success:      #16794d;
+    --pc-success-bg:   #e6f5ee;
+    --pc-warning:      #8a6300;
+    --pc-warning-bg:   #fff4d6;
+    --pc-danger:       #a31515;
+    --pc-danger-bg:    #fde8e8;
+    --pc-info:         #0f5e9c;
+    --pc-info-bg:      #e6f1fb;
+
+    /* Shape & motion */
+    --pc-radius-sm:    6px;
+    --pc-radius:       10px;
+    --pc-radius-lg:    14px;
+    --pc-shadow-sm:    0 1px 2px rgba(20, 20, 20, .04), 0 1px 1px rgba(20, 20, 20, .04);
+    --pc-shadow:       0 4px 14px rgba(20, 20, 20, .06), 0 1px 3px rgba(20, 20, 20, .05);
+    --pc-shadow-lg:    0 10px 28px rgba(20, 20, 20, .10);
+    --pc-ease:         cubic-bezier(.2, .8, .2, 1);
+
+    /* Spacing */
+    --pc-space-1: 4px;
+    --pc-space-2: 8px;
+    --pc-space-3: 12px;
+    --pc-space-4: 16px;
+    --pc-space-5: 24px;
+    --pc-space-6: 32px;
+}
+
+/* Soft global background — pages still use white surfaces (cards/tables) on top. */
+html, body {
+    background-color: var(--pc-bg) !important;
+    color: var(--pc-text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Inter", Roboto,
+                 "Helvetica Neue", Arial, sans-serif;
+    font-size: 14px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+}
+
+/* Make pages feel like cards on a soft canvas. Existing pages already use
+   .container1 / .container-fluid; we softly wrap their direct children. */
+.main-container,
+.home-section .container1,
+.home-section .container-fluid {
+    background: transparent;
+}
+
+/* === HEADINGS === */
+h1, h2, h3, h4, h5, h6, .headings {
+    color: var(--pc-text);
+    letter-spacing: -0.01em;
+}
+.headings { font-weight: 700; }
+
+/* === BUTTONS — modern variants without breaking existing classes === */
+.btn, button.btn, a.btn,
+.fcd-btn, .icd-btn, .btn-upload, .ipt_btn, .reset-button {
+    transition: background .18s var(--pc-ease), color .18s var(--pc-ease),
+                box-shadow .18s var(--pc-ease), transform .12s var(--pc-ease);
+}
+.btn:focus-visible, button.btn:focus-visible, a.btn:focus-visible,
+.fcd-btn:focus-visible, .icd-btn:focus-visible, .btn-upload:focus-visible,
+input:focus-visible, select:focus-visible, textarea:focus-visible {
+    outline: 3px solid rgba(101, 0, 0, 0.18);
+    outline-offset: 1px;
+}
+.btn:active, button.btn:active, a.btn:active {
+    transform: translateY(1px);
+}
+
+/* === INPUTS — softer borders, clear focus === */
+input[type="text"], input[type="email"], input[type="password"], input[type="number"],
+input[type="date"], input[type="datetime-local"], input[type="search"], input[type="url"],
+input[type="tel"], textarea, select {
+    border-radius: var(--pc-radius-sm);
+    border: 1px solid var(--pc-line);
+    transition: border-color .15s var(--pc-ease), box-shadow .15s var(--pc-ease);
+}
+input[type="text"]:focus, input[type="email"]:focus, input[type="password"]:focus,
+input[type="number"]:focus, input[type="date"]:focus, input[type="datetime-local"]:focus,
+input[type="search"]:focus, input[type="url"]:focus, input[type="tel"]:focus,
+textarea:focus, select:focus {
+    border-color: var(--pc-brand);
+    box-shadow: 0 0 0 3px rgba(101, 0, 0, 0.12);
+    outline: none;
+}
+
+/* === TABLES — readable defaults, sticky header where used === */
+.table, table.company-data-table, table.company-table, table.custom-table {
+    border-radius: var(--pc-radius);
+    overflow: hidden;
+}
+.table thead th, table thead th {
+    background: var(--pc-brand);
+    color: #fff;
+    font-weight: 600;
+    letter-spacing: .02em;
+    border-bottom: 1px solid var(--pc-brand-dark);
+}
+.table tbody tr:nth-child(even) td { background: #fafbfc; }
+.table tbody tr:hover td { background: var(--pc-brand-soft); }
+.table-responsive, .cd-scroll-wrap, .table-wrapper {
+    border-radius: var(--pc-radius);
+    box-shadow: var(--pc-shadow-sm);
+    background: var(--pc-surface);
+    overflow: auto;
+}
+
+/* === CARDS — used by Bootstrap pages === */
+.card {
+    border-radius: var(--pc-radius);
+    border: 1px solid var(--pc-line);
+    box-shadow: var(--pc-shadow-sm);
+}
+.card .card-header {
+    background: #fff;
+    border-bottom: 1px solid var(--pc-line);
+    border-top-left-radius: var(--pc-radius);
+    border-top-right-radius: var(--pc-radius);
+    font-weight: 600;
+    color: var(--pc-text);
+}
+
+/* === BADGES — used in many pages === */
+.badge {
+    border-radius: 999px;
+    padding: 4px 10px;
+    font-weight: 500;
+    font-size: 11.5px;
+    letter-spacing: .02em;
+}
+.bg-success     { background: var(--pc-success-bg) !important; color: var(--pc-success) !important; }
+.bg-danger      { background: var(--pc-danger-bg)  !important; color: var(--pc-danger)  !important; }
+.bg-warning     { background: var(--pc-warning-bg) !important; color: var(--pc-warning) !important; }
+.bg-info        { background: var(--pc-info-bg)    !important; color: var(--pc-info)    !important; }
+.bg-dark        { background: #2a2a2a              !important; color: #fff               !important; }
+
+/* === ALERTS === */
+.alert {
+    border-radius: var(--pc-radius);
+    border: 1px solid var(--pc-line);
+    padding: 12px 14px;
+}
+.alert-success { background: var(--pc-success-bg); border-color: #b6dfc9; color: var(--pc-success); }
+.alert-danger  { background: var(--pc-danger-bg);  border-color: #f1c0c0; color: var(--pc-danger); }
+.alert-warning { background: var(--pc-warning-bg); border-color: #f1ddae; color: var(--pc-warning); }
+.alert-info    { background: var(--pc-info-bg);    border-color: #c1ddf1; color: var(--pc-info); }
+
+/* === MODALS — soft shadow + nicer header === */
+.modal-content {
+    border-radius: var(--pc-radius-lg);
+    border: 0;
+    box-shadow: var(--pc-shadow-lg);
+}
+.modal-header {
+    border-bottom: 1px solid var(--pc-line);
+}
+.modal-title { font-weight: 600; }
+
+/* === SCROLLBARS — subtle, on-hover === */
+* { scrollbar-width: thin; scrollbar-color: #c9c9c9 transparent; }
+*::-webkit-scrollbar { width: 10px; height: 10px; }
+*::-webkit-scrollbar-thumb { background: #d2d2d2; border-radius: 8px; }
+*::-webkit-scrollbar-thumb:hover { background: #a8a8a8; }
+*::-webkit-scrollbar-track { background: transparent; }
+
+/* === PAGE LOADER UTILITY (use class .pc-loading) === */
+.pc-loading {
+    position: relative;
+    pointer-events: none;
+    opacity: 0.6;
+}
+.pc-loading::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    margin: auto;
+    width: 28px;
+    height: 28px;
+    border: 3px solid var(--pc-brand-soft);
+    border-top-color: var(--pc-brand);
+    border-radius: 50%;
+    animation: pc-spin .9s linear infinite;
+}
+@keyframes pc-spin { to { transform: rotate(360deg); } }
+
+/* === HIDE NUMBER INPUT SPINNERS for cleaner look === */
+input[type=number] { -moz-appearance: textfield; }
+input[type=number]::-webkit-outer-spin-button,
+input[type=number]::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+/* === IMAGE / FILE UPLOAD INPUTS === */
+input[type="file"] {
+    padding: 6px;
+    border-radius: var(--pc-radius-sm);
+    border: 1px dashed var(--pc-line);
+    background: #fafafa;
+}
+
+/* === EMPTY-STATE TEXT === */
+.text-muted, .empty-state, .small {
+    color: var(--pc-muted) !important;
+}
+
+/* === RESPONSIVE: mobile drawer for the sidebar === */
+@media (max-width: 768px) {
+    .sidebar {
+        transform: translateX(-100%);
+        transition: transform .25s var(--pc-ease);
+        z-index: 99999;
+    }
+    .sidebar.mobile-open {
+        transform: translateX(0);
+    }
+    .pc-sidebar-backdrop {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.42);
+        z-index: 99998;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity .2s var(--pc-ease);
+    }
+    .pc-sidebar-backdrop.show {
+        opacity: 1;
+        pointer-events: auto;
+    }
+    .pc-mobile-menu-btn {
+        position: fixed;
+        top: 12px;
+        left: 12px;
+        z-index: 99997;
+        width: 42px;
+        height: 42px;
+        border: none;
+        background: var(--pc-brand);
+        color: #fff;
+        border-radius: var(--pc-radius);
+        font-size: 22px;
+        line-height: 1;
+        box-shadow: var(--pc-shadow);
+        cursor: pointer;
+    }
+    .main, .sidebar-open .main, .sidebar.open ~ .main {
+        left: 0 !important;
+        width: 100% !important;
+    }
+    .main { padding-top: 64px; }
+}
+@media (min-width: 769px) {
+    .pc-mobile-menu-btn, .pc-sidebar-backdrop { display: none !important; }
+}
+
+/* === PRINT — clean printable view, hide chrome === */
+@media print {
+    .sidebar, .nav-wrapper, .top-bar, .right-controls, .left-controls,
+    .pc-mobile-menu-btn, .pc-sidebar-backdrop, .notification-bell-wrapper,
+    .btn, button, .pagination, .modal-backdrop {
+        display: none !important;
+    }
+    .main, .home-section .container1, .container-fluid {
+        left: 0 !important;
+        width: 100% !important;
+        padding: 0 !important;
+        background: white !important;
+    }
+    body { background: white !important; }
+    table { page-break-inside: auto; }
+    tr    { page-break-inside: avoid; page-break-after: auto; }
+}
+
+/* === REDUCED MOTION === */
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+}
