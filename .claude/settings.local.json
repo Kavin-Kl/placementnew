@@ -55,7 +55,9 @@
       "Bash(\"C:\\\\xampp\\\\php\\\\php.exe\" -l student_dashboard.php)",
       "Bash(\"C:\\\\xampp\\\\php\\\\php.exe\" -l student_drives.php)",
       "Bash('C:\\\\xampp\\\\php\\\\php.exe' -r ' *)",
-      "Bash(\"C:\\\\xampp\\\\php\\\\php.exe\" -l student_header.php)"
+      "Bash(\"C:\\\\xampp\\\\php\\\\php.exe\" -l student_header.php)",
+      "Bash(\"C:\\\\xampp\\\\php\\\\php.exe\" -l fulltime_company_data.php)",
+      "Bash(\"C:\\\\xampp\\\\php\\\\php.exe\" -l internship_company_data.php)"
     ],
     "deny": [],
     "ask": []

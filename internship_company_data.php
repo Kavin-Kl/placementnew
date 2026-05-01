@@ -92,15 +92,33 @@ function deriveSchools(array $courses, array $map): string {
 }
 .company-data-table {
     font-size: 13px;
-    min-width: 1500px;       /* force the table to be wider than viewport so scrollbar appears */
-    white-space: nowrap;
+    min-width: 1800px;       /* force the table to be wider than viewport so scrollbar appears */
     margin-bottom: 0;
 }
+.company-data-table th,
+.company-data-table td {
+    white-space: nowrap;
+    vertical-align: middle;
+    padding: 8px 10px;
+}
 .company-data-table th {
-    background:#650000; color:#fff; vertical-align: middle; text-align:center;
+    background:#650000; color:#fff; text-align:center;
     position: sticky; top: 0; z-index: 2;
 }
-.company-data-table td { vertical-align: middle; }
+.company-data-table th.col-courses,
+.company-data-table td.col-courses {
+    white-space: normal;
+    min-width: 320px;
+    max-width: 480px;
+    word-break: break-word;
+}
+.company-data-table th.col-school,
+.company-data-table td.col-school {
+    white-space: normal;
+    min-width: 220px;
+    max-width: 280px;
+    word-break: break-word;
+}
 .company-data-table input.ctc-input {
     width: 110px; padding: 4px 6px; border:1px solid #ccc; border-radius:4px;
 }
@@ -136,8 +154,8 @@ function deriveSchools(array $courses, array $map): string {
             <th>Final Status</th>
             <th>Min Stipend</th>
             <th>Max Stipend</th>
-            <th>Courses</th>
-            <th>School</th>
+            <th class="col-courses">Courses</th>
+            <th class="col-school">School</th>
             <th></th>
           </tr>
         </thead>
@@ -162,8 +180,8 @@ function deriveSchools(array $courses, array $map): string {
             <td><span class="icd-status-pill"><?= htmlspecialchars($row['final_status'] ?: '—') ?></span></td>
             <td><input type="text" class="ctc-input" name="min_stipend" value="<?= htmlspecialchars($row['min_stipend'] ?? '') ?>"></td>
             <td><input type="text" class="ctc-input" name="max_stipend" value="<?= htmlspecialchars($row['max_stipend'] ?? '') ?>"></td>
-            <td><?= htmlspecialchars($coursesDisplay) ?></td>
-            <td><?= htmlspecialchars($schoolDisplay) ?></td>
+            <td class="col-courses"><?= htmlspecialchars($coursesDisplay) ?></td>
+            <td class="col-school"><?= htmlspecialchars($schoolDisplay) ?></td>
             <td>
               <button type="button" class="icd-save-btn" onclick="icdSave(<?= (int)$row['id'] ?>)">Save</button>
               <span id="icd-msg-<?= (int)$row['id'] ?>" class="icd-saved"></span>
