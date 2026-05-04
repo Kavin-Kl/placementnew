@@ -296,6 +296,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['application_id'], $_P
     $update->bind_param("sssi", $statusToSet, $comment, $batch, $applicationId);
     $update->execute();
 
+    if ($statusToSet === 'placed') {
+        require_once __DIR__ . '/placed_import_helper.php';
+        pi_upsert_placed_from_application($conn, (int)$applicationId);
+    }
+
     // Step 2: Get the UPID of that application
     $getUpid = $conn->prepare("SELECT upid FROM applications WHERE application_id = ?");
     $getUpid->bind_param("i", $applicationId);
@@ -400,6 +405,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['bulk_update'], $_POST
             $bulkStmt->bind_param("ssis", $statusToSet, $batch, $roleId, $upid);
         }
         $bulkStmt->execute();
+
+        if ($statusToSet === 'placed') {
+            require_once __DIR__ . '/placed_import_helper.php';
+            $appsToSync = $conn->prepare(
+                "SELECT application_id FROM applications
+                  WHERE role_id = ? AND upid = ? AND status = 'placed'"
+            );
+            $appsToSync->bind_param("is", $roleId, $upid);
+            $appsToSync->execute();
+            $appsRes = $appsToSync->get_result();
+            while ($appRow = $appsRes->fetch_assoc()) {
+                pi_upsert_placed_from_application($conn, (int)$appRow['application_id']);
+            }
+            $appsToSync->close();
+        }
 
         // ✅ Recheck student final status
         $checkStatus = $conn->prepare("
@@ -516,6 +536,11 @@ if ($updateFieldsStr) {
     $stmt->bind_param($paramTypes, ...$params);
     $stmt->execute();
     $stmt->close();
+
+    if ($statusToSet === 'placed') {
+        require_once __DIR__ . '/placed_import_helper.php';
+        pi_upsert_placed_from_application($conn, (int)$applicationId);
+    }
 }
         }
 

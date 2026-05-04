@@ -188,6 +188,112 @@ if (!function_exists('pi_add_course_to_role')) {
     }
 }
 
+if (!function_exists('pi_upsert_placed_from_application')) {
+    /**
+     * When an application is marked status='placed' from the round-results /
+     * enrolled-students UIs, mirror it into placed_students so the row appears
+     * on the Placed Students tab and Hired counts on the trackers update.
+     *
+     * Insert-only: if a placed_students row already exists for this
+     * (student_id, drive_id, role_id, batch) we leave it alone so any
+     * Excel-imported CTC/stipend overrides are preserved.
+     *
+     * Returns true if a new row was inserted, false otherwise.
+     */
+    function pi_upsert_placed_from_application(mysqli $conn, int $application_id): bool
+    {
+        require_once __DIR__ . '/academic_year_helper.php';
+
+        $sql = "
+            SELECT a.application_id, a.student_id, a.drive_id, a.role_id, a.percentage,
+                   a.placement_batch, a.upid AS app_upid,
+                   s.upid, s.program_type, s.program, s.course, s.reg_no,
+                   s.student_name, s.email, s.phone_no, s.allow_reapply,
+                   s.year_of_passing,
+                   d.company_name, d.drive_no, d.academic_year,
+                   dr.designation_name AS role, dr.ctc, dr.stipend, dr.offer_type
+              FROM applications a
+              JOIN students s     ON a.student_id = s.student_id
+              JOIN drives d       ON a.drive_id  = d.drive_id
+              JOIN drive_roles dr ON a.role_id   = dr.role_id
+             WHERE a.application_id = ?
+               AND a.status = 'placed'
+        ";
+        $stmt = $conn->prepare($sql);
+        if (!$stmt) return false;
+        $stmt->bind_param("i", $application_id);
+        $stmt->execute();
+        $r = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
+        if (!$r) return false;
+
+        $batch = $r['placement_batch'] ?: (($r['allow_reapply'] === 'yes') ? 'reapplied' : 'original');
+
+        $check = $conn->prepare(
+            "SELECT 1 FROM placed_students
+              WHERE student_id = ? AND drive_id = ? AND role_id = ?
+                AND COALESCE(placement_batch, 'original') = ?"
+        );
+        $check->bind_param("iiis", $r['student_id'], $r['drive_id'], $r['role_id'], $batch);
+        $check->execute();
+        $exists = $check->get_result()->num_rows > 0;
+        $check->close();
+        if ($exists) return false;
+
+        $formCheck = $conn->prepare("SELECT 1 FROM on_off_campus_students WHERE reg_no = ?");
+        $formCheck->bind_param("s", $r['reg_no']);
+        $formCheck->execute();
+        $filled_on_off_form = ($formCheck->get_result()->num_rows > 0) ? 'filled' : 'not filled';
+        $formCheck->close();
+
+        $percentage = isset($r['percentage']) ? (float)$r['percentage'] : null;
+        $row_ay     = $r['academic_year'] ?? ($_SESSION['selected_academic_year'] ?? null);
+        $upid       = $r['upid'] ?: $r['app_upid'];
+
+        $ins = $conn->prepare(
+            "INSERT INTO placed_students
+                (student_id, drive_id, role_id, upid, program_type, program, course, reg_no,
+                 student_name, email, phone_no, percentage, offer_type, drive_no, company_name,
+                 role, ctc, stipend, placement_batch, filled_on_off_form, academic_year)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+        );
+        if (!$ins) {
+            $errMsg = '[pi_upsert_placed_from_application] prepare failed: ' . $conn->error;
+            error_log($errMsg);
+            if (PHP_SAPI === 'cli') fwrite(STDERR, $errMsg . "\n");
+            return false;
+        }
+        $ins->bind_param(
+            "iiissssssssdsssssssss",
+            $r['student_id'], $r['drive_id'], $r['role_id'], $upid,
+            $r['program_type'], $r['program'], $r['course'], $r['reg_no'],
+            $r['student_name'], $r['email'], $r['phone_no'], $percentage,
+            $r['offer_type'], $r['drive_no'], $r['company_name'], $r['role'],
+            $r['ctc'], $r['stipend'], $batch, $filled_on_off_form, $row_ay
+        );
+        $ok = $ins->execute();
+        if (!$ok) {
+            $errMsg = '[pi_upsert_placed_from_application] insert failed: ' . $ins->error;
+            error_log($errMsg);
+            if (PHP_SAPI === 'cli') fwrite(STDERR, $errMsg . "\n");
+            $ins->close();
+            return false;
+        }
+        $ins->close();
+
+        $touched = [($r['drive_id'] . ':' . $r['role_id']) => [(int)$r['drive_id'], (int)$r['role_id']]];
+        pi_recompute_hired_counts($conn, $touched);
+        if (!empty($r['course'])) {
+            pi_add_course_to_role($conn, (int)$r['drive_id'], (int)$r['role_id'], (string)$r['course']);
+        }
+
+        $yop = $r['year_of_passing'] !== null ? (int)$r['year_of_passing'] : null;
+        apply_placement_lock_if_fulltime($conn, (int)$r['student_id'], (string)$r['offer_type'], $yop, $row_ay);
+
+        return true;
+    }
+}
+
 if (!function_exists('pi_recompute_hired_counts')) {
     /**
      * Recompute drive_data.no_of_hired = COUNT(DISTINCT student_id) in

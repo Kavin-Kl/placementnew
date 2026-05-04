@@ -10,3 +10,2020 @@ Stack trace:
 #1 Command line code(1): require('C:\\Users\\Kavin\\...')
 #2 {main}
   thrown in C:\Users\Kavin\AppData\Local\Temp\handler_test.php:7
+[02-May-2026 17:12:43 Europe/Berlin] [WARNING] Undefined array key "name" in C:\xampp\htdocs\placementcell\edit_drive.php:1440
+[02-May-2026 17:12:43 Europe/Berlin] [WARNING] Undefined array key "name" in C:\xampp\htdocs\placementcell\edit_drive.php:1446
+[02-May-2026 17:12:43 Europe/Berlin] [WARNING] Undefined array key "name" in C:\xampp\htdocs\placementcell\edit_drive.php:1440
+[02-May-2026 17:12:43 Europe/Berlin] [WARNING] Undefined array key "name" in C:\xampp\htdocs\placementcell\edit_drive.php:1446
+[02-May-2026 17:14:51 Europe/Berlin] [WARNING] Undefined array key "name" in C:\xampp\htdocs\placementcell\edit_drive.php:1440
+[02-May-2026 17:14:51 Europe/Berlin] [WARNING] Undefined array key "name" in C:\xampp\htdocs\placementcell\edit_drive.php:1446
+[02-May-2026 17:14:51 Europe/Berlin] [WARNING] Undefined array key "name" in C:\xampp\htdocs\placementcell\edit_drive.php:1440
+[02-May-2026 17:14:51 Europe/Berlin] [WARNING] Undefined array key "name" in C:\xampp\htdocs\placementcell\edit_drive.php:1446
+[02-May-2026 17:16:57 Europe/Berlin] [WARNING] Undefined array key "name" in C:\xampp\htdocs\placementcell\edit_drive.php:1440
+[02-May-2026 17:16:57 Europe/Berlin] [WARNING] Undefined array key "name" in C:\xampp\htdocs\placementcell\edit_drive.php:1446
+[02-May-2026 17:16:57 Europe/Berlin] [WARNING] Undefined array key "name" in C:\xampp\htdocs\placementcell\edit_drive.php:1440
+[02-May-2026 17:16:57 Europe/Berlin] [WARNING] Undefined array key "name" in C:\xampp\htdocs\placementcell\edit_drive.php:1446
+[02-May-2026 17:20:35 Europe/Berlin] [WARNING] Undefined array key "name" in C:\xampp\htdocs\placementcell\edit_drive.php:1440
+[02-May-2026 17:20:35 Europe/Berlin] [WARNING] Undefined array key "name" in C:\xampp\htdocs\placementcell\edit_drive.php:1446
+[02-May-2026 17:20:35 Europe/Berlin] [WARNING] Undefined array key "name" in C:\xampp\htdocs\placementcell\edit_drive.php:1440
+[02-May-2026 17:20:35 Europe/Berlin] [WARNING] Undefined array key "name" in C:\xampp\htdocs\placementcell\edit_drive.php:1446
+[02-May-2026 17:21:55 Europe/Berlin] [WARNING] Undefined array key "name" in C:\xampp\htdocs\placementcell\edit_drive.php:1440
+[02-May-2026 17:21:55 Europe/Berlin] [WARNING] Undefined array key "name" in C:\xampp\htdocs\placementcell\edit_drive.php:1446
+[02-May-2026 17:21:55 Europe/Berlin] [WARNING] Undefined array key "name" in C:\xampp\htdocs\placementcell\edit_drive.php:1440
+[02-May-2026 17:21:55 Europe/Berlin] [WARNING] Undefined array key "name" in C:\xampp\htdocs\placementcell\edit_drive.php:1446
+[02-May-2026 18:47:26 Europe/Berlin] [pi_upsert_placed_from_application] prepare failed: Unknown column 'percentage' in 'field list'
+[02-May-2026 19:28:24 Europe/Berlin] AJAX request received - ajax_filter is set
+[02-May-2026 19:28:24 Europe/Berlin] Limit: 50, Offset: 0
+[02-May-2026 19:28:24 Europe/Berlin] Where clauses: ["s.academic_year = ?"]
+[02-May-2026 19:28:24 Europe/Berlin] Types: s
+[02-May-2026 19:28:24 Europe/Berlin] Params: ["2026-2027"]
+[02-May-2026 19:28:24 Europe/Berlin] FULL SQL QUERY: 
+      WITH ranked_applications AS (
+          SELECT
+              a.*,
+              ROW_NUMBER() OVER (
+                  PARTITION BY a.student_id
+                  ORDER BY
+                      CASE a.status
+                          WHEN 'placed' THEN 1
+                          WHEN 'blocked' THEN 2
+                          WHEN 'original' THEN 3
+                          ELSE 4
+                      END,
+                      a.status_changed DESC
+              ) AS rn
+          FROM applications a
+          WHERE a.placement_batch IN ('original', 'reapplied')
+      )
+      SELECT
+          s.*,
+
+          -- Count of distinct applications
+          (
+              SELECT COUNT(DISTINCT CONCAT(d.drive_no, '_', a.drive_id))
+              FROM applications a
+              INNER JOIN drives d ON a.drive_id = d.drive_id
+              WHERE a.student_id = s.student_id
+          ) AS application_count,
+
+          -- Final status
+          CASE
+              WHEN ra.status = 'blocked' THEN 'blocked'
+              WHEN ra.status = 'placed'  THEN 'placed'
+              ELSE 'not_placed'
+          END AS final_status,
+
+          -- Comments only for placed/blocked
+          CASE
+              WHEN ra.status IN ('placed','blocked') THEN ra.comments
+              ELSE NULL
+          END AS comment,
+
+          -- Company info only for placed/blocked
+          CASE
+              WHEN ra.status IN ('placed','blocked') THEN d.company_name
+              ELSE NULL
+          END AS company_name,
+
+          -- Role info only for placed/blocked
+          CASE
+              WHEN ra.status IN ('placed','blocked') THEN dr.designation_name
+              ELSE NULL
+          END AS role_name,
+
+          CASE
+              WHEN ra.status IN ('placed','blocked') THEN dr.ctc
+              ELSE NULL
+          END AS ctc,
+
+          CASE
+              WHEN ra.status IN ('placed','blocked') THEN dr.stipend
+              ELSE NULL
+          END AS stipend,
+
+          -- Offer Type only for placed/blocked
+          CASE
+              WHEN ra.status IN ('placed','blocked') THEN dd.offer_type
+              ELSE NULL
+          END AS offer_type
+
+      FROM students s
+      LEFT JOIN ranked_applications ra
+            ON s.student_id = ra.student_id AND ra.rn = 1
+      LEFT JOIN drives d
+            ON ra.drive_id = d.drive_id
+      LEFT JOIN drive_roles dr
+            ON ra.role_id = dr.role_id
+      LEFT JOIN drive_data dd
+            ON ra.drive_id = dd.drive_id AND ra.role_id = dd.role_id
+
+      -- Dynamic WHERE clause if filters exist
+      WHERE 1=1
+     AND s.academic_year = ?
+        ORDER BY 
+    s.batch DESC, 
+    CASE s.program_type 
+        WHEN 'UG' THEN 1 
+        WHEN 'PG' THEN 2 
+        ELSE 3 
+    END,
+    s.upid ASC
+        LIMIT ? OFFSET ?  
+    
+[02-May-2026 19:28:24 Europe/Berlin] Params count: 1 | Types: s
+[02-May-2026 19:28:24 Europe/Berlin] Query executed, rows: 12
+[02-May-2026 19:28:24 Europe/Berlin] AJAX request received - ajax_filter is set
+[02-May-2026 19:28:24 Europe/Berlin] Limit: 10, Offset: 0
+[02-May-2026 19:28:24 Europe/Berlin] Where clauses: ["s.academic_year = ?"]
+[02-May-2026 19:28:24 Europe/Berlin] Types: s
+[02-May-2026 19:28:24 Europe/Berlin] Params: ["2026-2027"]
+[02-May-2026 19:28:24 Europe/Berlin] FULL SQL QUERY: 
+      WITH ranked_applications AS (
+          SELECT
+              a.*,
+              ROW_NUMBER() OVER (
+                  PARTITION BY a.student_id
+                  ORDER BY
+                      CASE a.status
+                          WHEN 'placed' THEN 1
+                          WHEN 'blocked' THEN 2
+                          WHEN 'original' THEN 3
+                          ELSE 4
+                      END,
+                      a.status_changed DESC
+              ) AS rn
+          FROM applications a
+          WHERE a.placement_batch IN ('original', 'reapplied')
+      )
+      SELECT
+          s.*,
+
+          -- Count of distinct applications
+          (
+              SELECT COUNT(DISTINCT CONCAT(d.drive_no, '_', a.drive_id))
+              FROM applications a
+              INNER JOIN drives d ON a.drive_id = d.drive_id
+              WHERE a.student_id = s.student_id
+          ) AS application_count,
+
+          -- Final status
+          CASE
+              WHEN ra.status = 'blocked' THEN 'blocked'
+              WHEN ra.status = 'placed'  THEN 'placed'
+              ELSE 'not_placed'
+          END AS final_status,
+
+          -- Comments only for placed/blocked
+          CASE
+              WHEN ra.status IN ('placed','blocked') THEN ra.comments
+              ELSE NULL
+          END AS comment,
+
+          -- Company info only for placed/blocked
+          CASE
+              WHEN ra.status IN ('placed','blocked') THEN d.company_name
+              ELSE NULL
+          END AS company_name,
+
+          -- Role info only for placed/blocked
+          CASE
+              WHEN ra.status IN ('placed','blocked') THEN dr.designation_name
+              ELSE NULL
+          END AS role_name,
+
+          CASE
+              WHEN ra.status IN ('placed','blocked') THEN dr.ctc
+              ELSE NULL
+          END AS ctc,
+
+          CASE
+              WHEN ra.status IN ('placed','blocked') THEN dr.stipend
+              ELSE NULL
+          END AS stipend,
+
+          -- Offer Type only for placed/blocked
+          CASE
+              WHEN ra.status IN ('placed','blocked') THEN dd.offer_type
+              ELSE NULL
+          END AS offer_type
+
+      FROM students s
+      LEFT JOIN ranked_applications ra
+            ON s.student_id = ra.student_id AND ra.rn = 1
+      LEFT JOIN drives d
+            ON ra.drive_id = d.drive_id
+      LEFT JOIN drive_roles dr
+            ON ra.role_id = dr.role_id
+      LEFT JOIN drive_data dd
+            ON ra.drive_id = dd.drive_id AND ra.role_id = dd.role_id
+
+      -- Dynamic WHERE clause if filters exist
+      WHERE 1=1
+     AND s.academic_year = ?
+        ORDER BY 
+    s.batch DESC, 
+    CASE s.program_type 
+        WHEN 'UG' THEN 1 
+        WHEN 'PG' THEN 2 
+        ELSE 3 
+    END,
+    s.upid ASC
+        LIMIT ? OFFSET ?  
+    
+[02-May-2026 19:28:24 Europe/Berlin] Params count: 1 | Types: s
+[02-May-2026 19:28:24 Europe/Berlin] Query executed, rows: 10
+[02-May-2026 19:28:26 Europe/Berlin] AJAX request received - ajax_filter is set
+[02-May-2026 19:28:26 Europe/Berlin] Limit: 10, Offset: 10
+[02-May-2026 19:28:26 Europe/Berlin] Where clauses: ["s.academic_year = ?"]
+[02-May-2026 19:28:26 Europe/Berlin] Types: s
+[02-May-2026 19:28:26 Europe/Berlin] Params: ["2026-2027"]
+[02-May-2026 19:28:26 Europe/Berlin] FULL SQL QUERY: 
+      WITH ranked_applications AS (
+          SELECT
+              a.*,
+              ROW_NUMBER() OVER (
+                  PARTITION BY a.student_id
+                  ORDER BY
+                      CASE a.status
+                          WHEN 'placed' THEN 1
+                          WHEN 'blocked' THEN 2
+                          WHEN 'original' THEN 3
+                          ELSE 4
+                      END,
+                      a.status_changed DESC
+              ) AS rn
+          FROM applications a
+          WHERE a.placement_batch IN ('original', 'reapplied')
+      )
+      SELECT
+          s.*,
+
+          -- Count of distinct applications
+          (
+              SELECT COUNT(DISTINCT CONCAT(d.drive_no, '_', a.drive_id))
+              FROM applications a
+              INNER JOIN drives d ON a.drive_id = d.drive_id
+              WHERE a.student_id = s.student_id
+          ) AS application_count,
+
+          -- Final status
+          CASE
+              WHEN ra.status = 'blocked' THEN 'blocked'
+              WHEN ra.status = 'placed'  THEN 'placed'
+              ELSE 'not_placed'
+          END AS final_status,
+
+          -- Comments only for placed/blocked
+          CASE
+              WHEN ra.status IN ('placed','blocked') THEN ra.comments
+              ELSE NULL
+          END AS comment,
+
+          -- Company info only for placed/blocked
+          CASE
+              WHEN ra.status IN ('placed','blocked') THEN d.company_name
+              ELSE NULL
+          END AS company_name,
+
+          -- Role info only for placed/blocked
+          CASE
+              WHEN ra.status IN ('placed','blocked') THEN dr.designation_name
+              ELSE NULL
+          END AS role_name,
+
+          CASE
+              WHEN ra.status IN ('placed','blocked') THEN dr.ctc
+              ELSE NULL
+          END AS ctc,
+
+          CASE
+              WHEN ra.status IN ('placed','blocked') THEN dr.stipend
+              ELSE NULL
+          END AS stipend,
+
+          -- Offer Type only for placed/blocked
+          CASE
+              WHEN ra.status IN ('placed','blocked') THEN dd.offer_type
+              ELSE NULL
+          END AS offer_type
+
+      FROM students s
+      LEFT JOIN ranked_applications ra
+            ON s.student_id = ra.student_id AND ra.rn = 1
+      LEFT JOIN drives d
+            ON ra.drive_id = d.drive_id
+      LEFT JOIN drive_roles dr
+            ON ra.role_id = dr.role_id
+      LEFT JOIN drive_data dd
+            ON ra.drive_id = dd.drive_id AND ra.role_id = dd.role_id
+
+      -- Dynamic WHERE clause if filters exist
+      WHERE 1=1
+     AND s.academic_year = ?
+        ORDER BY 
+    s.batch DESC, 
+    CASE s.program_type 
+        WHEN 'UG' THEN 1 
+        WHEN 'PG' THEN 2 
+        ELSE 3 
+    END,
+    s.upid ASC
+        LIMIT ? OFFSET ?  
+    
+[02-May-2026 19:28:26 Europe/Berlin] Params count: 1 | Types: s
+[02-May-2026 19:28:26 Europe/Berlin] Query executed, rows: 2
+[02-May-2026 19:28:26 Europe/Berlin] AJAX request received - ajax_filter is set
+[02-May-2026 19:28:26 Europe/Berlin] Limit: 10, Offset: 20
+[02-May-2026 19:28:26 Europe/Berlin] Where clauses: ["s.academic_year = ?"]
+[02-May-2026 19:28:26 Europe/Berlin] Types: s
+[02-May-2026 19:28:26 Europe/Berlin] Params: ["2026-2027"]
+[02-May-2026 19:28:26 Europe/Berlin] FULL SQL QUERY: 
+      WITH ranked_applications AS (
+          SELECT
+              a.*,
+              ROW_NUMBER() OVER (
+                  PARTITION BY a.student_id
+                  ORDER BY
+                      CASE a.status
+                          WHEN 'placed' THEN 1
+                          WHEN 'blocked' THEN 2
+                          WHEN 'original' THEN 3
+                          ELSE 4
+                      END,
+                      a.status_changed DESC
+              ) AS rn
+          FROM applications a
+          WHERE a.placement_batch IN ('original', 'reapplied')
+      )
+      SELECT
+          s.*,
+
+          -- Count of distinct applications
+          (
+              SELECT COUNT(DISTINCT CONCAT(d.drive_no, '_', a.drive_id))
+              FROM applications a
+              INNER JOIN drives d ON a.drive_id = d.drive_id
+              WHERE a.student_id = s.student_id
+          ) AS application_count,
+
+          -- Final status
+          CASE
+              WHEN ra.status = 'blocked' THEN 'blocked'
+              WHEN ra.status = 'placed'  THEN 'placed'
+              ELSE 'not_placed'
+          END AS final_status,
+
+          -- Comments only for placed/blocked
+          CASE
+              WHEN ra.status IN ('placed','blocked') THEN ra.comments
+              ELSE NULL
+          END AS comment,
+
+          -- Company info only for placed/blocked
+          CASE
+              WHEN ra.status IN ('placed','blocked') THEN d.company_name
+              ELSE NULL
+          END AS company_name,
+
+          -- Role info only for placed/blocked
+          CASE
+              WHEN ra.status IN ('placed','blocked') THEN dr.designation_name
+              ELSE NULL
+          END AS role_name,
+
+          CASE
+              WHEN ra.status IN ('placed','blocked') THEN dr.ctc
+              ELSE NULL
+          END AS ctc,
+
+          CASE
+              WHEN ra.status IN ('placed','blocked') THEN dr.stipend
+              ELSE NULL
+          END AS stipend,
+
+          -- Offer Type only for placed/blocked
+          CASE
+              WHEN ra.status IN ('placed','blocked') THEN dd.offer_type
+              ELSE NULL
+          END AS offer_type
+
+      FROM students s
+      LEFT JOIN ranked_applications ra
+            ON s.student_id = ra.student_id AND ra.rn = 1
+      LEFT JOIN drives d
+            ON ra.drive_id = d.drive_id
+      LEFT JOIN drive_roles dr
+            ON ra.role_id = dr.role_id
+      LEFT JOIN drive_data dd
+            ON ra.drive_id = dd.drive_id AND ra.role_id = dd.role_id
+
+      -- Dynamic WHERE clause if filters exist
+      WHERE 1=1
+     AND s.academic_year = ?
+        ORDER BY 
+    s.batch DESC, 
+    CASE s.program_type 
+        WHEN 'UG' THEN 1 
+        WHEN 'PG' THEN 2 
+        ELSE 3 
+    END,
+    s.upid ASC
+        LIMIT ? OFFSET ?  
+    
+[02-May-2026 19:28:26 Europe/Berlin] Params count: 1 | Types: s
+[02-May-2026 19:28:26 Europe/Berlin] Query executed, rows: 0
+[02-May-2026 19:36:43 Europe/Berlin] AJAX request received - ajax_filter is set
+[02-May-2026 19:36:43 Europe/Berlin] Limit: 50, Offset: 0
+[02-May-2026 19:36:43 Europe/Berlin] Where clauses: ["s.academic_year = ?"]
+[02-May-2026 19:36:43 Europe/Berlin] Types: s
+[02-May-2026 19:36:43 Europe/Berlin] Params: ["2026-2027"]
+[02-May-2026 19:36:43 Europe/Berlin] FULL SQL QUERY: 
+      WITH ranked_applications AS (
+          SELECT
+              a.*,
+              ROW_NUMBER() OVER (
+                  PARTITION BY a.student_id
+                  ORDER BY
+                      CASE a.status
+                          WHEN 'placed' THEN 1
+                          WHEN 'blocked' THEN 2
+                          WHEN 'original' THEN 3
+                          ELSE 4
+                      END,
+                      a.status_changed DESC
+              ) AS rn
+          FROM applications a
+          WHERE a.placement_batch IN ('original', 'reapplied')
+      )
+      SELECT
+          s.*,
+
+          -- Count of distinct applications
+          (
+              SELECT COUNT(DISTINCT CONCAT(d.drive_no, '_', a.drive_id))
+              FROM applications a
+              INNER JOIN drives d ON a.drive_id = d.drive_id
+              WHERE a.student_id = s.student_id
+          ) AS application_count,
+
+          -- Final status
+          CASE
+              WHEN ra.status = 'blocked' THEN 'blocked'
+              WHEN ra.status = 'placed'  THEN 'placed'
+              ELSE 'not_placed'
+          END AS final_status,
+
+          -- Comments only for placed/blocked
+          CASE
+              WHEN ra.status IN ('placed','blocked') THEN ra.comments
+              ELSE NULL
+          END AS comment,
+
+          -- Company info only for placed/blocked
+          CASE
+              WHEN ra.status IN ('placed','blocked') THEN d.company_name
+              ELSE NULL
+          END AS company_name,
+
+          -- Role info only for placed/blocked
+          CASE
+              WHEN ra.status IN ('placed','blocked') THEN dr.designation_name
+              ELSE NULL
+          END AS role_name,
+
+          CASE
+              WHEN ra.status IN ('placed','blocked') THEN dr.ctc
+              ELSE NULL
+          END AS ctc,
+
+          CASE
+              WHEN ra.status IN ('placed','blocked') THEN dr.stipend
+              ELSE NULL
+          END AS stipend,
+
+          -- Offer Type only for placed/blocked
+          CASE
+              WHEN ra.status IN ('placed','blocked') THEN dd.offer_type
+              ELSE NULL
+          END AS offer_type
+
+      FROM students s
+      LEFT JOIN ranked_applications ra
+            ON s.student_id = ra.student_id AND ra.rn = 1
+      LEFT JOIN drives d
+            ON ra.drive_id = d.drive_id
+      LEFT JOIN drive_roles dr
+            ON ra.role_id = dr.role_id
+      LEFT JOIN drive_data dd
+            ON ra.drive_id = dd.drive_id AND ra.role_id = dd.role_id
+
+      -- Dynamic WHERE clause if filters exist
+      WHERE 1=1
+     AND s.academic_year = ?
+        ORDER BY 
+    s.batch DESC, 
+    CASE s.program_type 
+        WHEN 'UG' THEN 1 
+        WHEN 'PG' THEN 2 
+        ELSE 3 
+    END,
+    s.upid ASC
+        LIMIT ? OFFSET ?  
+    
+[02-May-2026 19:36:43 Europe/Berlin] Params count: 1 | Types: s
+[02-May-2026 19:36:43 Europe/Berlin] Query executed, rows: 12
+[02-May-2026 19:36:43 Europe/Berlin] AJAX request received - ajax_filter is set
+[02-May-2026 19:36:43 Europe/Berlin] Limit: 10, Offset: 0
+[02-May-2026 19:36:43 Europe/Berlin] Where clauses: ["s.academic_year = ?"]
+[02-May-2026 19:36:43 Europe/Berlin] Types: s
+[02-May-2026 19:36:43 Europe/Berlin] Params: ["2026-2027"]
+[02-May-2026 19:36:43 Europe/Berlin] FULL SQL QUERY: 
+      WITH ranked_applications AS (
+          SELECT
+              a.*,
+              ROW_NUMBER() OVER (
+                  PARTITION BY a.student_id
+                  ORDER BY
+                      CASE a.status
+                          WHEN 'placed' THEN 1
+                          WHEN 'blocked' THEN 2
+                          WHEN 'original' THEN 3
+                          ELSE 4
+                      END,
+                      a.status_changed DESC
+              ) AS rn
+          FROM applications a
+          WHERE a.placement_batch IN ('original', 'reapplied')
+      )
+      SELECT
+          s.*,
+
+          -- Count of distinct applications
+          (
+              SELECT COUNT(DISTINCT CONCAT(d.drive_no, '_', a.drive_id))
+              FROM applications a
+              INNER JOIN drives d ON a.drive_id = d.drive_id
+              WHERE a.student_id = s.student_id
+          ) AS application_count,
+
+          -- Final status
+          CASE
+              WHEN ra.status = 'blocked' THEN 'blocked'
+              WHEN ra.status = 'placed'  THEN 'placed'
+              ELSE 'not_placed'
+          END AS final_status,
+
+          -- Comments only for placed/blocked
+          CASE
+              WHEN ra.status IN ('placed','blocked') THEN ra.comments
+              ELSE NULL
+          END AS comment,
+
+          -- Company info only for placed/blocked
+          CASE
+              WHEN ra.status IN ('placed','blocked') THEN d.company_name
+              ELSE NULL
+          END AS company_name,
+
+          -- Role info only for placed/blocked
+          CASE
+              WHEN ra.status IN ('placed','blocked') THEN dr.designation_name
+              ELSE NULL
+          END AS role_name,
+
+          CASE
+              WHEN ra.status IN ('placed','blocked') THEN dr.ctc
+              ELSE NULL
+          END AS ctc,
+
+          CASE
+              WHEN ra.status IN ('placed','blocked') THEN dr.stipend
+              ELSE NULL
+          END AS stipend,
+
+          -- Offer Type only for placed/blocked
+          CASE
+              WHEN ra.status IN ('placed','blocked') THEN dd.offer_type
+              ELSE NULL
+          END AS offer_type
+
+      FROM students s
+      LEFT JOIN ranked_applications ra
+            ON s.student_id = ra.student_id AND ra.rn = 1
+      LEFT JOIN drives d
+            ON ra.drive_id = d.drive_id
+      LEFT JOIN drive_roles dr
+            ON ra.role_id = dr.role_id
+      LEFT JOIN drive_data dd
+            ON ra.drive_id = dd.drive_id AND ra.role_id = dd.role_id
+
+      -- Dynamic WHERE clause if filters exist
+      WHERE 1=1
+     AND s.academic_year = ?
+        ORDER BY 
+    s.batch DESC, 
+    CASE s.program_type 
+        WHEN 'UG' THEN 1 
+        WHEN 'PG' THEN 2 
+        ELSE 3 
+    END,
+    s.upid ASC
+        LIMIT ? OFFSET ?  
+    
+[02-May-2026 19:36:43 Europe/Berlin] Params count: 1 | Types: s
+[02-May-2026 19:36:43 Europe/Berlin] Query executed, rows: 10
+[02-May-2026 19:36:44 Europe/Berlin] AJAX request received - ajax_filter is set
+[02-May-2026 19:36:44 Europe/Berlin] Limit: 10, Offset: 10
+[02-May-2026 19:36:44 Europe/Berlin] Where clauses: ["s.academic_year = ?"]
+[02-May-2026 19:36:44 Europe/Berlin] Types: s
+[02-May-2026 19:36:44 Europe/Berlin] Params: ["2026-2027"]
+[02-May-2026 19:36:44 Europe/Berlin] FULL SQL QUERY: 
+      WITH ranked_applications AS (
+          SELECT
+              a.*,
+              ROW_NUMBER() OVER (
+                  PARTITION BY a.student_id
+                  ORDER BY
+                      CASE a.status
+                          WHEN 'placed' THEN 1
+                          WHEN 'blocked' THEN 2
+                          WHEN 'original' THEN 3
+                          ELSE 4
+                      END,
+                      a.status_changed DESC
+              ) AS rn
+          FROM applications a
+          WHERE a.placement_batch IN ('original', 'reapplied')
+      )
+      SELECT
+          s.*,
+
+          -- Count of distinct applications
+          (
+              SELECT COUNT(DISTINCT CONCAT(d.drive_no, '_', a.drive_id))
+              FROM applications a
+              INNER JOIN drives d ON a.drive_id = d.drive_id
+              WHERE a.student_id = s.student_id
+          ) AS application_count,
+
+          -- Final status
+          CASE
+              WHEN ra.status = 'blocked' THEN 'blocked'
+              WHEN ra.status = 'placed'  THEN 'placed'
+              ELSE 'not_placed'
+          END AS final_status,
+
+          -- Comments only for placed/blocked
+          CASE
+              WHEN ra.status IN ('placed','blocked') THEN ra.comments
+              ELSE NULL
+          END AS comment,
+
+          -- Company info only for placed/blocked
+          CASE
+              WHEN ra.status IN ('placed','blocked') THEN d.company_name
+              ELSE NULL
+          END AS company_name,
+
+          -- Role info only for placed/blocked
+          CASE
+              WHEN ra.status IN ('placed','blocked') THEN dr.designation_name
+              ELSE NULL
+          END AS role_name,
+
+          CASE
+              WHEN ra.status IN ('placed','blocked') THEN dr.ctc
+              ELSE NULL
+          END AS ctc,
+
+          CASE
+              WHEN ra.status IN ('placed','blocked') THEN dr.stipend
+              ELSE NULL
+          END AS stipend,
+
+          -- Offer Type only for placed/blocked
+          CASE
+              WHEN ra.status IN ('placed','blocked') THEN dd.offer_type
+              ELSE NULL
+          END AS offer_type
+
+      FROM students s
+      LEFT JOIN ranked_applications ra
+            ON s.student_id = ra.student_id AND ra.rn = 1
+      LEFT JOIN drives d
+            ON ra.drive_id = d.drive_id
+      LEFT JOIN drive_roles dr
+            ON ra.role_id = dr.role_id
+      LEFT JOIN drive_data dd
+            ON ra.drive_id = dd.drive_id AND ra.role_id = dd.role_id
+
+      -- Dynamic WHERE clause if filters exist
+      WHERE 1=1
+     AND s.academic_year = ?
+        ORDER BY 
+    s.batch DESC, 
+    CASE s.program_type 
+        WHEN 'UG' THEN 1 
+        WHEN 'PG' THEN 2 
+        ELSE 3 
+    END,
+    s.upid ASC
+        LIMIT ? OFFSET ?  
+    
+[02-May-2026 19:36:44 Europe/Berlin] Params count: 1 | Types: s
+[02-May-2026 19:36:44 Europe/Berlin] Query executed, rows: 2
+[02-May-2026 20:16:18 Europe/Berlin] [pi_upsert_placed_from_application] prepare failed: Unknown column 'percentage' in 'field list'
+[02-May-2026 20:30:49 Europe/Berlin] AJAX request received - ajax_filter is set
+[02-May-2026 20:30:49 Europe/Berlin] Limit: 50, Offset: 0
+[02-May-2026 20:30:49 Europe/Berlin] Where clauses: ["s.academic_year = ?"]
+[02-May-2026 20:30:49 Europe/Berlin] Types: s
+[02-May-2026 20:30:49 Europe/Berlin] Params: ["2026-2027"]
+[02-May-2026 20:30:49 Europe/Berlin] FULL SQL QUERY: 
+      WITH ranked_applications AS (
+          SELECT
+              a.*,
+              ROW_NUMBER() OVER (
+                  PARTITION BY a.student_id
+                  ORDER BY
+                      CASE a.status
+                          WHEN 'placed' THEN 1
+                          WHEN 'blocked' THEN 2
+                          WHEN 'original' THEN 3
+                          ELSE 4
+                      END,
+                      a.status_changed DESC
+              ) AS rn
+          FROM applications a
+          WHERE a.placement_batch IN ('original', 'reapplied')
+      )
+      SELECT
+          s.*,
+
+          -- Count of distinct applications
+          (
+              SELECT COUNT(DISTINCT CONCAT(d.drive_no, '_', a.drive_id))
+              FROM applications a
+              INNER JOIN drives d ON a.drive_id = d.drive_id
+              WHERE a.student_id = s.student_id
+          ) AS application_count,
+
+          -- Final status
+          CASE
+              WHEN ra.status = 'blocked' THEN 'blocked'
+              WHEN ra.status = 'placed'  THEN 'placed'
+              ELSE 'not_placed'
+          END AS final_status,
+
+          -- Comments only for placed/blocked
+          CASE
+              WHEN ra.status IN ('placed','blocked') THEN ra.comments
+              ELSE NULL
+          END AS comment,
+
+          -- Company info only for placed/blocked
+          CASE
+              WHEN ra.status IN ('placed','blocked') THEN d.company_name
+              ELSE NULL
+          END AS company_name,
+
+          -- Role info only for placed/blocked
+          CASE
+              WHEN ra.status IN ('placed','blocked') THEN dr.designation_name
+              ELSE NULL
+          END AS role_name,
+
+          CASE
+              WHEN ra.status IN ('placed','blocked') THEN dr.ctc
+              ELSE NULL
+          END AS ctc,
+
+          CASE
+              WHEN ra.status IN ('placed','blocked') THEN dr.stipend
+              ELSE NULL
+          END AS stipend,
+
+          -- Offer Type only for placed/blocked
+          CASE
+              WHEN ra.status IN ('placed','blocked') THEN dd.offer_type
+              ELSE NULL
+          END AS offer_type
+
+      FROM students s
+      LEFT JOIN ranked_applications ra
+            ON s.student_id = ra.student_id AND ra.rn = 1
+      LEFT JOIN drives d
+            ON ra.drive_id = d.drive_id
+      LEFT JOIN drive_roles dr
+            ON ra.role_id = dr.role_id
+      LEFT JOIN drive_data dd
+            ON ra.drive_id = dd.drive_id AND ra.role_id = dd.role_id
+
+      -- Dynamic WHERE clause if filters exist
+      WHERE 1=1
+     AND s.academic_year = ?
+        ORDER BY 
+    s.batch DESC, 
+    CASE s.program_type 
+        WHEN 'UG' THEN 1 
+        WHEN 'PG' THEN 2 
+        ELSE 3 
+    END,
+    s.upid ASC
+        LIMIT ? OFFSET ?  
+    
+[02-May-2026 20:30:49 Europe/Berlin] Params count: 1 | Types: s
+[02-May-2026 20:30:49 Europe/Berlin] Query executed, rows: 12
+[02-May-2026 20:30:49 Europe/Berlin] AJAX request received - ajax_filter is set
+[02-May-2026 20:30:49 Europe/Berlin] Limit: 10, Offset: 0
+[02-May-2026 20:30:49 Europe/Berlin] Where clauses: ["s.academic_year = ?"]
+[02-May-2026 20:30:49 Europe/Berlin] Types: s
+[02-May-2026 20:30:49 Europe/Berlin] Params: ["2026-2027"]
+[02-May-2026 20:30:49 Europe/Berlin] FULL SQL QUERY: 
+      WITH ranked_applications AS (
+          SELECT
+              a.*,
+              ROW_NUMBER() OVER (
+                  PARTITION BY a.student_id
+                  ORDER BY
+                      CASE a.status
+                          WHEN 'placed' THEN 1
+                          WHEN 'blocked' THEN 2
+                          WHEN 'original' THEN 3
+                          ELSE 4
+                      END,
+                      a.status_changed DESC
+              ) AS rn
+          FROM applications a
+          WHERE a.placement_batch IN ('original', 'reapplied')
+      )
+      SELECT
+          s.*,
+
+          -- Count of distinct applications
+          (
+              SELECT COUNT(DISTINCT CONCAT(d.drive_no, '_', a.drive_id))
+              FROM applications a
+              INNER JOIN drives d ON a.drive_id = d.drive_id
+              WHERE a.student_id = s.student_id
+          ) AS application_count,
+
+          -- Final status
+          CASE
+              WHEN ra.status = 'blocked' THEN 'blocked'
+              WHEN ra.status = 'placed'  THEN 'placed'
+              ELSE 'not_placed'
+          END AS final_status,
+
+          -- Comments only for placed/blocked
+          CASE
+              WHEN ra.status IN ('placed','blocked') THEN ra.comments
+              ELSE NULL
+          END AS comment,
+
+          -- Company info only for placed/blocked
+          CASE
+              WHEN ra.status IN ('placed','blocked') THEN d.company_name
+              ELSE NULL
+          END AS company_name,
+
+          -- Role info only for placed/blocked
+          CASE
+              WHEN ra.status IN ('placed','blocked') THEN dr.designation_name
+              ELSE NULL
+          END AS role_name,
+
+          CASE
+              WHEN ra.status IN ('placed','blocked') THEN dr.ctc
+              ELSE NULL
+          END AS ctc,
+
+          CASE
+              WHEN ra.status IN ('placed','blocked') THEN dr.stipend
+              ELSE NULL
+          END AS stipend,
+
+          -- Offer Type only for placed/blocked
+          CASE
+              WHEN ra.status IN ('placed','blocked') THEN dd.offer_type
+              ELSE NULL
+          END AS offer_type
+
+      FROM students s
+      LEFT JOIN ranked_applications ra
+            ON s.student_id = ra.student_id AND ra.rn = 1
+      LEFT JOIN drives d
+            ON ra.drive_id = d.drive_id
+      LEFT JOIN drive_roles dr
+            ON ra.role_id = dr.role_id
+      LEFT JOIN drive_data dd
+            ON ra.drive_id = dd.drive_id AND ra.role_id = dd.role_id
+
+      -- Dynamic WHERE clause if filters exist
+      WHERE 1=1
+     AND s.academic_year = ?
+        ORDER BY 
+    s.batch DESC, 
+    CASE s.program_type 
+        WHEN 'UG' THEN 1 
+        WHEN 'PG' THEN 2 
+        ELSE 3 
+    END,
+    s.upid ASC
+        LIMIT ? OFFSET ?  
+    
+[02-May-2026 20:30:49 Europe/Berlin] Params count: 1 | Types: s
+[02-May-2026 20:30:49 Europe/Berlin] Query executed, rows: 10
+[02-May-2026 20:30:54 Europe/Berlin] Where clauses: ["s.academic_year = ?"]
+[02-May-2026 20:30:54 Europe/Berlin] Types: s
+[02-May-2026 20:30:54 Europe/Berlin] Params: ["2026-2027"]
+[02-May-2026 20:30:54 Europe/Berlin] FULL SQL QUERY: 
+      WITH ranked_applications AS (
+          SELECT
+              a.*,
+              ROW_NUMBER() OVER (
+                  PARTITION BY a.student_id
+                  ORDER BY
+                      CASE a.status
+                          WHEN 'placed' THEN 1
+                          WHEN 'blocked' THEN 2
+                          WHEN 'original' THEN 3
+                          ELSE 4
+                      END,
+                      a.status_changed DESC
+              ) AS rn
+          FROM applications a
+          WHERE a.placement_batch IN ('original', 'reapplied')
+      )
+      SELECT
+          s.*,
+
+          -- Count of distinct applications
+          (
+              SELECT COUNT(DISTINCT CONCAT(d.drive_no, '_', a.drive_id))
+              FROM applications a
+              INNER JOIN drives d ON a.drive_id = d.drive_id
+              WHERE a.student_id = s.student_id
+          ) AS application_count,
+
+          -- Final status
+          CASE
+              WHEN ra.status = 'blocked' THEN 'blocked'
+              WHEN ra.status = 'placed'  THEN 'placed'
+              ELSE 'not_placed'
+          END AS final_status,
+
+          -- Comments only for placed/blocked
+          CASE
+              WHEN ra.status IN ('placed','blocked') THEN ra.comments
+              ELSE NULL
+          END AS comment,
+
+          -- Company info only for placed/blocked
+          CASE
+              WHEN ra.status IN ('placed','blocked') THEN d.company_name
+              ELSE NULL
+          END AS company_name,
+
+          -- Role info only for placed/blocked
+          CASE
+              WHEN ra.status IN ('placed','blocked') THEN dr.designation_name
+              ELSE NULL
+          END AS role_name,
+
+          CASE
+              WHEN ra.status IN ('placed','blocked') THEN dr.ctc
+              ELSE NULL
+          END AS ctc,
+
+          CASE
+              WHEN ra.status IN ('placed','blocked') THEN dr.stipend
+              ELSE NULL
+          END AS stipend,
+
+          -- Offer Type only for placed/blocked
+          CASE
+              WHEN ra.status IN ('placed','blocked') THEN dd.offer_type
+              ELSE NULL
+          END AS offer_type
+
+      FROM students s
+      LEFT JOIN ranked_applications ra
+            ON s.student_id = ra.student_id AND ra.rn = 1
+      LEFT JOIN drives d
+            ON ra.drive_id = d.drive_id
+      LEFT JOIN drive_roles dr
+            ON ra.role_id = dr.role_id
+      LEFT JOIN drive_data dd
+            ON ra.drive_id = dd.drive_id AND ra.role_id = dd.role_id
+
+      -- Dynamic WHERE clause if filters exist
+      WHERE 1=1
+     AND s.academic_year = ?
+        ORDER BY 
+    s.batch DESC, 
+    CASE s.program_type 
+        WHEN 'UG' THEN 1 
+        WHEN 'PG' THEN 2 
+        ELSE 3 
+    END,
+    s.upid ASC
+        LIMIT ? OFFSET ?  
+    
+[02-May-2026 20:30:54 Europe/Berlin] Params count: 1 | Types: s
+[02-May-2026 20:31:03 Europe/Berlin] AJAX request received - ajax_filter is set
+[02-May-2026 20:31:03 Europe/Berlin] Limit: 50, Offset: 0
+[02-May-2026 20:31:03 Europe/Berlin] Where clauses: ["s.academic_year = ?"]
+[02-May-2026 20:31:03 Europe/Berlin] Types: s
+[02-May-2026 20:31:03 Europe/Berlin] Params: ["2027-2028"]
+[02-May-2026 20:31:03 Europe/Berlin] FULL SQL QUERY: 
+      WITH ranked_applications AS (
+          SELECT
+              a.*,
+              ROW_NUMBER() OVER (
+                  PARTITION BY a.student_id
+                  ORDER BY
+                      CASE a.status
+                          WHEN 'placed' THEN 1
+                          WHEN 'blocked' THEN 2
+                          WHEN 'original' THEN 3
+                          ELSE 4
+                      END,
+                      a.status_changed DESC
+              ) AS rn
+          FROM applications a
+          WHERE a.placement_batch IN ('original', 'reapplied')
+      )
+      SELECT
+          s.*,
+
+          -- Count of distinct applications
+          (
+              SELECT COUNT(DISTINCT CONCAT(d.drive_no, '_', a.drive_id))
+              FROM applications a
+              INNER JOIN drives d ON a.drive_id = d.drive_id
+              WHERE a.student_id = s.student_id
+          ) AS application_count,
+
+          -- Final status
+          CASE
+              WHEN ra.status = 'blocked' THEN 'blocked'
+              WHEN ra.status = 'placed'  THEN 'placed'
+              ELSE 'not_placed'
+          END AS final_status,
+
+          -- Comments only for placed/blocked
+          CASE
+              WHEN ra.status IN ('placed','blocked') THEN ra.comments
+              ELSE NULL
+          END AS comment,
+
+          -- Company info only for placed/blocked
+          CASE
+              WHEN ra.status IN ('placed','blocked') THEN d.company_name
+              ELSE NULL
+          END AS company_name,
+
+          -- Role info only for placed/blocked
+          CASE
+              WHEN ra.status IN ('placed','blocked') THEN dr.designation_name
+              ELSE NULL
+          END AS role_name,
+
+          CASE
+              WHEN ra.status IN ('placed','blocked') THEN dr.ctc
+              ELSE NULL
+          END AS ctc,
+
+          CASE
+              WHEN ra.status IN ('placed','blocked') THEN dr.stipend
+              ELSE NULL
+          END AS stipend,
+
+          -- Offer Type only for placed/blocked
+          CASE
+              WHEN ra.status IN ('placed','blocked') THEN dd.offer_type
+              ELSE NULL
+          END AS offer_type
+
+      FROM students s
+      LEFT JOIN ranked_applications ra
+            ON s.student_id = ra.student_id AND ra.rn = 1
+      LEFT JOIN drives d
+            ON ra.drive_id = d.drive_id
+      LEFT JOIN drive_roles dr
+            ON ra.role_id = dr.role_id
+      LEFT JOIN drive_data dd
+            ON ra.drive_id = dd.drive_id AND ra.role_id = dd.role_id
+
+      -- Dynamic WHERE clause if filters exist
+      WHERE 1=1
+     AND s.academic_year = ?
+        ORDER BY 
+    s.batch DESC, 
+    CASE s.program_type 
+        WHEN 'UG' THEN 1 
+        WHEN 'PG' THEN 2 
+        ELSE 3 
+    END,
+    s.upid ASC
+        LIMIT ? OFFSET ?  
+    
+[02-May-2026 20:31:03 Europe/Berlin] Params count: 1 | Types: s
+[02-May-2026 20:31:03 Europe/Berlin] Query executed, rows: 0
+[02-May-2026 20:31:03 Europe/Berlin] AJAX request received - ajax_filter is set
+[02-May-2026 20:31:03 Europe/Berlin] Limit: 10, Offset: 0
+[02-May-2026 20:31:03 Europe/Berlin] Where clauses: ["s.academic_year = ?"]
+[02-May-2026 20:31:03 Europe/Berlin] Types: s
+[02-May-2026 20:31:03 Europe/Berlin] Params: ["2027-2028"]
+[02-May-2026 20:31:03 Europe/Berlin] FULL SQL QUERY: 
+      WITH ranked_applications AS (
+          SELECT
+              a.*,
+              ROW_NUMBER() OVER (
+                  PARTITION BY a.student_id
+                  ORDER BY
+                      CASE a.status
+                          WHEN 'placed' THEN 1
+                          WHEN 'blocked' THEN 2
+                          WHEN 'original' THEN 3
+                          ELSE 4
+                      END,
+                      a.status_changed DESC
+              ) AS rn
+          FROM applications a
+          WHERE a.placement_batch IN ('original', 'reapplied')
+      )
+      SELECT
+          s.*,
+
+          -- Count of distinct applications
+          (
+              SELECT COUNT(DISTINCT CONCAT(d.drive_no, '_', a.drive_id))
+              FROM applications a
+              INNER JOIN drives d ON a.drive_id = d.drive_id
+              WHERE a.student_id = s.student_id
+          ) AS application_count,
+
+          -- Final status
+          CASE
+              WHEN ra.status = 'blocked' THEN 'blocked'
+              WHEN ra.status = 'placed'  THEN 'placed'
+              ELSE 'not_placed'
+          END AS final_status,
+
+          -- Comments only for placed/blocked
+          CASE
+              WHEN ra.status IN ('placed','blocked') THEN ra.comments
+              ELSE NULL
+          END AS comment,
+
+          -- Company info only for placed/blocked
+          CASE
+              WHEN ra.status IN ('placed','blocked') THEN d.company_name
+              ELSE NULL
+          END AS company_name,
+
+          -- Role info only for placed/blocked
+          CASE
+              WHEN ra.status IN ('placed','blocked') THEN dr.designation_name
+              ELSE NULL
+          END AS role_name,
+
+          CASE
+              WHEN ra.status IN ('placed','blocked') THEN dr.ctc
+              ELSE NULL
+          END AS ctc,
+
+          CASE
+              WHEN ra.status IN ('placed','blocked') THEN dr.stipend
+              ELSE NULL
+          END AS stipend,
+
+          -- Offer Type only for placed/blocked
+          CASE
+              WHEN ra.status IN ('placed','blocked') THEN dd.offer_type
+              ELSE NULL
+          END AS offer_type
+
+      FROM students s
+      LEFT JOIN ranked_applications ra
+            ON s.student_id = ra.student_id AND ra.rn = 1
+      LEFT JOIN drives d
+            ON ra.drive_id = d.drive_id
+      LEFT JOIN drive_roles dr
+            ON ra.role_id = dr.role_id
+      LEFT JOIN drive_data dd
+            ON ra.drive_id = dd.drive_id AND ra.role_id = dd.role_id
+
+      -- Dynamic WHERE clause if filters exist
+      WHERE 1=1
+     AND s.academic_year = ?
+        ORDER BY 
+    s.batch DESC, 
+    CASE s.program_type 
+        WHEN 'UG' THEN 1 
+        WHEN 'PG' THEN 2 
+        ELSE 3 
+    END,
+    s.upid ASC
+        LIMIT ? OFFSET ?  
+    
+[02-May-2026 20:31:03 Europe/Berlin] Params count: 1 | Types: s
+[02-May-2026 20:31:03 Europe/Berlin] Query executed, rows: 0
+[02-May-2026 20:41:34 Europe/Berlin] [Registered Import] === IMPORT STARTED ===
+[02-May-2026 20:41:34 Europe/Berlin] [Registered Import] User: 7
+[02-May-2026 20:41:34 Europe/Berlin] [Registered Import] File received: internship_2026-2027.xlsx (Size: 8.41 KB)
+[02-May-2026 20:41:34 Europe/Berlin] [Registered Import] Batch year extracted: 2026-2027
+[02-May-2026 20:41:34 Europe/Berlin] [Registered Import] Header mapping result: {"upid":1,"reg_no":2,"student_name":3,"program_type":4,"program":5,"course":6,"email":7,"phone_no":8,"percentage":11}
+[02-May-2026 20:41:34 Europe/Berlin] [Registered Import] Expected columns: ["upid","program_type","program","course","reg_no","student_name","email","phone_no","percentage"]
+[02-May-2026 20:41:34 Europe/Berlin] [Registered Import] All required columns found, starting import...
+[02-May-2026 20:41:34 Europe/Berlin] [Registered Import] === IMPORT COMPLETED ===
+[02-May-2026 20:41:34 Europe/Berlin] [Registered Import] Results: Inserted=0, Skipped=1
+[02-May-2026 20:42:42 Europe/Berlin] [Registered Import] === IMPORT STARTED ===
+[02-May-2026 20:42:42 Europe/Berlin] [Registered Import] User: 7
+[02-May-2026 20:42:42 Europe/Berlin] [Registered Import] File received: internship_2026-2027.xlsx (Size: 8.41 KB)
+[02-May-2026 20:42:42 Europe/Berlin] [Registered Import] Batch year extracted: 2026-2027
+[02-May-2026 20:42:42 Europe/Berlin] [Registered Import] Header mapping result: {"upid":1,"reg_no":2,"student_name":3,"program_type":4,"program":5,"course":6,"email":7,"phone_no":8,"percentage":11}
+[02-May-2026 20:42:42 Europe/Berlin] [Registered Import] Expected columns: ["upid","program_type","program","course","reg_no","student_name","email","phone_no","percentage"]
+[02-May-2026 20:42:42 Europe/Berlin] [Registered Import] All required columns found, starting import...
+[02-May-2026 20:42:42 Europe/Berlin] Insert failed for UPID MCC26PLC18: Duplicate entry 'MA241107' for key 'reg_no'
+[02-May-2026 20:42:42 Europe/Berlin] [Registered Import] === IMPORT COMPLETED ===
+[02-May-2026 20:42:42 Europe/Berlin] [Registered Import] Results: Inserted=0, Skipped=1
+[02-May-2026 21:32:36 Europe/Berlin] [pi_upsert_placed_from_application] prepare failed: Unknown column 'percentage' in 'field list'
+[02-May-2026 21:38:21 Europe/Berlin] [pi_upsert_placed_from_application] prepare failed: Unknown column 'percentage' in 'field list'
+[02-May-2026 21:47:44 Europe/Berlin] [pi_upsert_placed_from_application] prepare failed: Unknown column 'percentage' in 'field list'
+[04-May-2026 15:59:21 Europe/Berlin] [Registered Import] === IMPORT STARTED ===
+[04-May-2026 15:59:21 Europe/Berlin] [Registered Import] User: 7
+[04-May-2026 15:59:21 Europe/Berlin] [Registered Import] File received: internship_2026-2027.xlsx (Size: 8.41 KB)
+[04-May-2026 15:59:21 Europe/Berlin] [Registered Import] Batch year extracted: 2026-2027
+[04-May-2026 15:59:25 Europe/Berlin] [Registered Import] Header mapping result: {"upid":1,"reg_no":2,"student_name":3,"program_type":4,"program":5,"course":6,"email":7,"phone_no":8,"percentage":11}
+[04-May-2026 15:59:25 Europe/Berlin] [Registered Import] Expected columns: ["upid","program_type","program","course","reg_no","student_name","email","phone_no","percentage"]
+[04-May-2026 15:59:25 Europe/Berlin] [Registered Import] All required columns found, starting import...
+[04-May-2026 15:59:25 Europe/Berlin] [Registered Import] === IMPORT COMPLETED ===
+[04-May-2026 15:59:25 Europe/Berlin] [Registered Import] Results: Inserted=1, Skipped=0
+[04-May-2026 19:26:44 Europe/Berlin] 🟡 Campus Type Received: off
+[04-May-2026 19:26:44 Europe/Berlin] ✅ Off Campus Block Triggered
+[04-May-2026 19:39:52 Europe/Berlin] AJAX request received - ajax_filter is set
+[04-May-2026 19:39:52 Europe/Berlin] Limit: 50, Offset: 0
+[04-May-2026 19:39:52 Europe/Berlin] Where clauses: ["s.academic_year = ?"]
+[04-May-2026 19:39:52 Europe/Berlin] Types: s
+[04-May-2026 19:39:52 Europe/Berlin] Params: ["2026-2027"]
+[04-May-2026 19:39:52 Europe/Berlin] FULL SQL QUERY: 
+      WITH ranked_applications AS (
+          SELECT
+              a.*,
+              ROW_NUMBER() OVER (
+                  PARTITION BY a.student_id
+                  ORDER BY
+                      CASE a.status
+                          WHEN 'placed' THEN 1
+                          WHEN 'blocked' THEN 2
+                          WHEN 'original' THEN 3
+                          ELSE 4
+                      END,
+                      a.status_changed DESC
+              ) AS rn
+          FROM applications a
+          WHERE a.placement_batch IN ('original', 'reapplied')
+      )
+      SELECT
+          s.*,
+
+          -- Count of distinct applications
+          (
+              SELECT COUNT(DISTINCT CONCAT(d.drive_no, '_', a.drive_id))
+              FROM applications a
+              INNER JOIN drives d ON a.drive_id = d.drive_id
+              WHERE a.student_id = s.student_id
+          ) AS application_count,
+
+          -- Final status
+          CASE
+              WHEN ra.status = 'blocked' THEN 'blocked'
+              WHEN ra.status = 'placed'  THEN 'placed'
+              ELSE 'not_placed'
+          END AS final_status,
+
+          -- Comments only for placed/blocked
+          CASE
+              WHEN ra.status IN ('placed','blocked') THEN ra.comments
+              ELSE NULL
+          END AS comment,
+
+          -- Company info only for placed/blocked
+          CASE
+              WHEN ra.status IN ('placed','blocked') THEN d.company_name
+              ELSE NULL
+          END AS company_name,
+
+          -- Role info only for placed/blocked
+          CASE
+              WHEN ra.status IN ('placed','blocked') THEN dr.designation_name
+              ELSE NULL
+          END AS role_name,
+
+          CASE
+              WHEN ra.status IN ('placed','blocked') THEN dr.ctc
+              ELSE NULL
+          END AS ctc,
+
+          CASE
+              WHEN ra.status IN ('placed','blocked') THEN dr.stipend
+              ELSE NULL
+          END AS stipend,
+
+          -- Offer Type only for placed/blocked
+          CASE
+              WHEN ra.status IN ('placed','blocked') THEN dd.offer_type
+              ELSE NULL
+          END AS offer_type
+
+      FROM students s
+      LEFT JOIN ranked_applications ra
+            ON s.student_id = ra.student_id AND ra.rn = 1
+      LEFT JOIN drives d
+            ON ra.drive_id = d.drive_id
+      LEFT JOIN drive_roles dr
+            ON ra.role_id = dr.role_id
+      LEFT JOIN drive_data dd
+            ON ra.drive_id = dd.drive_id AND ra.role_id = dd.role_id
+
+      -- Dynamic WHERE clause if filters exist
+      WHERE 1=1
+     AND s.academic_year = ?
+        ORDER BY 
+    s.batch DESC, 
+    CASE s.program_type 
+        WHEN 'UG' THEN 1 
+        WHEN 'PG' THEN 2 
+        ELSE 3 
+    END,
+    s.upid ASC
+        LIMIT ? OFFSET ?  
+    
+[04-May-2026 19:39:52 Europe/Berlin] Params count: 1 | Types: s
+[04-May-2026 19:39:52 Europe/Berlin] Query executed, rows: 12
+[04-May-2026 19:39:53 Europe/Berlin] AJAX request received - ajax_filter is set
+[04-May-2026 19:39:53 Europe/Berlin] Limit: 10, Offset: 0
+[04-May-2026 19:39:53 Europe/Berlin] Where clauses: ["s.academic_year = ?"]
+[04-May-2026 19:39:53 Europe/Berlin] Types: s
+[04-May-2026 19:39:53 Europe/Berlin] Params: ["2026-2027"]
+[04-May-2026 19:39:53 Europe/Berlin] FULL SQL QUERY: 
+      WITH ranked_applications AS (
+          SELECT
+              a.*,
+              ROW_NUMBER() OVER (
+                  PARTITION BY a.student_id
+                  ORDER BY
+                      CASE a.status
+                          WHEN 'placed' THEN 1
+                          WHEN 'blocked' THEN 2
+                          WHEN 'original' THEN 3
+                          ELSE 4
+                      END,
+                      a.status_changed DESC
+              ) AS rn
+          FROM applications a
+          WHERE a.placement_batch IN ('original', 'reapplied')
+      )
+      SELECT
+          s.*,
+
+          -- Count of distinct applications
+          (
+              SELECT COUNT(DISTINCT CONCAT(d.drive_no, '_', a.drive_id))
+              FROM applications a
+              INNER JOIN drives d ON a.drive_id = d.drive_id
+              WHERE a.student_id = s.student_id
+          ) AS application_count,
+
+          -- Final status
+          CASE
+              WHEN ra.status = 'blocked' THEN 'blocked'
+              WHEN ra.status = 'placed'  THEN 'placed'
+              ELSE 'not_placed'
+          END AS final_status,
+
+          -- Comments only for placed/blocked
+          CASE
+              WHEN ra.status IN ('placed','blocked') THEN ra.comments
+              ELSE NULL
+          END AS comment,
+
+          -- Company info only for placed/blocked
+          CASE
+              WHEN ra.status IN ('placed','blocked') THEN d.company_name
+              ELSE NULL
+          END AS company_name,
+
+          -- Role info only for placed/blocked
+          CASE
+              WHEN ra.status IN ('placed','blocked') THEN dr.designation_name
+              ELSE NULL
+          END AS role_name,
+
+          CASE
+              WHEN ra.status IN ('placed','blocked') THEN dr.ctc
+              ELSE NULL
+          END AS ctc,
+
+          CASE
+              WHEN ra.status IN ('placed','blocked') THEN dr.stipend
+              ELSE NULL
+          END AS stipend,
+
+          -- Offer Type only for placed/blocked
+          CASE
+              WHEN ra.status IN ('placed','blocked') THEN dd.offer_type
+              ELSE NULL
+          END AS offer_type
+
+      FROM students s
+      LEFT JOIN ranked_applications ra
+            ON s.student_id = ra.student_id AND ra.rn = 1
+      LEFT JOIN drives d
+            ON ra.drive_id = d.drive_id
+      LEFT JOIN drive_roles dr
+            ON ra.role_id = dr.role_id
+      LEFT JOIN drive_data dd
+            ON ra.drive_id = dd.drive_id AND ra.role_id = dd.role_id
+
+      -- Dynamic WHERE clause if filters exist
+      WHERE 1=1
+     AND s.academic_year = ?
+        ORDER BY 
+    s.batch DESC, 
+    CASE s.program_type 
+        WHEN 'UG' THEN 1 
+        WHEN 'PG' THEN 2 
+        ELSE 3 
+    END,
+    s.upid ASC
+        LIMIT ? OFFSET ?  
+    
+[04-May-2026 19:39:53 Europe/Berlin] Params count: 1 | Types: s
+[04-May-2026 19:39:53 Europe/Berlin] Query executed, rows: 10
+[04-May-2026 19:52:31 Europe/Berlin] AJAX request received - ajax_filter is set
+[04-May-2026 19:52:31 Europe/Berlin] Limit: 10, Offset: 10
+[04-May-2026 19:52:31 Europe/Berlin] Where clauses: ["s.academic_year = ?"]
+[04-May-2026 19:52:31 Europe/Berlin] Types: s
+[04-May-2026 19:52:31 Europe/Berlin] Params: ["2026-2027"]
+[04-May-2026 19:52:31 Europe/Berlin] FULL SQL QUERY: 
+      WITH ranked_applications AS (
+          SELECT
+              a.*,
+              ROW_NUMBER() OVER (
+                  PARTITION BY a.student_id
+                  ORDER BY
+                      CASE a.status
+                          WHEN 'placed' THEN 1
+                          WHEN 'blocked' THEN 2
+                          WHEN 'original' THEN 3
+                          ELSE 4
+                      END,
+                      a.status_changed DESC
+              ) AS rn
+          FROM applications a
+          WHERE a.placement_batch IN ('original', 'reapplied')
+      )
+      SELECT
+          s.*,
+
+          -- Count of distinct applications
+          (
+              SELECT COUNT(DISTINCT CONCAT(d.drive_no, '_', a.drive_id))
+              FROM applications a
+              INNER JOIN drives d ON a.drive_id = d.drive_id
+              WHERE a.student_id = s.student_id
+          ) AS application_count,
+
+          -- Final status
+          CASE
+              WHEN ra.status = 'blocked' THEN 'blocked'
+              WHEN ra.status = 'placed'  THEN 'placed'
+              ELSE 'not_placed'
+          END AS final_status,
+
+          -- Comments only for placed/blocked
+          CASE
+              WHEN ra.status IN ('placed','blocked') THEN ra.comments
+              ELSE NULL
+          END AS comment,
+
+          -- Company info only for placed/blocked
+          CASE
+              WHEN ra.status IN ('placed','blocked') THEN d.company_name
+              ELSE NULL
+          END AS company_name,
+
+          -- Role info only for placed/blocked
+          CASE
+              WHEN ra.status IN ('placed','blocked') THEN dr.designation_name
+              ELSE NULL
+          END AS role_name,
+
+          CASE
+              WHEN ra.status IN ('placed','blocked') THEN dr.ctc
+              ELSE NULL
+          END AS ctc,
+
+          CASE
+              WHEN ra.status IN ('placed','blocked') THEN dr.stipend
+              ELSE NULL
+          END AS stipend,
+
+          -- Offer Type only for placed/blocked
+          CASE
+              WHEN ra.status IN ('placed','blocked') THEN dd.offer_type
+              ELSE NULL
+          END AS offer_type
+
+      FROM students s
+      LEFT JOIN ranked_applications ra
+            ON s.student_id = ra.student_id AND ra.rn = 1
+      LEFT JOIN drives d
+            ON ra.drive_id = d.drive_id
+      LEFT JOIN drive_roles dr
+            ON ra.role_id = dr.role_id
+      LEFT JOIN drive_data dd
+            ON ra.drive_id = dd.drive_id AND ra.role_id = dd.role_id
+
+      -- Dynamic WHERE clause if filters exist
+      WHERE 1=1
+     AND s.academic_year = ?
+        ORDER BY 
+    s.batch DESC, 
+    CASE s.program_type 
+        WHEN 'UG' THEN 1 
+        WHEN 'PG' THEN 2 
+        ELSE 3 
+    END,
+    s.upid ASC
+        LIMIT ? OFFSET ?  
+    
+[04-May-2026 19:52:31 Europe/Berlin] Params count: 1 | Types: s
+[04-May-2026 19:52:31 Europe/Berlin] Query executed, rows: 2
+[04-May-2026 19:52:32 Europe/Berlin] AJAX request received - ajax_filter is set
+[04-May-2026 19:52:32 Europe/Berlin] Limit: 10, Offset: 20
+[04-May-2026 19:52:32 Europe/Berlin] Where clauses: ["s.academic_year = ?"]
+[04-May-2026 19:52:32 Europe/Berlin] Types: s
+[04-May-2026 19:52:32 Europe/Berlin] Params: ["2026-2027"]
+[04-May-2026 19:52:32 Europe/Berlin] FULL SQL QUERY: 
+      WITH ranked_applications AS (
+          SELECT
+              a.*,
+              ROW_NUMBER() OVER (
+                  PARTITION BY a.student_id
+                  ORDER BY
+                      CASE a.status
+                          WHEN 'placed' THEN 1
+                          WHEN 'blocked' THEN 2
+                          WHEN 'original' THEN 3
+                          ELSE 4
+                      END,
+                      a.status_changed DESC
+              ) AS rn
+          FROM applications a
+          WHERE a.placement_batch IN ('original', 'reapplied')
+      )
+      SELECT
+          s.*,
+
+          -- Count of distinct applications
+          (
+              SELECT COUNT(DISTINCT CONCAT(d.drive_no, '_', a.drive_id))
+              FROM applications a
+              INNER JOIN drives d ON a.drive_id = d.drive_id
+              WHERE a.student_id = s.student_id
+          ) AS application_count,
+
+          -- Final status
+          CASE
+              WHEN ra.status = 'blocked' THEN 'blocked'
+              WHEN ra.status = 'placed'  THEN 'placed'
+              ELSE 'not_placed'
+          END AS final_status,
+
+          -- Comments only for placed/blocked
+          CASE
+              WHEN ra.status IN ('placed','blocked') THEN ra.comments
+              ELSE NULL
+          END AS comment,
+
+          -- Company info only for placed/blocked
+          CASE
+              WHEN ra.status IN ('placed','blocked') THEN d.company_name
+              ELSE NULL
+          END AS company_name,
+
+          -- Role info only for placed/blocked
+          CASE
+              WHEN ra.status IN ('placed','blocked') THEN dr.designation_name
+              ELSE NULL
+          END AS role_name,
+
+          CASE
+              WHEN ra.status IN ('placed','blocked') THEN dr.ctc
+              ELSE NULL
+          END AS ctc,
+
+          CASE
+              WHEN ra.status IN ('placed','blocked') THEN dr.stipend
+              ELSE NULL
+          END AS stipend,
+
+          -- Offer Type only for placed/blocked
+          CASE
+              WHEN ra.status IN ('placed','blocked') THEN dd.offer_type
+              ELSE NULL
+          END AS offer_type
+
+      FROM students s
+      LEFT JOIN ranked_applications ra
+            ON s.student_id = ra.student_id AND ra.rn = 1
+      LEFT JOIN drives d
+            ON ra.drive_id = d.drive_id
+      LEFT JOIN drive_roles dr
+            ON ra.role_id = dr.role_id
+      LEFT JOIN drive_data dd
+            ON ra.drive_id = dd.drive_id AND ra.role_id = dd.role_id
+
+      -- Dynamic WHERE clause if filters exist
+      WHERE 1=1
+     AND s.academic_year = ?
+        ORDER BY 
+    s.batch DESC, 
+    CASE s.program_type 
+        WHEN 'UG' THEN 1 
+        WHEN 'PG' THEN 2 
+        ELSE 3 
+    END,
+    s.upid ASC
+        LIMIT ? OFFSET ?  
+    
+[04-May-2026 19:52:32 Europe/Berlin] Params count: 1 | Types: s
+[04-May-2026 19:52:32 Europe/Berlin] Query executed, rows: 0
+[04-May-2026 21:09:26 Europe/Berlin] 🟡 Campus Type Received: off
+[04-May-2026 21:09:26 Europe/Berlin] ✅ Off Campus Block Triggered
+[04-May-2026 21:24:19 Europe/Berlin] AJAX request received - ajax_filter is set
+[04-May-2026 21:24:19 Europe/Berlin] Limit: 50, Offset: 0
+[04-May-2026 21:24:19 Europe/Berlin] Where clauses: ["s.academic_year = ?"]
+[04-May-2026 21:24:19 Europe/Berlin] Types: s
+[04-May-2026 21:24:19 Europe/Berlin] Params: ["2026-2027"]
+[04-May-2026 21:24:19 Europe/Berlin] FULL SQL QUERY: 
+      WITH ranked_applications AS (
+          SELECT
+              a.*,
+              ROW_NUMBER() OVER (
+                  PARTITION BY a.student_id
+                  ORDER BY
+                      CASE a.status
+                          WHEN 'placed' THEN 1
+                          WHEN 'blocked' THEN 2
+                          WHEN 'original' THEN 3
+                          ELSE 4
+                      END,
+                      a.status_changed DESC
+              ) AS rn
+          FROM applications a
+          WHERE a.placement_batch IN ('original', 'reapplied')
+      )
+      SELECT
+          s.*,
+
+          -- Count of distinct applications
+          (
+              SELECT COUNT(DISTINCT CONCAT(d.drive_no, '_', a.drive_id))
+              FROM applications a
+              INNER JOIN drives d ON a.drive_id = d.drive_id
+              WHERE a.student_id = s.student_id
+          ) AS application_count,
+
+          -- Final status
+          CASE
+              WHEN ra.status = 'blocked' THEN 'blocked'
+              WHEN ra.status = 'placed'  THEN 'placed'
+              ELSE 'not_placed'
+          END AS final_status,
+
+          -- Comments only for placed/blocked
+          CASE
+              WHEN ra.status IN ('placed','blocked') THEN ra.comments
+              ELSE NULL
+          END AS comment,
+
+          -- Company info only for placed/blocked
+          CASE
+              WHEN ra.status IN ('placed','blocked') THEN d.company_name
+              ELSE NULL
+          END AS company_name,
+
+          -- Role info only for placed/blocked
+          CASE
+              WHEN ra.status IN ('placed','blocked') THEN dr.designation_name
+              ELSE NULL
+          END AS role_name,
+
+          CASE
+              WHEN ra.status IN ('placed','blocked') THEN dr.ctc
+              ELSE NULL
+          END AS ctc,
+
+          CASE
+              WHEN ra.status IN ('placed','blocked') THEN dr.stipend
+              ELSE NULL
+          END AS stipend,
+
+          -- Offer Type only for placed/blocked
+          CASE
+              WHEN ra.status IN ('placed','blocked') THEN dd.offer_type
+              ELSE NULL
+          END AS offer_type
+
+      FROM students s
+      LEFT JOIN ranked_applications ra
+            ON s.student_id = ra.student_id AND ra.rn = 1
+      LEFT JOIN drives d
+            ON ra.drive_id = d.drive_id
+      LEFT JOIN drive_roles dr
+            ON ra.role_id = dr.role_id
+      LEFT JOIN drive_data dd
+            ON ra.drive_id = dd.drive_id AND ra.role_id = dd.role_id
+
+      -- Dynamic WHERE clause if filters exist
+      WHERE 1=1
+     AND s.academic_year = ?
+        ORDER BY 
+    s.batch DESC, 
+    CASE s.program_type 
+        WHEN 'UG' THEN 1 
+        WHEN 'PG' THEN 2 
+        ELSE 3 
+    END,
+    s.upid ASC
+        LIMIT ? OFFSET ?  
+    
+[04-May-2026 21:24:19 Europe/Berlin] Params count: 1 | Types: s
+[04-May-2026 21:24:19 Europe/Berlin] Query executed, rows: 12
+[04-May-2026 21:24:19 Europe/Berlin] AJAX request received - ajax_filter is set
+[04-May-2026 21:24:19 Europe/Berlin] Limit: 10, Offset: 0
+[04-May-2026 21:24:19 Europe/Berlin] Where clauses: ["s.academic_year = ?"]
+[04-May-2026 21:24:19 Europe/Berlin] Types: s
+[04-May-2026 21:24:19 Europe/Berlin] Params: ["2026-2027"]
+[04-May-2026 21:24:19 Europe/Berlin] FULL SQL QUERY: 
+      WITH ranked_applications AS (
+          SELECT
+              a.*,
+              ROW_NUMBER() OVER (
+                  PARTITION BY a.student_id
+                  ORDER BY
+                      CASE a.status
+                          WHEN 'placed' THEN 1
+                          WHEN 'blocked' THEN 2
+                          WHEN 'original' THEN 3
+                          ELSE 4
+                      END,
+                      a.status_changed DESC
+              ) AS rn
+          FROM applications a
+          WHERE a.placement_batch IN ('original', 'reapplied')
+      )
+      SELECT
+          s.*,
+
+          -- Count of distinct applications
+          (
+              SELECT COUNT(DISTINCT CONCAT(d.drive_no, '_', a.drive_id))
+              FROM applications a
+              INNER JOIN drives d ON a.drive_id = d.drive_id
+              WHERE a.student_id = s.student_id
+          ) AS application_count,
+
+          -- Final status
+          CASE
+              WHEN ra.status = 'blocked' THEN 'blocked'
+              WHEN ra.status = 'placed'  THEN 'placed'
+              ELSE 'not_placed'
+          END AS final_status,
+
+          -- Comments only for placed/blocked
+          CASE
+              WHEN ra.status IN ('placed','blocked') THEN ra.comments
+              ELSE NULL
+          END AS comment,
+
+          -- Company info only for placed/blocked
+          CASE
+              WHEN ra.status IN ('placed','blocked') THEN d.company_name
+              ELSE NULL
+          END AS company_name,
+
+          -- Role info only for placed/blocked
+          CASE
+              WHEN ra.status IN ('placed','blocked') THEN dr.designation_name
+              ELSE NULL
+          END AS role_name,
+
+          CASE
+              WHEN ra.status IN ('placed','blocked') THEN dr.ctc
+              ELSE NULL
+          END AS ctc,
+
+          CASE
+              WHEN ra.status IN ('placed','blocked') THEN dr.stipend
+              ELSE NULL
+          END AS stipend,
+
+          -- Offer Type only for placed/blocked
+          CASE
+              WHEN ra.status IN ('placed','blocked') THEN dd.offer_type
+              ELSE NULL
+          END AS offer_type
+
+      FROM students s
+      LEFT JOIN ranked_applications ra
+            ON s.student_id = ra.student_id AND ra.rn = 1
+      LEFT JOIN drives d
+            ON ra.drive_id = d.drive_id
+      LEFT JOIN drive_roles dr
+            ON ra.role_id = dr.role_id
+      LEFT JOIN drive_data dd
+            ON ra.drive_id = dd.drive_id AND ra.role_id = dd.role_id
+
+      -- Dynamic WHERE clause if filters exist
+      WHERE 1=1
+     AND s.academic_year = ?
+        ORDER BY 
+    s.batch DESC, 
+    CASE s.program_type 
+        WHEN 'UG' THEN 1 
+        WHEN 'PG' THEN 2 
+        ELSE 3 
+    END,
+    s.upid ASC
+        LIMIT ? OFFSET ?  
+    
+[04-May-2026 21:24:19 Europe/Berlin] Params count: 1 | Types: s
+[04-May-2026 21:24:19 Europe/Berlin] Query executed, rows: 10
+[04-May-2026 21:24:20 Europe/Berlin] AJAX request received - ajax_filter is set
+[04-May-2026 21:24:20 Europe/Berlin] Limit: 10, Offset: 10
+[04-May-2026 21:24:20 Europe/Berlin] Where clauses: ["s.academic_year = ?"]
+[04-May-2026 21:24:20 Europe/Berlin] Types: s
+[04-May-2026 21:24:20 Europe/Berlin] Params: ["2026-2027"]
+[04-May-2026 21:24:20 Europe/Berlin] FULL SQL QUERY: 
+      WITH ranked_applications AS (
+          SELECT
+              a.*,
+              ROW_NUMBER() OVER (
+                  PARTITION BY a.student_id
+                  ORDER BY
+                      CASE a.status
+                          WHEN 'placed' THEN 1
+                          WHEN 'blocked' THEN 2
+                          WHEN 'original' THEN 3
+                          ELSE 4
+                      END,
+                      a.status_changed DESC
+              ) AS rn
+          FROM applications a
+          WHERE a.placement_batch IN ('original', 'reapplied')
+      )
+      SELECT
+          s.*,
+
+          -- Count of distinct applications
+          (
+              SELECT COUNT(DISTINCT CONCAT(d.drive_no, '_', a.drive_id))
+              FROM applications a
+              INNER JOIN drives d ON a.drive_id = d.drive_id
+              WHERE a.student_id = s.student_id
+          ) AS application_count,
+
+          -- Final status
+          CASE
+              WHEN ra.status = 'blocked' THEN 'blocked'
+              WHEN ra.status = 'placed'  THEN 'placed'
+              ELSE 'not_placed'
+          END AS final_status,
+
+          -- Comments only for placed/blocked
+          CASE
+              WHEN ra.status IN ('placed','blocked') THEN ra.comments
+              ELSE NULL
+          END AS comment,
+
+          -- Company info only for placed/blocked
+          CASE
+              WHEN ra.status IN ('placed','blocked') THEN d.company_name
+              ELSE NULL
+          END AS company_name,
+
+          -- Role info only for placed/blocked
+          CASE
+              WHEN ra.status IN ('placed','blocked') THEN dr.designation_name
+              ELSE NULL
+          END AS role_name,
+
+          CASE
+              WHEN ra.status IN ('placed','blocked') THEN dr.ctc
+              ELSE NULL
+          END AS ctc,
+
+          CASE
+              WHEN ra.status IN ('placed','blocked') THEN dr.stipend
+              ELSE NULL
+          END AS stipend,
+
+          -- Offer Type only for placed/blocked
+          CASE
+              WHEN ra.status IN ('placed','blocked') THEN dd.offer_type
+              ELSE NULL
+          END AS offer_type
+
+      FROM students s
+      LEFT JOIN ranked_applications ra
+            ON s.student_id = ra.student_id AND ra.rn = 1
+      LEFT JOIN drives d
+            ON ra.drive_id = d.drive_id
+      LEFT JOIN drive_roles dr
+            ON ra.role_id = dr.role_id
+      LEFT JOIN drive_data dd
+            ON ra.drive_id = dd.drive_id AND ra.role_id = dd.role_id
+
+      -- Dynamic WHERE clause if filters exist
+      WHERE 1=1
+     AND s.academic_year = ?
+        ORDER BY 
+    s.batch DESC, 
+    CASE s.program_type 
+        WHEN 'UG' THEN 1 
+        WHEN 'PG' THEN 2 
+        ELSE 3 
+    END,
+    s.upid ASC
+        LIMIT ? OFFSET ?  
+    
+[04-May-2026 21:24:20 Europe/Berlin] Params count: 1 | Types: s
+[04-May-2026 21:24:20 Europe/Berlin] Query executed, rows: 2
+[04-May-2026 21:33:19 Europe/Berlin] [UNCAUGHT] Error: Call to a member function bind_param() on bool in C:\xampp\htdocs\placementcell\manage_courses.php:60
+#0 {main}
+[04-May-2026 21:33:45 Europe/Berlin] [UNCAUGHT] Error: Call to a member function bind_param() on bool in C:\xampp\htdocs\placementcell\manage_courses.php:60
+#0 {main}
+[04-May-2026 21:34:09 Europe/Berlin] [UNCAUGHT] Error: Call to a member function bind_param() on bool in C:\xampp\htdocs\placementcell\manage_courses.php:60
+#0 {main}
+[04-May-2026 21:36:56 Europe/Berlin] Skipping placement record - student with UPID 'MCC26PLC678' not found in students table
+[04-May-2026 21:38:03 Europe/Berlin] Skipping placement record - student with UPID 'MCC26PLC678' not found in students table
+[04-May-2026 21:42:45 Europe/Berlin] Skipping placement record - student with UPID 'MCC26PLC678' not found in students table
+[04-May-2026 21:49:29 Europe/Berlin] [UNCAUGHT] ArgumentCountError: The number of elements in the type definition string must match the number of bind variables in C:\xampp\htdocs\placementcell\placed_students.php:454
+#0 C:\xampp\htdocs\placementcell\placed_students.php(454): mysqli_stmt->bind_param('iiisssssssssdss...', 5614, 704, 980, 'MCC26PLC678', 'UG', 'Bachelor of Bus...', 'BBA-Regular', 'MB24124', 'Khushi', 'khushi17', '8296264517', 70, 'FTE', 'Drive 1', 'UNSW', 'analyst', '500000', '', '2026-2027')
+#1 {main}
+[04-May-2026 21:49:47 Europe/Berlin] [UNCAUGHT] ArgumentCountError: The number of elements in the type definition string must match the number of bind variables in C:\xampp\htdocs\placementcell\placed_students.php:454
+#0 C:\xampp\htdocs\placementcell\placed_students.php(454): mysqli_stmt->bind_param('iiisssssssssdss...', 5614, 704, 980, 'MCC26PLC678', 'UG', 'Bachelor of Bus...', 'BBA-Regular', 'MB24124', 'Khushi', 'khushi17', '8296264517', 70, 'FTE', 'Drive 1', 'UNSW', 'analyst', '500000', '', '2026-2027')
+#1 {main}
+[04-May-2026 21:51:04 Europe/Berlin] 🟡 Campus Type Received: off
+[04-May-2026 21:51:04 Europe/Berlin] ✅ Off Campus Block Triggered
+[04-May-2026 21:51:36 Europe/Berlin] [WARNING] filesize(): stat failed for uploads/Overall_Placed_Students_all_offer_letters.zip in C:\xampp\htdocs\placementcell\download_all_offers_zip.php:25
+[04-May-2026 21:51:36 Europe/Berlin] [WARNING] readfile(uploads/Overall_Placed_Students_all_offer_letters.zip): Failed to open stream: No such file or directory in C:\xampp\htdocs\placementcell\download_all_offers_zip.php:27
+[04-May-2026 21:51:36 Europe/Berlin] [WARNING] unlink(uploads/Overall_Placed_Students_all_offer_letters.zip): No such file or directory in C:\xampp\htdocs\placementcell\download_all_offers_zip.php:28
+[04-May-2026 21:51:40 Europe/Berlin] [WARNING] filesize(): stat failed for uploads/Overall_Placed_Students_all_offer_letters.zip in C:\xampp\htdocs\placementcell\download_all_offers_zip.php:25
+[04-May-2026 21:51:40 Europe/Berlin] [WARNING] readfile(uploads/Overall_Placed_Students_all_offer_letters.zip): Failed to open stream: No such file or directory in C:\xampp\htdocs\placementcell\download_all_offers_zip.php:27
+[04-May-2026 21:51:40 Europe/Berlin] [WARNING] unlink(uploads/Overall_Placed_Students_all_offer_letters.zip): No such file or directory in C:\xampp\htdocs\placementcell\download_all_offers_zip.php:28
+[04-May-2026 21:51:48 Europe/Berlin] [WARNING] filesize(): stat failed for uploads/Overall_Placed_Students_all_offer_letters.zip in C:\xampp\htdocs\placementcell\download_all_offers_zip.php:25
+[04-May-2026 21:51:48 Europe/Berlin] [WARNING] readfile(uploads/Overall_Placed_Students_all_offer_letters.zip): Failed to open stream: No such file or directory in C:\xampp\htdocs\placementcell\download_all_offers_zip.php:27
+[04-May-2026 21:51:48 Europe/Berlin] [WARNING] unlink(uploads/Overall_Placed_Students_all_offer_letters.zip): No such file or directory in C:\xampp\htdocs\placementcell\download_all_offers_zip.php:28
+[04-May-2026 21:51:49 Europe/Berlin] [WARNING] filesize(): stat failed for uploads/Over_all_Placed_Students_all_intent_letters.zip in C:\xampp\htdocs\placementcell\download_all_indent_zip.php:22
+[04-May-2026 21:51:49 Europe/Berlin] [WARNING] readfile(uploads/Over_all_Placed_Students_all_intent_letters.zip): Failed to open stream: No such file or directory in C:\xampp\htdocs\placementcell\download_all_indent_zip.php:24
+[04-May-2026 21:51:49 Europe/Berlin] [WARNING] unlink(uploads/Over_all_Placed_Students_all_intent_letters.zip): No such file or directory in C:\xampp\htdocs\placementcell\download_all_indent_zip.php:25
+[04-May-2026 21:53:42 Europe/Berlin] [WARNING] filesize(): stat failed for uploads/Overall_Placed_Students_all_offer_letters.zip in C:\xampp\htdocs\placementcell\download_all_offers_zip.php:25
+[04-May-2026 21:53:42 Europe/Berlin] [WARNING] readfile(uploads/Overall_Placed_Students_all_offer_letters.zip): Failed to open stream: No such file or directory in C:\xampp\htdocs\placementcell\download_all_offers_zip.php:27
+[04-May-2026 21:53:42 Europe/Berlin] [WARNING] unlink(uploads/Overall_Placed_Students_all_offer_letters.zip): No such file or directory in C:\xampp\htdocs\placementcell\download_all_offers_zip.php:28
+[04-May-2026 22:08:40 Europe/Berlin] [PLACED IMPORT] === IMPORT STARTED ===
+[04-May-2026 22:08:40 Europe/Berlin] [PLACED IMPORT] POST data: Array
+(
+)
+
+[04-May-2026 22:08:40 Europe/Berlin] [PLACED IMPORT] FILES data: Array
+(
+    [csv_file_placed] => Array
+        (
+            [name] => placed_students (1).xlsx
+            [type] => application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
+            [tmp_name] => C:\xampp\tmp\php17B6.tmp
+            [error] => 0
+            [size] => 8902
+        )
+
+)
+
+[04-May-2026 22:08:40 Europe/Berlin] [PLACED IMPORT] File: placed_students (1).xlsx, Size: 8902 bytes
+[04-May-2026 22:08:40 Europe/Berlin] [PLACED IMPORT] Row 2: Checking student with UPID 'MCC26PLC697'
+[04-May-2026 22:08:40 Europe/Berlin] [PLACED IMPORT] NO ROWS FOUND for UPID 'MCC26PLC697'
+[04-May-2026 22:08:40 Europe/Berlin] [PLACED IMPORT] Auto-created student_id 5615 for UPID 'MCC26PLC697'
+[04-May-2026 22:08:40 Europe/Berlin] [PLACED IMPORT] Checking for duplicate: student_id=5615, drive_no='Drive 1'
+[04-May-2026 22:08:40 Europe/Berlin] [PLACED IMPORT] No duplicate, proceeding with insert
+[04-May-2026 22:08:40 Europe/Berlin] [PLACED IMPORT] Inserting record for UPID 'MCC26PLC697', company='lvx'
+[04-May-2026 22:08:40 Europe/Berlin] [PLACED IMPORT] INSERT SUCCESSFUL for UPID 'MCC26PLC697'
+[04-May-2026 22:08:40 Europe/Berlin] [PLACED IMPORT] === IMPORT COMPLETED ===
+[04-May-2026 22:08:40 Europe/Berlin] [PLACED IMPORT] Inserted: 1, Skipped: 0
+[04-May-2026 22:08:40 Europe/Berlin] [PLACED IMPORT] Message: Import completed. Inserted: 1 rows. Auto-created 1 drive(s) and 1 role(s) — they now appear in the Internship Progress Tracker and Internship Company Data tabs.
+[04-May-2026 22:08:40 Europe/Berlin] [PLACED IMPORT] Redirecting to internship_placed_students.php
+[04-May-2026 22:42:09 Europe/Berlin] [NOTICE] session_start(): Ignoring session_start() because a session is already active in C:\xampp\htdocs\placementcell\registered_students.php:2

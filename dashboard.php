@@ -723,33 +723,50 @@ $closeDate = new DateTime($d['close_date']);
                   <?php endforeach; ?>
                 </div>
                   </div>
-          <?php if (!empty($d['jd_file']) || !empty($d['jd_link'])): ?>
+          <?php
+          // Confirm jd_file actually contains paths (not the literal "[]" empty-array
+          // string) before offering the button — otherwise the popup opens empty.
+          $_jd_decoded = !empty($d['jd_file']) ? json_decode($d['jd_file'], true) : null;
+          $_has_jd_file = (is_array($_jd_decoded) && !empty(array_filter($_jd_decoded)))
+                          || (is_string($d['jd_file'] ?? null) && strpos($d['jd_file'], 'data:') === 0);
+          ?>
+          <?php if ($_has_jd_file || !empty($d['jd_link'])): ?>
     <button onclick="openJdPopup('jdPopup<?= $d['drive_id'] ?>')" class="text-sm text-blue-700 underline">View JD</button>
     <div id="jdPopup<?= $d['drive_id'] ?>" class="fixed inset-0 flex items-center justify-center hidden" style="z-index: 1100;">
        <div class="bg-white p-4 rounded-md w-full max-w-md shadow-lg break-words">
             <h2 class="text-lg font-semibold mb-2">Job Description</h2>
             <ul class="list-disc ml-5 space-y-1">
-                <?php if (!empty($d['jd_link'])): ?>
-                    <li>
-                        <a href="<?= htmlspecialchars($d['jd_link']) ?>" target="_blank" class="text-blue-700 underline">
-                            External JD Link
-                        </a>
-                    </li>
-                <?php endif; ?>
-                
-                <?php if (!empty($d['jd_file'])): ?>
-                    <?php
+                <?php
+                // Build the list with output buffering so we can detect whether
+                // anything actually rendered. Stale browser caches were leaving
+                // the popup completely empty when jd_file was the literal "[]".
+                ob_start();
+
+                if (!empty($d['jd_link'])) {
+                    echo '<li><a href="' . htmlspecialchars($d['jd_link']) . '" target="_blank" class="text-blue-700 underline">External JD Link</a></li>';
+                }
+
+                if (!empty($d['jd_file'])) {
                     $jd_files = json_decode($d['jd_file'], true);
                     if (json_last_error() === JSON_ERROR_NONE && is_array($jd_files)) {
-                        foreach ($jd_files as $file) {
-                            if (!empty($file)) {
-                                echo '<li><a href="' . htmlspecialchars($file) . '" target="_blank" class="text-blue-700 underline break-words block">' . 
+                        foreach ($jd_files as $idx => $file) {
+                            if (!empty($file) && is_string($file)) {
+                                echo '<li><a href="view_jd.php?drive_id=' . (int)$d['drive_id'] . '&index=' . (int)$idx . '" target="_blank" class="text-blue-700 underline break-words block">' .
                                      htmlspecialchars(basename($file)) . '</a></li>';
                             }
                         }
+                    } elseif (is_string($d['jd_file']) && strpos($d['jd_file'], 'data:') === 0) {
+                        echo '<li><a href="view_jd.php?drive_id=' . (int)$d['drive_id'] . '" target="_blank" class="text-blue-700 underline">Open Job Description</a></li>';
                     }
-                    ?>
-                <?php endif; ?>
+                }
+
+                $jd_items = ob_get_clean();
+                if (trim($jd_items) === '') {
+                    echo '<li class="text-gray-500">No JD attached for this drive.</li>';
+                } else {
+                    echo $jd_items;
+                }
+                ?>
             </ul>
             <div class="mt-3 text-right">
                 <button onclick="closeJdPopup('jdPopup<?= $d['drive_id'] ?>')" class="px-3 py-1 text-xs rounded-md bg-gray-600 text-white hover:bg-gray-700">Close</button>

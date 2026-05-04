@@ -89,10 +89,56 @@ $default_fields = [
     ]
 ];
 
-// Get existing custom fields for this drive
+// Get existing custom fields for this drive. Two on-disk formats are possible:
+//   (legacy)  {"enabled_fields": {category: [names]}, "custom_fields": [...]}
+//   (flat)    [{"name": "...", "type": "...", "options": "...", "mandatory": 0/1}]
+// Normalize both into the legacy shape that this UI uses for rendering checkboxes.
 $custom_fields = [];
-if ($drive['form_fields']) {
-    $custom_fields = json_decode($drive['form_fields'], true);
+// Map of field name => 1 for any field stored as mandatory in the saved data.
+// Custom fields carry their mandatory flag inline on the custom field row.
+$mandatory_lookup = [];
+if (!empty($drive['form_fields'])) {
+    $decoded = json_decode($drive['form_fields'], true);
+    if (is_array($decoded)) {
+        if (isset($decoded['enabled_fields'])) {
+            $custom_fields = $decoded;
+            // legacy shape may have its own mandatory_lookup if we wrote it previously
+            if (!empty($decoded['mandatory_lookup']) && is_array($decoded['mandatory_lookup'])) {
+                foreach ($decoded['mandatory_lookup'] as $mn) {
+                    if (is_string($mn)) $mandatory_lookup[$mn] = 1;
+                }
+            }
+        } else {
+            // Flat list — reconstruct enabled_fields by matching field names against $default_fields.
+            $known_names = [];
+            foreach ($default_fields as $cat => $fnames) {
+                foreach ($fnames as $fn) {
+                    if (strpos($fn, '---') === false) {
+                        $known_names[$fn] = $cat;
+                    }
+                }
+            }
+            $enabled = ['personal' => [], 'education' => [], 'work' => [], 'others' => []];
+            $customs = [];
+            foreach ($decoded as $field) {
+                if (!is_array($field) || empty($field['name'])) continue;
+                $name = $field['name'];
+                $is_mand = !empty($field['mandatory']) ? 1 : 0;
+                if ($is_mand) $mandatory_lookup[$name] = 1;
+                if (isset($known_names[$name])) {
+                    $enabled[$known_names[$name]][] = $name;
+                } else {
+                    $customs[] = [
+                        'name'      => $name,
+                        'category'  => 'others',
+                        'type'      => $field['type'] ?? 'text',
+                        'mandatory' => $is_mand,
+                    ];
+                }
+            }
+            $custom_fields = ['enabled_fields' => $enabled, 'custom_fields' => $customs];
+        }
+    }
 }
 
 // If no custom fields set, use all default fields
@@ -126,23 +172,64 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_fields'])) {
     $custom_field_names = $_POST['custom_field_name'] ?? [];
     $custom_field_categories = $_POST['custom_field_category'] ?? [];
     $custom_field_types = $_POST['custom_field_type'] ?? [];
+    $custom_field_mandatory = $_POST['custom_field_mandatory'] ?? [];
 
     $custom_fields_data = [];
     foreach ($custom_field_names as $index => $name) {
         if (!empty($name)) {
             $custom_fields_data[] = [
-                'name' => $name,
-                'category' => $custom_field_categories[$index] ?? 'others',
-                'type' => $custom_field_types[$index] ?? 'text'
+                'name'      => $name,
+                'category'  => $custom_field_categories[$index] ?? 'others',
+                'type'      => $custom_field_types[$index] ?? 'text',
+                'mandatory' => !empty($custom_field_mandatory[$index]) ? 1 : 0,
             ];
         }
     }
 
-    // Prepare JSON data
-    $form_fields_json = json_encode([
-        'enabled_fields' => $enabled_fields,
-        'custom_fields' => $custom_fields_data
-    ]);
+    // Rebuild mandatory lookup from POST: any default field whose mandatory_<key>
+    // checkbox is set, plus any custom field marked mandatory in its row.
+    $mandatory_lookup = [];
+    foreach ($default_fields as $category => $fields) {
+        foreach ($fields as $field) {
+            if (strpos($field, '---') !== false) continue;
+            $field_key = $category . '_' . md5($field);
+            if (!empty($_POST['mandatory_' . $field_key])) {
+                $mandatory_lookup[$field] = 1;
+            }
+        }
+    }
+    foreach ($custom_fields_data as $cf) {
+        if (!empty($cf['mandatory'])) {
+            $mandatory_lookup[$cf['name']] = 1;
+        }
+    }
+
+    // Build flat list of field objects — this is the format form_generator.php,
+    // add_drive.php and edit_drive.php all read. Saving in this shape keeps the
+    // application form rendering consistent regardless of where fields are edited.
+    $flat_fields = [];
+    foreach (['personal', 'education', 'work', 'others'] as $cat) {
+        foreach ($enabled_fields[$cat] ?? [] as $field_name) {
+            if (strpos($field_name, '---') !== false) continue;
+            $flat_fields[] = [
+                'name'      => $field_name,
+                'type'      => 'text',
+                'options'   => '',
+                'mandatory' => !empty($mandatory_lookup[$field_name]) ? 1 : 0,
+                'section'   => $cat,
+            ];
+        }
+    }
+    foreach ($custom_fields_data as $cf) {
+        $flat_fields[] = [
+            'name'      => $cf['name'],
+            'type'      => $cf['type'] ?? 'text',
+            'options'   => '',
+            'mandatory' => !empty($cf['mandatory']) ? 1 : 0,
+            'section'   => $cf['category'] ?? 'others',
+        ];
+    }
+    $form_fields_json = json_encode($flat_fields);
 
     // Update database
     $update_stmt = $conn->prepare("UPDATE drives SET form_fields = ? WHERE drive_id = ?");
@@ -205,6 +292,30 @@ require 'header.php';
     margin-right: 10px;
     width: 18px;
     height: 18px;
+}
+
+.mandatory-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    margin-left: 12px;
+    color: #d00;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.mandatory-toggle input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    margin-right: 0;
+    accent-color: #d00;
+}
+
+.custom-field-row .mandatory-toggle {
+    margin-left: 0;
+    flex-shrink: 0;
 }
 
 .field-item.header-row {
@@ -306,6 +417,7 @@ require 'header.php';
                                         $is_header = strpos($field, '---') !== false;
                                         $is_checked = empty($custom_fields['enabled_fields']) ||
                                             in_array($field, $custom_fields['enabled_fields'][$category] ?? []);
+                                        $is_mandatory = !empty($mandatory_lookup[$field]);
                                         ?>
                                         <div class="field-item <?php echo $is_header ? 'header-row' : ''; ?>">
                                             <?php if (!$is_header): ?>
@@ -318,6 +430,16 @@ require 'header.php';
                                             <label for="<?php echo $field_key; ?>" class="mb-0 flex-grow-1">
                                                 <?php echo htmlspecialchars($field); ?>
                                             </label>
+                                            <?php if (!$is_header): ?>
+                                                <label class="mandatory-toggle mb-0" title="Mark this field as mandatory in the application form">
+                                                    <input type="checkbox"
+                                                           name="mandatory_<?php echo $field_key; ?>"
+                                                           id="mandatory_<?php echo $field_key; ?>"
+                                                           <?php echo $is_mandatory ? 'checked' : ''; ?>
+                                                           class="mandatory-checkbox">
+                                                    <span>Mandatory</span>
+                                                </label>
+                                            <?php endif; ?>
                                         </div>
                                     <?php endforeach; ?>
                                 </div>
@@ -335,7 +457,8 @@ require 'header.php';
                             <div class="p-3">
                                 <div id="customFieldsContainer">
                                     <?php if (!empty($custom_fields['custom_fields'])): ?>
-                                        <?php foreach ($custom_fields['custom_fields'] as $custom_field): ?>
+                                        <?php foreach ($custom_fields['custom_fields'] as $cf_idx => $custom_field): ?>
+                                            <?php $cf_mand = !empty($custom_field['mandatory']) || !empty($mandatory_lookup[$custom_field['name']]); ?>
                                             <div class="custom-field-row">
                                                 <input type="text" class="form-control" name="custom_field_name[]"
                                                        placeholder="Field Name" value="<?php echo htmlspecialchars($custom_field['name']); ?>">
@@ -352,6 +475,11 @@ require 'header.php';
                                                     <option value="date" <?php echo $custom_field['type'] === 'date' ? 'selected' : ''; ?>>Date</option>
                                                     <option value="file" <?php echo $custom_field['type'] === 'file' ? 'selected' : ''; ?>>File</option>
                                                 </select>
+                                                <label class="mandatory-toggle">
+                                                    <input type="checkbox" class="custom-field-mandatory-toggle" <?php echo $cf_mand ? 'checked' : ''; ?>>
+                                                    <span>Mandatory</span>
+                                                </label>
+                                                <input type="hidden" name="custom_field_mandatory[]" value="<?php echo $cf_mand ? '1' : '0'; ?>" class="custom-field-mandatory-hidden">
                                                 <button type="button" class="btn btn-danger btn-sm remove-field-btn">
                                                     <i class='bx bx-trash'></i>
                                                 </button>
@@ -418,12 +546,23 @@ $(document).ready(function() {
                     <option value="date">Date</option>
                     <option value="file">File</option>
                 </select>
+                <label class="mandatory-toggle">
+                    <input type="checkbox" class="custom-field-mandatory-toggle">
+                    <span>Mandatory</span>
+                </label>
+                <input type="hidden" name="custom_field_mandatory[]" value="0" class="custom-field-mandatory-hidden">
                 <button type="button" class="btn btn-danger btn-sm remove-field-btn">
                     <i class='bx bx-trash'></i>
                 </button>
             </div>
         `;
         $('#customFieldsContainer').append(html);
+    });
+
+    // Sync custom-field mandatory checkbox to its sibling hidden input
+    $(document).on('change', '.custom-field-mandatory-toggle', function() {
+        const hidden = $(this).closest('.custom-field-row').find('.custom-field-mandatory-hidden');
+        hidden.val(this.checked ? '1' : '0');
     });
 
     // Remove custom field

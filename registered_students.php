@@ -285,29 +285,38 @@ function render_students_table($conn, $result, $offset = 0) {
     while ($row = $result->fetch_assoc()) {
         $finalStatus = $row['final_status'];
 
-        // Update student table
-        $update = $conn->prepare("
-          UPDATE students SET
-              placed_status = ?,
-              comment = ?,
-              company_name = ?,
-              role = ?,
-              ctc = ?,
-              offer_type = ?
-          WHERE upid = ?
-        ");
+        // Don't let the application-derived recompute downgrade an admin-set 'blocked'
+        // back to 'not_placed' — that happens when the student has no applications,
+        // since the CTE returns NULL → CASE falls into the ELSE branch.
+        $is_admin_blocked = ($finalStatus === 'not_placed' && ($row['placed_status'] ?? '') === 'blocked');
+        if ($is_admin_blocked) {
+            $finalStatus = 'blocked';
+        }
+
+        // Update student table — but skip the comment / company / role / ctc / offer_type
+        // overwrite when we're preserving an admin-set 'blocked' (the row has no application
+        // to source those values from, so we'd just be wiping the "Blocked by admin" note).
+        if ($is_admin_blocked) {
+            $update = $conn->prepare("UPDATE students SET placed_status = ? WHERE upid = ?");
+            $params = [$finalStatus, $row['upid']];
+            $types  = "ss";
+        } else {
+            $update = $conn->prepare("
+              UPDATE students SET
+                  placed_status = ?,
+                  comment = ?,
+                  company_name = ?,
+                  role = ?,
+                  ctc = ?,
+                  offer_type = ?
+              WHERE upid = ?
+            ");
+            $params = [$finalStatus, $row['comment'], $row['company_name'], $row['role_name'], $row['ctc'], $row['offer_type'], $row['upid']];
+            $types  = "sssssss";
+        }
 
         if ($update) {
-            $update->bind_param(
-              "sssssss",
-              $finalStatus,
-              $row['comment'],
-              $row['company_name'],
-              $row['role_name'],
-              $row['ctc'],
-              $row['offer_type'],
-              $row['upid']
-            );
+            $update->bind_param($types, ...$params);
             $update->execute();
             $update->close();
         } else {
@@ -624,8 +633,10 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["csv_file"])) {
 
         $inserted = 0;
         $skipped = 0;
+        $skipReasons = [];   // collected per-row reasons for the user-visible message
 
-        foreach ($dataRows as $data) {
+        foreach ($dataRows as $rowNum => $data) {
+            $excelRow = $rowNum + 2; // header is row 1, data starts at row 2
             $upid          = trim($data[$headerMap['upid']]);
             $program_type  = trim($data[$headerMap['program_type']]);
             $program       = trim($data[$headerMap['program']]);
@@ -638,6 +649,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["csv_file"])) {
 
             if (empty($upid) || empty($reg_no) || empty($student_name) || empty($email)) {
                 $skipped++;
+                $skipReasons[] = "Row $excelRow: missing required field (Placement ID / Reg No / Name / Email)";
                 continue;
             }
 
@@ -648,6 +660,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["csv_file"])) {
                 $check->store_result();
                 if ($check->num_rows > 0) {
                     $skipped++;
+                    $skipReasons[] = "Row $excelRow: Placement ID '$upid' already exists";
                     $check->close();
                     continue;
                 }
@@ -671,6 +684,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["csv_file"])) {
                 } else {
                     error_log("Insert failed for UPID $upid: " . $stmt->error);
                     $skipped++;
+                    $skipReasons[] = "Row $excelRow ($upid): " . $stmt->error;
                 }
 
                 $stmt->close();
@@ -680,6 +694,15 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["csv_file"])) {
         $message = "Import completed. Inserted: $inserted rows";
         if ($skipped > 0) {
             $message .= ", Skipped: $skipped rows";
+            // Show up to the first 5 reasons so the admin can act on them
+            // without having to dig through the import log.
+            $shown = array_slice($skipReasons, 0, 5);
+            if (!empty($shown)) {
+                $message .= ' — ' . implode('; ', $shown);
+                if (count($skipReasons) > 5) {
+                    $message .= '; +' . (count($skipReasons) - 5) . ' more (see logs/import_log_registered.txt)';
+                }
+            }
         }
         $_SESSION['import_message'] = $message;
         $_SESSION['import_status'] = ($inserted > 0) ? "success" : "warning";
@@ -724,7 +747,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['export_all'])) {
     $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
     $sheet = $spreadsheet->getActiveSheet();
 
-    // Map table headers to database columns
+    // Map table headers to database columns. Keys MUST match the <th> text in
+    // #studentsTable exactly (case + hyphenation) — the export modal sends the
+    // visible header label, so a mismatch silently produces empty cells.
     $allColumns = [
         'Placement ID' => 'upid',
         'Register Number' => 'reg_no',
@@ -735,20 +760,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['export_all'])) {
         'Student Mail ID' => 'email',
         'Student Mobile No' => 'phone_no',
         'Batch' => 'batch',
-        'Year of Passing' => 'year_of_passing',
+        'Year of passing' => 'year_of_passing',
         'Percentage' => 'percentage',
-        'Off Campus Placement' => 'Offcampus_selection',
-        'Off Campus Placement Comments' => 'editable_comment',
-        'On Campus Placement Status' => 'final_status',
+        'On-Campus Placement Status' => 'final_status',
         'No. of Applications' => 'application_count',
         'Allow Reapply' => 'allow_reapply',
         'Job Offer Type' => 'offer_type',
         'Company' => 'company_name',
-        'Comments' => 'comment'
+        'Comments' => 'comment',
+        'Off-Campus Placement Status' => 'Offcampus_selection',
+        'Off-Campus Placement Comments' => 'editable_comment',
     ];
 
-    // Get selected columns from POST
+    // Get selected columns from POST. Strip any 'Sl No' the client sent so the
+    // array_unshift below doesn't produce a duplicate Sl No column.
     $selectedCols = isset($_POST['columns']) ? $_POST['columns'] : array_keys($allColumns);
+    $selectedCols = array_values(array_filter($selectedCols, fn($c) => trim($c) !== 'Sl No'));
     array_unshift($selectedCols, 'Sl No'); // always include Sl No
 
     // Set header row
@@ -1342,8 +1369,8 @@ document.addEventListener("DOMContentLoaded", () => {
       const headers = table.querySelectorAll("thead th");
 
       headers.forEach((th, index) => {
-        // Skip the first column (Sl No)
-        if (index === 0) return;
+        // Skip the Select-All checkbox column and the auto-included Sl No column.
+        if (index <= 1) return;
 
         // Skip the last column (Action, empty <th>)
         if (index === headers.length - 1) return;

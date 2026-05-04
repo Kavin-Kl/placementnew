@@ -139,13 +139,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['form_submit'])) {
            }
         }
         if (empty($field_errors)) { // Proceed only if initial validation (if any) passed
-            $checkStmt = $conn->prepare("SELECT * FROM on_off_campus_students WHERE reg_no = ?");
-            $checkStmt->bind_param("s", $reg_no);
+            // Dedup per (reg_no, company_name) so a student with offers from multiple
+            // companies can submit the form once for each.
+            $checkStmt = $conn->prepare("SELECT 1 FROM on_off_campus_students WHERE reg_no = ? AND company_name = ?");
+            $checkStmt->bind_param("ss", $reg_no, $company_name);
             $checkStmt->execute();
             $checkResult = $checkStmt->get_result();
 
             if ($checkResult && $checkResult->num_rows > 0) {
-                $error = "You have already submitted the form."; // Global error
+                $error = "You have already submitted the form for this company."; // Global error
             } else {
                 $offer_letter_paths = [];
                 $intent_letter_path = '';
@@ -410,14 +412,15 @@ $filename = "{$safe_full_name}_{$safe_reg_no}_{$safe_company_name}_photo.{$ext}"
         }
         $_POST['onboarding_date'] = $onboarding_date !== '' ? $onboarding_date : null;
 
-        // ✅ Check if already submitted
-        $checkStmt = $conn->prepare("SELECT * FROM on_off_campus_students WHERE reg_no = ?");
-        $checkStmt->bind_param("s", $reg_no);
+        // Dedup per (reg_no, company_name) so a student with offers from multiple
+        // companies can submit the form once for each.
+        $checkStmt = $conn->prepare("SELECT 1 FROM on_off_campus_students WHERE reg_no = ? AND company_name = ?");
+        $checkStmt->bind_param("ss", $reg_no, $company_name);
         $checkStmt->execute();
         $checkResult = $checkStmt->get_result();
 
         if ($checkResult && $checkResult->num_rows > 0) {
-            $error = "You have already submitted the form."; // Global error
+            $error = "You have already submitted the form for this company."; // Global error
         } else {
             $_POST['offer_letter_file'] = implode(',', $offer_letter_paths);
             $_POST['intent_letter_file'] = $intent_letter_path;

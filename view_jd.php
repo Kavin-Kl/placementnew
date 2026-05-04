@@ -4,6 +4,7 @@ include("config.php");
 
 // Get drive_id from URL
 $drive_id = $_GET['drive_id'] ?? null;
+$file_index = isset($_GET['index']) ? max(0, (int)$_GET['index']) : 0;
 
 if (!$drive_id) {
     die("Invalid drive ID");
@@ -23,15 +24,22 @@ $drive = $result->fetch_assoc();
 $jd_file = $drive['jd_file'];
 $company_name = $drive['company_name'];
 
-if (empty($jd_file)) {
+if (empty($jd_file) || $jd_file === '[]' || $jd_file === 'null') {
     die("No job description available");
 }
 
 // Check if it's a JSON array of file paths
 $jd_files = json_decode($jd_file, true);
+if (is_array($jd_files)) {
+    // Drop empty entries — older drives sometimes stored ["", null]
+    $jd_files = array_values(array_filter($jd_files, fn($p) => is_string($p) && trim($p) !== ''));
+}
 if (is_array($jd_files) && count($jd_files) > 0) {
-    // Get the first file path
-    $file_path = $jd_files[0];
+    // Pick the requested file (defaults to first); clamp to a valid index.
+    if (!isset($jd_files[$file_index])) {
+        $file_index = 0;
+    }
+    $file_path = $jd_files[$file_index];
 
     // Check if file exists
     if (file_exists($file_path)) {

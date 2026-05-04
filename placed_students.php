@@ -31,8 +31,8 @@ function render_student_row($row, $sl_no = '') {
         <td><?= htmlspecialchars($row['role']) ?></td>
         <!-- <td style="display:none;"><?= htmlspecialchars($row['ctc']) ?></td> -->
         <!-- <td style="display:none;"><?= htmlspecialchars($row['stipend']) ?></td> -->
-        <td><input type="text" class="edit_ctc" value="<?= htmlspecialchars($row['ctc'] ?? '') ?>"></td>
-        <td><input type="text" class="edit_stipend" value="<?= htmlspecialchars($row['stipend'] ?? '') ?>"></td>
+        <td><input type="text" class="edit_ctc" value="<?= htmlspecialchars($row['edit_ctc'] ?? $row['ctc'] ?? '') ?>"></td>
+        <td><input type="text" class="edit_stipend" value="<?= htmlspecialchars($row['edit_stipend'] ?? $row['stipend'] ?? '') ?>"></td>
 
         <?php
         $fields = ['offer_letter_received', 'offer_letter_accepted', 'joining_status'];
@@ -319,6 +319,14 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["csv_file_placed"])) 
         $roles_created  = 0;
         $touched_pairs  = [];
         $resolveErrors  = [];
+        $skipReasons    = [
+            'student_not_found' => 0,
+            'duplicates'        => 0,
+            'empty_fields'      => 0,
+            'errors'            => 0,
+        ];
+        $skippedDetails = [];
+        $rowNumber = 2; // row 1 is the header in Excel
 
         foreach ($dataRows as $data) {
             $upid          = trim($data[$headerMap['upid']] ?? '');
@@ -344,6 +352,14 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["csv_file_placed"])) 
 
             if (empty($upid) || empty($reg_no) || empty($student_name) || empty($email)) {
                 $skipped++;
+                $skipReasons['empty_fields']++;
+                $missingFields = [];
+                if (empty($upid)) $missingFields[] = 'Placement ID';
+                if (empty($reg_no)) $missingFields[] = 'Register Number';
+                if (empty($student_name)) $missingFields[] = 'Student Name';
+                if (empty($email)) $missingFields[] = 'Email';
+                $skippedDetails[] = "Row $rowNumber: Missing required fields - " . implode(', ', $missingFields);
+                $rowNumber++;
                 continue;
             }
 
@@ -361,11 +377,42 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["csv_file_placed"])) 
                 $checkStudent->close();
             }
 
-            // If student doesn't exist, skip this record
+            // If student doesn't exist, auto-create them in `students` so we don't force the user
+            // to do a separate registered-students import for placement-only data.
             if (!$student_id) {
-                $skipped++;
-                error_log("Skipping placement record - student with UPID '$upid' not found in students table");
-                continue;
+                $row_ay_for_student = $_SESSION['selected_academic_year'] ?? '2026-2027';
+                $row_yop_for_student = null;
+                if (preg_match('/(\d{4})\s*-\s*(\d{4})/', $row_ay_for_student, $m_yop)) {
+                    $row_yop_for_student = (int)$m_yop[2];
+                }
+
+                $createStu = $conn->prepare("INSERT INTO students
+                    (upid, program_type, program, course, reg_no, student_name, email, phone_no, percentage, year_of_passing, academic_year)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+                if ($createStu) {
+                    $createStu->bind_param(
+                        "ssssssssdis",
+                        $upid, $program_type, $program, $course,
+                        $reg_no, $student_name, $email, $phone_no,
+                        $percentage, $row_yop_for_student, $row_ay_for_student
+                    );
+                    if ($createStu->execute()) {
+                        $student_id = (int)$conn->insert_id;
+                        $skippedDetails[] = "Row $rowNumber: Auto-registered new student '$student_name' (UPID '$upid')";
+                    } else {
+                        error_log("Auto-create student failed for UPID $upid: " . $createStu->error);
+                    }
+                    $createStu->close();
+                }
+
+                if (!$student_id) {
+                    $skipped++;
+                    $skipReasons['student_not_found']++;
+                    $skippedDetails[] = "Row $rowNumber: Could not register UPID '$upid' (insert failed).";
+                    error_log("Skipping placement record - could not auto-create student with UPID '$upid'");
+                    $rowNumber++;
+                    continue;
+                }
             }
 
             // Check if placement record already exists
@@ -376,7 +423,10 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["csv_file_placed"])) 
                 $checkPlaced->store_result();
                 if ($checkPlaced->num_rows > 0) {
                     $skipped++;
+                    $skipReasons['duplicates']++;
+                    $skippedDetails[] = "Row $rowNumber: Duplicate placement for UPID '$upid' with drive_no '$drive_no'";
                     $checkPlaced->close();
+                    $rowNumber++;
                     continue;
                 }
                 $checkPlaced->close();
@@ -401,7 +451,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["csv_file_placed"])) 
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
 
             if ($stmt) {
-                $stmt->bind_param("iiisssssssssdsssssss",
+                $stmt->bind_param("iiissssssssdsssssss",
                     $student_id, $drive_id_resolved, $role_id_resolved,
                     $upid, $program_type, $program, $course,
                     $reg_no, $student_name, $email, $phone_no, $percentage,
@@ -424,22 +474,50 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["csv_file_placed"])) 
                 } else {
                     error_log("Insert failed for UPID $upid: " . $stmt->error);
                     $skipped++;
+                    $skipReasons['errors']++;
+                    $skippedDetails[] = "Row $rowNumber: Database error for UPID '$upid' — " . $stmt->error;
                 }
 
                 $stmt->close();
             }
+            $rowNumber++;
         }
 
         // Recompute hired counts for every (drive_id, role_id) we touched so the
         // Progress Tracker / Company Data "Hired" column reflects the import.
         pi_recompute_hired_counts($conn, $touched_pairs);
 
-        $msg = "Import completed. Inserted: $inserted rows. Skipped: $skipped rows.";
-        if ($drives_created > 0 || $roles_created > 0) {
-            $msg .= " Auto-created $drives_created drive(s) and $roles_created role(s) — they now appear in the Progress Tracker and Company Data tabs.";
+        $message = "Import completed. Inserted: $inserted rows";
+        if ($skipped > 0) {
+            $message .= ", Skipped: $skipped rows";
+            $details = [];
+            if ($skipReasons['student_not_found'] > 0) {
+                $details[] = "{$skipReasons['student_not_found']} students not found";
+            }
+            if ($skipReasons['duplicates'] > 0) {
+                $details[] = "{$skipReasons['duplicates']} duplicates";
+            }
+            if ($skipReasons['empty_fields'] > 0) {
+                $details[] = "{$skipReasons['empty_fields']} with missing fields";
+            }
+            if ($skipReasons['errors'] > 0) {
+                $details[] = "{$skipReasons['errors']} with errors";
+            }
+            if (!empty($details)) {
+                $message .= " (" . implode(', ', $details) . ")";
+            }
         }
-        $_SESSION['import_message'] = $msg;
-        $_SESSION['import_status'] = "success";
+        if ($drives_created > 0 || $roles_created > 0) {
+            $message .= ". Auto-created $drives_created drive(s) and $roles_created role(s) — they now appear in the Progress Tracker and Company Data tabs.";
+        }
+
+        $_SESSION['import_message'] = $message;
+        if (!empty($skippedDetails)) {
+            $_SESSION['import_details'] = count($skippedDetails) <= 10
+                ? implode('; ', $skippedDetails)
+                : implode('; ', array_slice($skippedDetails, 0, 10)) . "; ... and " . (count($skippedDetails) - 10) . " more issues";
+        }
+        $_SESSION['import_status'] = ($inserted > 0) ? "success" : ($skipped > 0 ? "warning" : "success");
 
     } catch (Exception $e) {
         $_SESSION['import_message'] = "Error during import: " . $e->getMessage();
@@ -591,6 +669,13 @@ if (!empty($_SESSION['import_message'])) {
     }
 
     $messageHtml = "<div class='$class'>" . htmlspecialchars($_SESSION['import_message']) . "</div>";
+
+    if (!empty($_SESSION['import_details'])) {
+        $messageHtml .= "<details class='$class' style='margin-top:8px;'><summary style='cursor:pointer;'>Show details</summary><div style='margin-top:6px; font-size:13px; white-space:pre-wrap;'>"
+            . htmlspecialchars($_SESSION['import_details'])
+            . "</div></details>";
+        unset($_SESSION['import_details']);
+    }
 
     unset($_SESSION['import_message']);
     unset($_SESSION['import_status']);

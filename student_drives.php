@@ -104,6 +104,17 @@ if ($student_year) {
 
 $drives_query .= " ORDER BY d.close_date ASC";
 
+// Pagination — limit drives per page so the page stays light as drives accumulate.
+require_once __DIR__ . '/pagination_helper.php';
+$total_drives = 0;
+$count_q = preg_replace('/SELECT\s+d\.\*/', 'SELECT COUNT(*) AS cnt', $drives_query, 1);
+// Strip trailing ORDER BY for the count query (faster).
+$count_q = preg_replace('/\s+ORDER\s+BY\s+.+$/is', '', $count_q);
+$count_res = $conn->query($count_q);
+if ($count_res) { $total_drives = (int)$count_res->fetch_assoc()['cnt']; }
+$drives_pagination = paginate_setup($total_drives, 5, 'page');
+$drives_query .= " LIMIT " . (int)$drives_pagination['per_page'] . " OFFSET " . (int)$drives_pagination['offset'];
+
 $drives_result = $conn->query($drives_query);
 
 // If specific drive is requested
@@ -121,8 +132,7 @@ $selected_drive_id = $_GET['drive_id'] ?? null;
 
     <?php if ($student_locked_out): ?>
       <div class="alert alert-warning" role="alert">
-        <strong>You are already placed full-time.</strong>
-        You can no longer apply to new drives. If you believe this is wrong, please contact the placement office to re-enable applications.
+        <strong>You are already placed.</strong>
       </div>
     <?php endif; ?>
 
@@ -246,11 +256,20 @@ $selected_drive_id = $_GET['drive_id'] ?? null;
                   <?php endif; ?>
                 <?php } ?>
 
+                <?php
+                // Drives sometimes store jd_file as the literal string "[]" — non-empty
+                // but with no actual files. Decode and confirm at least one path is set
+                // before showing the button; otherwise students see a button that opens
+                // an "Unable to display job description" page.
+                $_jd_decoded = !empty($drive['jd_file']) ? json_decode($drive['jd_file'], true) : null;
+                $has_jd_file = (is_array($_jd_decoded) && !empty(array_filter($_jd_decoded)))
+                               || (is_string($drive['jd_file'] ?? null) && strpos($drive['jd_file'], 'data:') === 0);
+                ?>
                 <?php if (!empty($drive['jd_link'])): ?>
                   <a href="<?= htmlspecialchars($drive['jd_link']) ?>" target="_blank" class="btn btn-sm btn-outline-primary mb-3">
                     <i class="bx bx-file"></i> View Job Description
                   </a>
-                <?php elseif (!empty($drive['jd_file'])): ?>
+                <?php elseif ($has_jd_file): ?>
                   <a href="view_jd.php?drive_id=<?= $drive['drive_id'] ?>" target="_blank" class="btn btn-sm btn-outline-primary mb-3">
                     <i class="bx bx-file"></i> View Job Description
                   </a>
@@ -363,15 +382,18 @@ $selected_drive_id = $_GET['drive_id'] ?? null;
                               <?php
                               $eligible_display_list = formatStudentCourseList($eligible_courses);
                               $courses_display = array_slice($eligible_display_list, 0, 3);
-                              $all_courses = implode(', ', $eligible_display_list);
+                              $hidden_courses  = array_slice($eligible_display_list, 3);
                               ?>
-                              <small
-                                title="<?= htmlspecialchars($all_courses) ?>"
-                                style="cursor: help;"
-                              >
-                                <?= htmlspecialchars(implode(', ', $courses_display)) ?>
-                                <?php if (count($eligible_display_list) > 3): ?>
-                                  <span class="text-muted">... +<?= count($eligible_display_list) - 3 ?> more</span>
+                              <small class="eligible-courses">
+                                <span class="ec-shown"><?= htmlspecialchars(implode(', ', $courses_display)) ?></span>
+                                <?php if (!empty($hidden_courses)): ?>
+                                  <span class="ec-hidden" style="display:none;">, <?= htmlspecialchars(implode(', ', $hidden_courses)) ?></span>
+                                  <a href="#" class="ec-toggle text-decoration-none ms-1"
+                                     data-shown="0"
+                                     data-more-label="... +<?= count($hidden_courses) ?> more"
+                                     data-less-label="show less">
+                                    ... +<?= count($hidden_courses) ?> more
+                                  </a>
                                 <?php endif; ?>
                               </small>
                             </td>
@@ -412,6 +434,7 @@ $selected_drive_id = $_GET['drive_id'] ?? null;
           </div>
         <?php endwhile; ?>
       </div>
+      <?= render_pagination($drives_pagination, 'page') ?>
     <?php else: ?>
       <div class="row">
         <div class="col-12">
@@ -445,7 +468,27 @@ $selected_drive_id = $_GET['drive_id'] ?? null;
 .table td {
   vertical-align: middle;
 }
+.eligible-courses .ec-toggle {
+  cursor: pointer;
+  color: #0d6efd;
+}
+.eligible-courses .ec-toggle:hover { text-decoration: underline; }
 </style>
+
+<script>
+document.addEventListener('click', function(e) {
+  const toggle = e.target.closest('.ec-toggle');
+  if (!toggle) return;
+  e.preventDefault();
+  const wrapper = toggle.closest('.eligible-courses');
+  const hidden = wrapper.querySelector('.ec-hidden');
+  if (!hidden) return;
+  const isShown = toggle.dataset.shown === '1';
+  hidden.style.display = isShown ? 'none' : 'inline';
+  toggle.textContent = isShown ? toggle.dataset.moreLabel : toggle.dataset.lessLabel;
+  toggle.dataset.shown = isShown ? '0' : '1';
+});
+</script>
 
 </body>
 </html>

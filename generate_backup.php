@@ -56,7 +56,7 @@ $whereRegistered = "1=1";
 if (!empty($batchFilter)) {
     $whereOnOff      .= " AND passing_year = '$batchFilter'";
     $whereApp        .= " AND placement_batch = '$batchFilter'";
-    $whereDrive      .= " AND form_fields = '$batchFilter'";
+    $whereDrive      .= " AND d.graduating_year LIKE '%$batchFilter%'";
     $wherePlaced     .= " AND placement_batch = '$batchFilter'";
     $whereRegistered .= " AND year_of_passing = '$batchFilter'";
     $whereTracker = "1=0"; // Always false, so no rows are selected

@@ -398,6 +398,27 @@ foreach ($applications as $app) {
                         <div class="value"><?= htmlspecialchars($student_data['phone'] ?? 'N/A') ?></div>
                     </div>
                 </div>
+                <div class="info-item">
+                    <div>
+                        <div class="label">Placement Status</div>
+                        <div class="value">
+                            <?php
+                                $ps = strtolower($student_data['placed_status'] ?? 'not_placed');
+                                $ps_map = [
+                                    'placed'     => ['#4CAF50', 'Placed'],
+                                    'blocked'    => ['#424242', 'Blocked'],
+                                    'rejected'   => ['#f44336', 'Rejected'],
+                                    'pending'    => ['#FFC107', 'Pending'],
+                                    'not_placed' => ['#9E9E9E', 'Not Placed'],
+                                ];
+                                [$ps_color, $ps_label] = $ps_map[$ps] ?? ['#9E9E9E', ucfirst(str_replace('_', ' ', $ps))];
+                            ?>
+                            <span style="display:inline-block; padding:3px 10px; border-radius:12px; background:<?= $ps_color ?>; color:#fff; font-weight:600; font-size:13px;">
+                                <?= htmlspecialchars($ps_label) ?>
+                            </span>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
 

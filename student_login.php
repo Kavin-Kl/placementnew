@@ -7,8 +7,8 @@ include "config.php";
 
 $error = $_SESSION['error'] ?? "";
 $success = $_SESSION['success'] ?? "";
-$old_email = $_SESSION['old_email'] ?? "";
-unset($_SESSION['error'], $_SESSION['success'], $_SESSION['old_email']);
+$old_upid = $_SESSION['old_upid'] ?? "";
+unset($_SESSION['error'], $_SESSION['success'], $_SESSION['old_upid']);
 
 $remember_days = 7;
 
@@ -20,11 +20,11 @@ if (isset($_GET['logout'])) {
     exit;
 }
 
-// Cookie auto-login
+// Cookie auto-login (cookie now stores UPID instead of email)
 if (isset($_COOKIE['student_remember_me']) && !isset($_SESSION['student_id'])) {
-    $email = base64_decode($_COOKIE['student_remember_me']);
-    $stmt = $conn->prepare("SELECT * FROM students WHERE email = ? AND password_hash IS NOT NULL");
-    $stmt->bind_param("s", $email);
+    $upid = base64_decode($_COOKIE['student_remember_me']);
+    $stmt = $conn->prepare("SELECT * FROM students WHERE upid = ? AND password_hash IS NOT NULL");
+    $stmt->bind_param("s", $upid);
     $stmt->execute();
     $res = $stmt->get_result();
     if ($res && $res->num_rows === 1) {
@@ -32,6 +32,7 @@ if (isset($_COOKIE['student_remember_me']) && !isset($_SESSION['student_id'])) {
         $_SESSION['student_id'] = $row['student_id'];
         $_SESSION['student_name'] = $row['student_name'];
         $_SESSION['student_email'] = $row['email'];
+        $_SESSION['student_upid'] = $row['upid'];
 
         // Update last login
         $update_stmt = $conn->prepare("UPDATE students SET last_login = NOW() WHERE student_id = ?");
@@ -44,20 +45,20 @@ if (isset($_COOKIE['student_remember_me']) && !isset($_SESSION['student_id'])) {
 }
 
 if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST['login'])) {
-    $email = trim($_POST['email']);
-    $password = $_POST['password'];
+    $upid = trim($_POST['upid'] ?? '');
+    $password = $_POST['password'] ?? '';
     $remember = isset($_POST['remember_me']);
 
-    $_SESSION['old_email'] = $email;
+    $_SESSION['old_upid'] = $upid;
 
-    if (empty($email) || empty($password)) {
+    if (empty($upid) || empty($password)) {
         $_SESSION['error'] = "Both fields are required.";
         header("Location: student_login.php");
         exit;
     }
 
-    $stmt = $conn->prepare("SELECT * FROM students WHERE email = ? AND password_hash IS NOT NULL");
-    $stmt->bind_param("s", $email);
+    $stmt = $conn->prepare("SELECT * FROM students WHERE upid = ? AND password_hash IS NOT NULL");
+    $stmt->bind_param("s", $upid);
     $stmt->execute();
     $res = $stmt->get_result();
 
@@ -74,6 +75,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST['login'])) {
             $_SESSION['student_id'] = $row['student_id'];
             $_SESSION['student_name'] = $row['student_name'];
             $_SESSION['student_email'] = $row['email'];
+            $_SESSION['student_upid'] = $row['upid'];
 
             // Update last login
             $update_stmt = $conn->prepare("UPDATE students SET last_login = NOW() WHERE student_id = ?");
@@ -81,7 +83,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST['login'])) {
             $update_stmt->execute();
 
             if ($remember) {
-                setcookie("student_remember_me", base64_encode($row['email']), time() + (86400 * $remember_days), "/");
+                setcookie("student_remember_me", base64_encode($row['upid']), time() + (86400 * $remember_days), "/");
             }
 
             header("Location: student_dashboard.php");
@@ -92,8 +94,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST['login'])) {
             exit;
         }
     } else {
-        $_SESSION['error'] = "No account found with this email. Please register first.";
-        $_SESSION['old_email'] = "";
+        $_SESSION['error'] = "No account found with this UPID. Please register first.";
+        $_SESSION['old_upid'] = "";
         header("Location: student_login.php");
         exit;
     }
@@ -177,6 +179,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST['login'])) {
 }
 
 input[type="email"],
+input[type="text"],
 input[type="password"] {
   width: 100%;
   padding: 10px;
@@ -317,8 +320,8 @@ input[type="password"]::-webkit-credentials-auto-fill-button {
           <div class="success-msg"><?= htmlspecialchars($success) ?></div>
         <?php endif; ?>
 
-        <label for="email">Email</label>
-        <input type="email" id="email" name="email" placeholder="Enter your college email" required value="<?= htmlspecialchars($old_email ?? '') ?>">
+        <label for="upid">UPID</label>
+        <input type="text" id="upid" name="upid" placeholder="Enter your UPID" required autocomplete="username" value="<?= htmlspecialchars($old_upid ?? '') ?>">
 
         <label for="password" class="password-label">Password</label>
         <div class="password-wrapper">

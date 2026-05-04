@@ -5,11 +5,22 @@ php_value post_max_size       55M
 php_value memory_limit        512M
 php_value max_execution_time  300
 
+# Session lifetime — keep admins logged in for a full work day so long edit
+# sessions on add_drive / form-fields / round-results pages don't get bounced
+# back to the login page after the default ~24-minute idle timeout.
+# 28800s = 8 hours.
+php_value session.gc_maxlifetime 28800
+php_value session.cookie_lifetime 28800
+php_value session.gc_probability 1
+php_value session.gc_divisor     1000
+
 # Enable mod_rewrite
 RewriteEngine On
 
-# Hide .php extension in browser URLs
-RewriteCond %{THE_REQUEST} ^[A-Z]{3,}\s([^.]+)\.php\sHTTP/
+# Hide .php extension in browser URLs.
+# Only redirect GET requests — redirecting POST causes browsers to retry as GET
+# and drop the body, breaking AJAX endpoints like block_student.php.
+RewriteCond %{THE_REQUEST} ^GET\s([^.]+)\.php\sHTTP/
 RewriteRule ^ %1 [R=301,L]
 
 

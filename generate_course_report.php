@@ -19,8 +19,9 @@ if ($ay_value && preg_match('/(\d{4})\s*-\s*(\d{4})/', $ay_value, $m)) {
 }
 $ay_value_esc = $ay_value ? $conn->real_escape_string($ay_value) : '';
 // SQL fragments — empty string when no AY selected.
-$ay_filter_students        = $ay_year_int ? " AND year_of_passing = $ay_year_int " : '';
-$ay_filter_students_s      = $ay_year_int ? " AND s.year_of_passing = $ay_year_int " : '';
+// Filter on academic_year (string) to match registered_students.php / dashboard.php semantics.
+$ay_filter_students        = $ay_value ? " AND academic_year = '$ay_value_esc' " : '';
+$ay_filter_students_s      = $ay_value ? " AND s.academic_year = '$ay_value_esc' " : '';
 $ay_filter_drives_d        = $ay_value ? " AND d.academic_year = '$ay_value_esc' " : '';
 $course = $_GET['course'] ?? '';
 $offer_type_filter = $_GET['offer_type'] ?? 'FULLTIME'; // Default to Full-Time; only Internship/Full-Time supported
@@ -36,14 +37,20 @@ $normalized_course = str_replace('_', ',', $course);
 
 // === SELECTED COURSES ===
 $selectedCourses = [];
+// When set, ALL/ALL_UG/ALL_PG queries filter by program_type instead of course-name list.
+// Avoids missing students whose course string doesn't exactly match the curated UG/PG list.
+$program_type_filter = null; // 'UG', 'PG', or null (=ALL programs)
 
 // Check for special "ALL" options first
 if ($course === 'ALL') {
     $selectedCourses = array_merge($UG_COURSES, $PG_COURSES);
+    $program_type_filter = 'ALL';
 } elseif ($course === 'ALL_UG') {
     $selectedCourses = $UG_COURSES;
+    $program_type_filter = 'UG';
 } elseif ($course === 'ALL_PG') {
     $selectedCourses = $PG_COURSES;
+    $program_type_filter = 'PG';
 }
 // Check if it's an individual course from UG_COURSES or PG_COURSES
 elseif (in_array($course, $UG_COURSES) || in_array($course, $PG_COURSES)) {
@@ -102,71 +109,13 @@ $companies_status_breakdown = [
 ];
 
 $companies = [];
-// ✅ Count UG Off-Campus Placed - EXCLUDING VANTAGE
+// UG / PG Off-Campus Placed totals — use program_type column (reliable) instead of course-name list.
 $ug_offcampus_placed = 0;
-if (!empty($UG_COURSES)) {
-    // Define cleaned UG course list first
-    $cleaned_ug = array_map(function($c){
-        return strtolower(
-            str_replace([' ', '.', '-', '_', ',', '(', ')', '–'], '', str_ireplace('&', 'and', trim($c)))
-        );
-    }, $UG_COURSES);
-
-    $placeholders = implode(',', array_fill(0, count($cleaned_ug), '?'));
-    $types = str_repeat('s', count($cleaned_ug));
-
-
-    $stmt = $conn->prepare("
-        SELECT COUNT(*) AS total
-        FROM students
-        WHERE LOWER(TRIM(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(course, '&', 'and'),'–',''),'-',''),'(',''),')',''),' ',''),'.',''),'_',''),',','')))
-        IN ($placeholders)
-        AND LOWER(Offcampus_selection) = 'placed'
-        AND (vantage_participant != 'yes' OR vantage_participant IS NULL)
-        $ay_filter_students
-    ");
-    if ($stmt) {
-        $stmt->bind_param($types, ...$cleaned_ug);
-        $stmt->execute();
-        $ug_offcampus_placed = (int)$stmt->get_result()->fetch_assoc()['total'];
-    } else {
-        error_log("Prepare failed for UG off-campus query: " . $conn->error);
-        $ug_offcampus_placed = 0;
-    }
-}
-
-// ✅ Count PG Off-Campus Placed - EXCLUDING VANTAGE
 $pg_offcampus_placed = 0;
-if (!empty($PG_COURSES)) {
-    // Define cleaned PG course list first
-    $cleaned_pg = array_map(function($c){
-        return strtolower(
-            str_replace([' ', '.', '-', '_', ',', '(', ')', '–'], '', str_ireplace('&', 'and', trim($c)))
-        );
-    }, $PG_COURSES);
-
-    $placeholders = implode(',', array_fill(0, count($cleaned_pg), '?'));
-    $types = str_repeat('s', count($cleaned_pg));
-
-
-    $stmt = $conn->prepare("
-        SELECT COUNT(*) AS total
-        FROM students
-        WHERE LOWER(TRIM(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(course, '&', 'and'),'–',''),'-',''),'(',''),')',''),' ',''),'.',''),'_',''),',','')))
-        IN ($placeholders)
-        AND LOWER(Offcampus_selection) = 'placed'
-        AND (vantage_participant != 'yes' OR vantage_participant IS NULL)
-        $ay_filter_students
-    ");
-    if ($stmt) {
-        $stmt->bind_param($types, ...$cleaned_pg);
-        $stmt->execute();
-        $pg_offcampus_placed = (int)$stmt->get_result()->fetch_assoc()['total'];
-    } else {
-        error_log("Prepare failed for PG off-campus query: " . $conn->error);
-        $pg_offcampus_placed = 0;
-    }
-}
+$res = $conn->query("SELECT COUNT(*) AS total FROM students WHERE program_type='UG' AND LOWER(Offcampus_selection)='placed' $ay_filter_students");
+if ($res) { $ug_offcampus_placed = (int)$res->fetch_assoc()['total']; }
+$res = $conn->query("SELECT COUNT(*) AS total FROM students WHERE program_type='PG' AND LOWER(Offcampus_selection)='placed' $ay_filter_students");
+if ($res) { $pg_offcampus_placed = (int)$res->fetch_assoc()['total']; }
 
 // === DATABASE QUERIES ===
 $placeholders = implode(',', array_fill(0, count($selectedCourses), '?'));
@@ -177,10 +126,26 @@ $cleaned_courses = array_map(function($c) {
   );
 }, $selectedCourses);
 
-// Students registered - if ALL selected, count ALL students (EXCLUDING VANTAGE)
-if ($course === 'ALL') {
-    $stmt = $conn->query("SELECT COUNT(*) as total FROM students WHERE (vantage_participant != 'yes' OR vantage_participant IS NULL) $ay_filter_students");
-    $students_registered = $stmt->fetch_assoc()['total'];
+// Students registered
+// For ALL / ALL_UG / ALL_PG, use program_type filter (not course-name matching) and
+// include vantage students so the total matches what users see on registered_students.php.
+if ($program_type_filter !== null) {
+    if ($program_type_filter === 'ALL') {
+        $sql_reg = "SELECT COUNT(*) as total FROM students WHERE 1=1 $ay_filter_students";
+        $stmt = $conn->query($sql_reg);
+        $students_registered = (int)$stmt->fetch_assoc()['total'];
+    } else {
+        $sql_reg = "SELECT COUNT(*) as total FROM students WHERE program_type = ? $ay_filter_students";
+        $stmt = $conn->prepare($sql_reg);
+        if ($stmt) {
+            $stmt->bind_param('s', $program_type_filter);
+            $stmt->execute();
+            $students_registered = (int)$stmt->get_result()->fetch_assoc()['total'];
+        } else {
+            error_log("Prepare failed for ALL_xx students_registered query: " . $conn->error);
+            $students_registered = 0;
+        }
+    }
 } else {
     $sql = "
       SELECT COUNT(*) as total
@@ -238,127 +203,164 @@ if ($offer_type_filter === 'FULLTIME') {
     $offer_type_condition = " AND dr.offer_type = 'Internship'";
 }
 
-$stmt = $conn->prepare("
-  SELECT COUNT(DISTINCT a.upid) as total
-  FROM applications a
-  INNER JOIN students s ON a.student_id = s.student_id
-  LEFT JOIN drive_roles dr ON a.role_id = dr.role_id
-  WHERE LOWER(
-    TRIM(
-      REPLACE(
-        REPLACE(
+// For ALL/ALL_UG/ALL_PG, filter by program_type and include vantage students.
+if ($program_type_filter !== null) {
+    $pt_where = ($program_type_filter === 'ALL') ? "" : " AND s.program_type = '" . $conn->real_escape_string($program_type_filter) . "'";
+    $sql_placed = "
+      SELECT COUNT(DISTINCT a.upid) as total
+      FROM applications a
+      INNER JOIN students s ON a.student_id = s.student_id
+      LEFT JOIN drive_roles dr ON a.role_id = dr.role_id
+      WHERE LOWER(a.status) = 'placed'
+      $pt_where
+      $offer_type_condition
+      $ay_filter_students_s
+    ";
+    $res = $conn->query($sql_placed);
+    $students_placed = $res ? (int)$res->fetch_assoc()['total'] : 0;
+
+    $sql_def = "
+      SELECT COUNT(DISTINCT a.upid) as total
+      FROM applications a
+      INNER JOIN students s ON a.student_id = s.student_id
+      WHERE LOWER(a.status) = 'blocked'
+      $pt_where
+      $ay_filter_students_s
+    ";
+    $res = $conn->query($sql_def);
+    $students_defaulted = $res ? (int)$res->fetch_assoc()['total'] : 0;
+} else {
+    $stmt = $conn->prepare("
+      SELECT COUNT(DISTINCT a.upid) as total
+      FROM applications a
+      INNER JOIN students s ON a.student_id = s.student_id
+      LEFT JOIN drive_roles dr ON a.role_id = dr.role_id
+      WHERE LOWER(
+        TRIM(
           REPLACE(
             REPLACE(
               REPLACE(
                 REPLACE(
                   REPLACE(
                     REPLACE(
-                      REPLACE(a.course, '&', 'and'),
-                      '–', ''
+                      REPLACE(
+                        REPLACE(
+                          REPLACE(a.course, '&', 'and'),
+                          '–', ''
+                        ),
+                        '-', ''
+                      ),
+                      '(', ''
                     ),
-                    '-', ''
+                    ')', ''
                   ),
-                  '(', ''
+                  ' ', ''
                 ),
-                ')', ''
+                '.', ''
               ),
-              ' ', ''
+              '_', ''
             ),
-            '.', ''
-          ),
-          '_', ''
-        ),
-        ',', ''
-      )
-    )
-  ) IN ($placeholders)
-  AND LOWER(a.status) = 'placed'
-  AND (s.vantage_participant != 'yes' OR s.vantage_participant IS NULL)
-  $offer_type_condition
-  $ay_filter_students_s
-");
-if ($stmt) {
-    $stmt->bind_param($types, ...$cleaned_courses);
-    $stmt->execute();
-    $students_placed = (int)$stmt->get_result()->fetch_assoc()['total'];
-} else {
-    error_log("Prepare failed for students_placed query: " . $conn->error);
-    $students_placed = 0;
-}
+            ',', ''
+          )
+        )
+      ) IN ($placeholders)
+      AND LOWER(a.status) = 'placed'
+      AND (s.vantage_participant != 'yes' OR s.vantage_participant IS NULL)
+      $offer_type_condition
+      $ay_filter_students_s
+    ");
+    if ($stmt) {
+        $stmt->bind_param($types, ...$cleaned_courses);
+        $stmt->execute();
+        $students_placed = (int)$stmt->get_result()->fetch_assoc()['total'];
+    } else {
+        error_log("Prepare failed for students_placed query: " . $conn->error);
+        $students_placed = 0;
+    }
 
-
-// Students defaulted - EXCLUDING VANTAGE
-$stmt = $conn->prepare("
-  SELECT COUNT(DISTINCT a.upid) as total
-  FROM applications a
-  INNER JOIN students s ON a.student_id = s.student_id
-  WHERE LOWER(
-    TRIM(
-      REPLACE(
-        REPLACE(
+    $stmt = $conn->prepare("
+      SELECT COUNT(DISTINCT a.upid) as total
+      FROM applications a
+      INNER JOIN students s ON a.student_id = s.student_id
+      WHERE LOWER(
+        TRIM(
           REPLACE(
             REPLACE(
               REPLACE(
                 REPLACE(
                   REPLACE(
                     REPLACE(
-                      REPLACE(a.course, '&', 'and'),
-                      '–', ''
+                      REPLACE(
+                        REPLACE(
+                          REPLACE(a.course, '&', 'and'),
+                          '–', ''
+                        ),
+                        '-', ''
+                      ),
+                      '(', ''
                     ),
-                    '-', ''
+                    ')', ''
                   ),
-                  '(', ''
+                  ' ', ''
                 ),
-                ')', ''
+                '.', ''
               ),
-              ' ', ''
+              '_', ''
             ),
-            '.', ''
-          ),
-          '_', ''
-        ),
-        ',', ''
-      )
-    )
-  ) IN ($placeholders)
-  AND LOWER(a.status) = 'blocked'
-  AND (s.vantage_participant != 'yes' OR s.vantage_participant IS NULL)
-  $ay_filter_students_s
-");
-if ($stmt) {
-    $stmt->bind_param($types, ...$cleaned_courses);
-    $stmt->execute();
-    $students_defaulted = (int)$stmt->get_result()->fetch_assoc()['total'];
-} else {
-    error_log("Prepare failed for students_defaulted query: " . $conn->error);
-    $students_defaulted = 0;
+            ',', ''
+          )
+        )
+      ) IN ($placeholders)
+      AND LOWER(a.status) = 'blocked'
+      AND (s.vantage_participant != 'yes' OR s.vantage_participant IS NULL)
+      $ay_filter_students_s
+    ");
+    if ($stmt) {
+        $stmt->bind_param($types, ...$cleaned_courses);
+        $stmt->execute();
+        $students_defaulted = (int)$stmt->get_result()->fetch_assoc()['total'];
+    } else {
+        error_log("Prepare failed for students_defaulted query: " . $conn->error);
+        $students_defaulted = 0;
+    }
 }
 
 
-$students_not_placed = $students_registered - $students_placed - $students_defaulted;
-$placement_percentage = $students_registered > 0 ? round(($students_placed / $students_registered) * 100) : 0;
-// ✅ Count of students placed off-campus - EXCLUDING VANTAGE
-$stmt = $conn->prepare("
-  SELECT COUNT(*) AS total
-  FROM students
-  WHERE LOWER(TRIM(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(course, '&', 'and'),'–',''),'-',''),'(',''),')',''),' ',''),'.',''),'_',''),',','')))
-  IN ($placeholders)
-  AND LOWER(Offcampus_selection) = 'placed'
-  AND (vantage_participant != 'yes' OR vantage_participant IS NULL)
-  $ay_filter_students
-");
-if ($stmt) {
-    $stmt->bind_param($types, ...$cleaned_courses);
-    $stmt->execute();
-    $offcampus_placed = (int)$stmt->get_result()->fetch_assoc()['total'];
+// Off-campus placed must be added to students_placed BEFORE computing % so the metric reflects total placements.
+if ($program_type_filter !== null) {
+    $pt_where_oc = ($program_type_filter === 'ALL') ? "" : " AND program_type = '" . $conn->real_escape_string($program_type_filter) . "'";
+    $sql_oc = "SELECT COUNT(*) AS total FROM students WHERE LOWER(Offcampus_selection) = 'placed' $pt_where_oc $ay_filter_students";
+    $res = $conn->query($sql_oc);
+    $offcampus_placed = $res ? (int)$res->fetch_assoc()['total'] : 0;
 } else {
-    error_log("Prepare failed for offcampus_placed query: " . $conn->error);
-    $offcampus_placed = 0;
+    $stmt = $conn->prepare("
+      SELECT COUNT(*) AS total
+      FROM students
+      WHERE LOWER(TRIM(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(course, '&', 'and'),'–',''),'-',''),'(',''),')',''),' ',''),'.',''),'_',''),',','')))
+      IN ($placeholders)
+      AND LOWER(Offcampus_selection) = 'placed'
+      AND (vantage_participant != 'yes' OR vantage_participant IS NULL)
+      $ay_filter_students
+    ");
+    if ($stmt) {
+        $stmt->bind_param($types, ...$cleaned_courses);
+        $stmt->execute();
+        $offcampus_placed = (int)$stmt->get_result()->fetch_assoc()['total'];
+    } else {
+        error_log("Prepare failed for offcampus_placed query: " . $conn->error);
+        $offcampus_placed = 0;
+    }
 }
+
+$students_not_placed = $students_registered - $students_placed - $students_defaulted - $offcampus_placed;
+$placement_percentage = $students_registered > 0 ? round((($students_placed + $offcampus_placed) / $students_registered) * 100) : 0;
 
 // CTC
-// ✅ Fetch CTC values from placed_students.ctc instead of drive_roles.ctc
+// Fetch CTC values from placed_students. Prefer the admin-edited override
+// (edit_ctc / edit_stipend) when present so manual corrections are reflected
+// in the average / median / highest stats.
 $ctc_values = [];
+$compensation_expr = "COALESCE(NULLIF(edit_$compensation_column, ''), NULLIF($compensation_column, ''))";
 
 // Build offer type filter for CTC query
 $ctc_offer_type_condition = "";
@@ -369,7 +371,7 @@ if ($offer_type_filter === 'FULLTIME') {
 }
 
 $query = "
-    SELECT $compensation_column AS comp_value
+    SELECT $compensation_expr AS comp_value
     FROM placed_students
     WHERE LOWER(
       TRIM(
@@ -400,8 +402,8 @@ $query = "
         )
       )
     ) IN ($placeholders)
-      AND $compensation_column IS NOT NULL
-      AND $compensation_column != ''
+      AND $compensation_expr IS NOT NULL
+      AND $compensation_expr != ''
       $ctc_offer_type_condition
       " . ($ay_year_int ? " AND student_id IN (SELECT student_id FROM students WHERE year_of_passing = $ay_year_int)" : "") . "
 ";
@@ -614,207 +616,57 @@ if ($stmt) {
     $companies_hired = 0;
 }
 
+// Course-agnostic companies — drives whose eligibility includes "All UG", "All PG",
+// "All UG/PG", or "ALL" (i.e., didn't restrict to specific courses).
+$companies_course_agnostic = 0;
+$ca_sql = "
+    SELECT COUNT(DISTINCT d.company_name) AS total
+    FROM drives d
+    JOIN drive_data dd ON d.company_name = dd.company_name AND d.drive_no = dd.drive_no
+    WHERE (
+        dd.eligible_courses LIKE '%\"ALL\"%'
+        OR dd.eligible_courses LIKE '%\"All\"%'
+        OR dd.eligible_courses LIKE '%\"All UG\"%'
+        OR dd.eligible_courses LIKE '%\"All PG\"%'
+        OR dd.eligible_courses LIKE '%\"All UG Courses\"%'
+        OR dd.eligible_courses LIKE '%\"All PG Courses\"%'
+        OR dd.eligible_courses LIKE '%\"all ug\"%'
+        OR dd.eligible_courses LIKE '%\"all pg\"%'
+        OR dd.eligible_courses LIKE '%\"all ug courses\"%'
+        OR dd.eligible_courses LIKE '%\"all pg courses\"%'
+    )
+    $ay_filter_drives_d
+";
+$ca_res = $conn->query($ca_sql);
+if ($ca_res) {
+    $companies_course_agnostic = (int)($ca_res->fetch_assoc()['total'] ?? 0);
+}
 
-// UG/PG split
+
+// UG/PG split — count by program_type column for the breakdown shown when course='ALL'.
 $ug_registered = $ug_placed = $pg_registered = $pg_placed = 0;
-if (!empty($UG_COURSES)) {
-  $cleaned_ug = array_map(function($c){
-  return strtolower(
-    str_replace([' ', '.', '-', '_', ',', '(', ')', '–'], '', str_ireplace('&', 'and', trim($c)))
-  );
-}, $UG_COURSES);
+$res = $conn->query("SELECT COUNT(*) AS total FROM students WHERE program_type='UG' $ay_filter_students");
+if ($res) { $ug_registered = (int)$res->fetch_assoc()['total']; }
+$res = $conn->query("SELECT COUNT(*) AS total FROM students WHERE program_type='PG' $ay_filter_students");
+if ($res) { $pg_registered = (int)$res->fetch_assoc()['total']; }
 
-    $placeholders = implode(',', array_fill(0, count($cleaned_ug), '?'));
-    $types = str_repeat('s', count($cleaned_ug));
-   $stmt = $conn->prepare("
-  SELECT COUNT(*) as total
-  FROM students
-  WHERE LOWER(
-    TRIM(
-      REPLACE(
-        REPLACE(
-          REPLACE(
-            REPLACE(
-              REPLACE(
-                REPLACE(
-                  REPLACE(
-                    REPLACE(
-                      REPLACE(course, '&', 'and'),
-                      '–', ''
-                    ),
-                    '-', ''
-                  ),
-                  '(', ''
-                ),
-                ')', ''
-              ),
-              ' ', ''
-            ),
-            '.', ''
-          ),
-          '_', ''
-        ),
-        ',', ''
-      )
-    )
-  ) IN ($placeholders)
-  AND (vantage_participant != 'yes' OR vantage_participant IS NULL)
-  $ay_filter_students
+$res = $conn->query("
+    SELECT COUNT(DISTINCT a.upid) AS total
+    FROM applications a
+    INNER JOIN students s ON a.student_id = s.student_id
+    WHERE LOWER(a.status) = 'placed' AND s.program_type = 'UG' $ay_filter_students_s
 ");
+if ($res) { $ug_placed = (int)$res->fetch_assoc()['total']; }
 
-    if ($stmt) {
-        $stmt->bind_param($types, ...$cleaned_ug);
-        $stmt->execute();
-        $ug_registered = $stmt->get_result()->fetch_assoc()['total'];
-    } else {
-        error_log("Prepare failed for UG registered query: " . $conn->error);
-        $ug_registered = 0;
-    }
-    $stmt = $conn->prepare("SELECT COUNT(DISTINCT a.upid) as total
-FROM applications a
-INNER JOIN students s ON a.student_id = s.student_id
-WHERE LOWER(
-  TRIM(
-    REPLACE(
-      REPLACE(
-        REPLACE(
-          REPLACE(
-            REPLACE(
-              REPLACE(
-                REPLACE(
-                  REPLACE(
-                    REPLACE(a.course, '&', 'and'),
-                    '–', ''
-                  ),
-                  '-', ''
-                ),
-                '(', ''
-              ),
-              ')', ''
-            ),
-            ' ', ''
-          ),
-          '.', ''
-        ),
-        '_', ''
-      ),
-      ',', ''
-    )
-  )
-) IN ($placeholders)
-AND LOWER(a.status) = 'placed'
-AND (s.vantage_participant != 'yes' OR s.vantage_participant IS NULL)
-$ay_filter_students_s
+$res = $conn->query("
+    SELECT COUNT(DISTINCT a.upid) AS total
+    FROM applications a
+    INNER JOIN students s ON a.student_id = s.student_id
+    WHERE LOWER(a.status) = 'placed' AND s.program_type = 'PG' $ay_filter_students_s
 ");
-    if ($stmt) {
-        $stmt->bind_param($types, ...$cleaned_ug);
-        $stmt->execute();
-        $ug_placed = $stmt->get_result()->fetch_assoc()['total'];
-    } else {
-        error_log("Prepare failed for UG placed query: " . $conn->error);
-        $ug_placed = 0;
-    }
-}
+if ($res) { $pg_placed = (int)$res->fetch_assoc()['total']; }
+
 $ug_not_placed = $ug_registered - $ug_placed;
-
-if (!empty($PG_COURSES)) {
-   $cleaned_pg = array_map(function($c){
-  return strtolower(
-    str_replace([' ', '.', '-', '_', ',', '(', ')', '–'], '', str_ireplace('&', 'and', trim($c)))
-  );
-}, $PG_COURSES);
-
-    $placeholders = implode(',', array_fill(0, count($cleaned_pg), '?'));
-    $types = str_repeat('s', count($cleaned_pg));
-   $stmt = $conn->prepare("
-  SELECT COUNT(*) as total
-  FROM students
-  WHERE LOWER(
-    TRIM(
-      REPLACE(
-        REPLACE(
-          REPLACE(
-            REPLACE(
-              REPLACE(
-                REPLACE(
-                  REPLACE(
-                    REPLACE(
-                      REPLACE(course, '&', 'and'),
-                      '–', ''
-                    ),
-                    '-', ''
-                  ),
-                  '(', ''
-                ),
-                ')', ''
-              ),
-              ' ', ''
-            ),
-            '.', ''
-          ),
-          '_', ''
-        ),
-        ',', ''
-      )
-    )
-  ) IN ($placeholders)
-  AND (vantage_participant != 'yes' OR vantage_participant IS NULL)
-  $ay_filter_students
-");
-
-    if ($stmt) {
-        $stmt->bind_param($types, ...$cleaned_pg);
-        $stmt->execute();
-        $pg_registered = $stmt->get_result()->fetch_assoc()['total'];
-    } else {
-        error_log("Prepare failed for PG registered query: " . $conn->error);
-        $pg_registered = 0;
-    }
-    $stmt = $conn->prepare("SELECT COUNT(DISTINCT a.upid) as total
-FROM applications a
-INNER JOIN students s ON a.student_id = s.student_id
-WHERE LOWER(
-  TRIM(
-    REPLACE(
-      REPLACE(
-        REPLACE(
-          REPLACE(
-            REPLACE(
-              REPLACE(
-                REPLACE(
-                  REPLACE(
-                    REPLACE(a.course, '&', 'and'),
-                    '–', ''
-                  ),
-                  '-', ''
-                ),
-                '(', ''
-              ),
-              ')', ''
-            ),
-            ' ', ''
-          ),
-          '.', ''
-        ),
-        '_', ''
-      ),
-      ',', ''
-    )
-  )
-) IN ($placeholders)
-AND LOWER(a.status) = 'placed'
-AND (s.vantage_participant != 'yes' OR s.vantage_participant IS NULL)
-$ay_filter_students_s
-");
-    if ($stmt) {
-        $stmt->bind_param($types, ...$cleaned_pg);
-        $stmt->execute();
-        $pg_placed = $stmt->get_result()->fetch_assoc()['total'];
-    } else {
-        error_log("Prepare failed for PG placed query: " . $conn->error);
-        $pg_placed = 0;
-    }
-}
 $pg_not_placed = $pg_registered - $pg_placed;
 
 
@@ -871,6 +723,17 @@ if ($course === 'ALL') {
         echo "<tr><td colspan='2'>None</td></tr>";
     }
 
+    // List of companies that visited (i.e., had a drive matching the course filter),
+    // mirroring what the HTML/PDF version of the report shows.
+    echo "<tr><th colspan='2'>Companies Visited</th></tr>";
+    if (!empty($companies_visited_list)) {
+        foreach ($companies_visited_list as $c) {
+            echo "<tr><td colspan='2'>" . htmlspecialchars($c) . "</td></tr>";
+        }
+    } else {
+        echo "<tr><td colspan='2'>None</td></tr>";
+    }
+
     echo "<tr><th colspan='2'>Package Details</th></tr>";
     echo "<tr><td>Average $compensation_label</td><td>$average_ctc</td></tr>";
     echo "<tr><td>Median $compensation_label</td><td>$median_ctc</td></tr>";
@@ -879,6 +742,7 @@ if ($course === 'ALL') {
     echo "<tr><th colspan='2'>Companies Overview</th></tr>";
     echo "<tr><td>Total Companies Visited</td><td>$companies_visited</td></tr>";
     echo "<tr><td>Companies Hired</td><td>$companies_hired</td></tr>";
+    echo "<tr><td>Course Agnostic (All UG / All PG / All UG &amp; PG)</td><td>$companies_course_agnostic</td></tr>";
 
     echo "</table>";
     exit;
@@ -1037,19 +901,20 @@ include ("header.php");
   <button class="btn btn-primary dropdown-toggle" type="button" id="courseDropdown" data-bs-toggle="dropdown" aria-expanded="false">
     <?= $course ? htmlspecialchars($course) : "Select Course" ?>
   </button>
+  <?php $ot_qs = '&offer_type=' . urlencode($offer_type_filter); // preserve Internship/Full-Time toggle across course switches ?>
   <ul class="dropdown-menu" aria-labelledby="courseDropdown">
-    <li><a class="dropdown-item" href="?course=ALL">All UG & PG</a></li>
-    <li><a class="dropdown-item" href="?course=ALL_UG">All UG</a></li>
-    <li><a class="dropdown-item" href="?course=ALL_PG">All PG</a></li>
+    <li><a class="dropdown-item" href="?course=ALL<?= $ot_qs ?>">All UG & PG</a></li>
+    <li><a class="dropdown-item" href="?course=ALL_UG<?= $ot_qs ?>">All UG</a></li>
+    <li><a class="dropdown-item" href="?course=ALL_PG<?= $ot_qs ?>">All PG</a></li>
     <li><hr class="dropdown-divider"></li>
     <?php foreach ($ug_courses_grouped as $dept => $levels): ?>
       <li class="dropdown-submenu">
-  <a class="dropdown-item dropdown-toggle" href="?course=<?= urlencode($dept) ?>"><?= htmlspecialchars($dept) ?></a>
+  <a class="dropdown-item dropdown-toggle" href="?course=<?= urlencode($dept) . $ot_qs ?>"><?= htmlspecialchars($dept) ?></a>
 
         <ul class="dropdown-menu">
           <?php foreach ($levels as $program => $courses): ?>
             <?php foreach ($courses as $c): ?>
-              <li><a class="dropdown-item" href="?course=<?= urlencode($c) ?>"><?= htmlspecialchars($c) ?></a></li>
+              <li><a class="dropdown-item" href="?course=<?= urlencode($c) . $ot_qs ?>"><?= htmlspecialchars($c) ?></a></li>
             <?php endforeach; ?>
           <?php endforeach; ?>
         </ul>
@@ -1057,11 +922,11 @@ include ("header.php");
     <?php endforeach; ?>
     <?php foreach ($pg_courses_grouped as $dept => $levels): ?>
       <li class="dropdown-submenu">
-        <a class="dropdown-item dropdown-toggle" href="?course=<?= urlencode($dept) ?>"><?= htmlspecialchars($dept) ?> </a>
+        <a class="dropdown-item dropdown-toggle" href="?course=<?= urlencode($dept) . $ot_qs ?>"><?= htmlspecialchars($dept) ?> </a>
         <ul class="dropdown-menu">
           <?php foreach ($levels as $program => $courses): ?>
             <?php foreach ($courses as $c): ?>
-              <li><a class="dropdown-item" href="?course=<?= urlencode($c) ?>"><?= htmlspecialchars($c) ?></a></li>
+              <li><a class="dropdown-item" href="?course=<?= urlencode($c) . $ot_qs ?>"><?= htmlspecialchars($c) ?></a></li>
             <?php endforeach; ?>
           <?php endforeach; ?>
         </ul>
@@ -1163,6 +1028,7 @@ include ("header.php");
         <tbody>
             <tr><td>Total Companies Visited</td><td><?= $companies_visited ?></td></tr>
             <tr><td>Companies Hired</td><td><?= $companies_hired ?></td></tr>
+            <tr><td>Course Agnostic (All UG / All PG / All UG &amp; PG)</td><td><?= $companies_course_agnostic ?></td></tr>
         </tbody>
     </table>
 

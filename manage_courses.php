@@ -55,14 +55,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // Delete course
         $course_id = intval($_POST['course_id']);
 
-        // Check if course is being used by any students
-        $check = $conn->prepare("SELECT COUNT(*) as count FROM students WHERE course = (SELECT course_name FROM courses WHERE course_id = ?)");
-        $check->bind_param("i", $course_id);
-        $check->execute();
-        $result = $check->get_result()->fetch_assoc();
+        // Look up the course name first, then count students. Using a subquery here
+        // breaks because students.course and courses.course_name use different collations
+        // (utf8mb4_unicode_ci vs utf8mb4_general_ci) — MySQL refuses the comparison.
+        $name_stmt = $conn->prepare("SELECT course_name FROM courses WHERE course_id = ?");
+        $name_stmt->bind_param("i", $course_id);
+        $name_stmt->execute();
+        $name_row = $name_stmt->get_result()->fetch_assoc();
+        $course_name_to_check = $name_row['course_name'] ?? null;
 
-        if ($result['count'] > 0) {
-            $error_message = "Cannot delete this course. It is currently assigned to " . $result['count'] . " student(s).";
+        $student_count = 0;
+        if ($course_name_to_check !== null) {
+            $check = $conn->prepare("SELECT COUNT(*) AS count FROM students WHERE course = ?");
+            $check->bind_param("s", $course_name_to_check);
+            $check->execute();
+            $student_count = (int)($check->get_result()->fetch_assoc()['count'] ?? 0);
+        }
+
+        if ($student_count > 0) {
+            $error_message = "Cannot delete this course. It is currently assigned to " . $student_count . " student(s).";
         } else {
             $stmt = $conn->prepare("DELETE FROM courses WHERE course_id = ?");
             $stmt->bind_param("i", $course_id);

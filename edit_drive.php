@@ -106,8 +106,27 @@ foreach ($roles as &$role) {
 }
 unset($role);
 
-// decode drive-level form fields
+// decode drive-level form fields. Normalize the legacy
+// {enabled_fields, custom_fields} shape (written by older edit_form_fields.php)
+// into the flat array shape this page expects.
 $drive_form_fields = json_decode($drive['form_fields'] ?? '[]', true) ?: [];
+if (is_array($drive_form_fields) && isset($drive_form_fields['enabled_fields'])) {
+    $flat = [];
+    foreach ($drive_form_fields['enabled_fields'] as $cat => $fnames) {
+        if (!is_array($fnames)) continue;
+        foreach ($fnames as $fn) {
+            if (!is_string($fn) || strpos($fn, '---') !== false) continue;
+            $flat[] = ['name' => $fn, 'type' => 'text', 'options' => '', 'mandatory' => 0];
+        }
+    }
+    if (!empty($drive_form_fields['custom_fields']) && is_array($drive_form_fields['custom_fields'])) {
+        foreach ($drive_form_fields['custom_fields'] as $cf) {
+            if (!is_array($cf) || empty($cf['name'])) continue;
+            $flat[] = ['name' => $cf['name'], 'type' => $cf['type'] ?? 'text', 'options' => '', 'mandatory' => 0];
+        }
+    }
+    $drive_form_fields = $flat;
+}
 // -----------------------------------------------------------------------------
 // Handle POST (update drive + roles)
 // -----------------------------------------------------------------------------
@@ -483,8 +502,27 @@ $drive['close_date_display'] = $drive['close_date'] ? date('d-m-Y H:i', strtotim
 }
 unset($role);
 
-// decode drive-level form fields
+// decode drive-level form fields. Normalize the legacy
+// {enabled_fields, custom_fields} shape (written by older edit_form_fields.php)
+// into the flat array shape this page expects.
 $drive_form_fields = json_decode($drive['form_fields'] ?? '[]', true) ?: [];
+if (is_array($drive_form_fields) && isset($drive_form_fields['enabled_fields'])) {
+    $flat = [];
+    foreach ($drive_form_fields['enabled_fields'] as $cat => $fnames) {
+        if (!is_array($fnames)) continue;
+        foreach ($fnames as $fn) {
+            if (!is_string($fn) || strpos($fn, '---') !== false) continue;
+            $flat[] = ['name' => $fn, 'type' => 'text', 'options' => '', 'mandatory' => 0];
+        }
+    }
+    if (!empty($drive_form_fields['custom_fields']) && is_array($drive_form_fields['custom_fields'])) {
+        foreach ($drive_form_fields['custom_fields'] as $cf) {
+            if (!is_array($cf) || empty($cf['name'])) continue;
+            $flat[] = ['name' => $cf['name'], 'type' => $cf['type'] ?? 'text', 'options' => '', 'mandatory' => 0];
+        }
+    }
+    $drive_form_fields = $flat;
+}
     } catch (PDOException $e) {
         $error = 'Error updating drive: ' . $e->getMessage();
     }
@@ -1436,9 +1474,17 @@ $field_types = ['text', 'number', 'email', 'textarea', 'select', 'file', 'checkb
             <div id="driveFormFieldsContainer" class="form-fields-container">
                 <?php if (!empty($drive_form_fields)): ?>
                     <?php foreach ($drive_form_fields as $idx => $field): ?>
+                        <?php $is_mand = !empty($field['mandatory']); ?>
                         <div class="form-field-item" style="display: flex; justify-content: space-between; align-items: center;margin-bottom: 0.5rem; width: 100%;">
                             <strong><?= htmlspecialchars($field['name']) ?></strong>
                             <div style="display: inline-block; margin-left: 10px;">
+                                <label style="margin-right: 12px; color: #d00; font-size: 13px; cursor: pointer;">
+                                    <input type="checkbox" class="drive-field-mandatory-toggle"
+                                           data-target="drive_field_mandatory_<?= $idx ?>"
+                                           <?= $is_mand ? 'checked' : '' ?>
+                                           style="margin-right: 4px; vertical-align: middle;">
+                                    Mandatory
+                                </label>
                                 <button type="button" class="btn btn-danger btn-sm" onclick="removeDriveFormFieldItem(this)">
                                     <i class="fas fa-trash"></i>
                                 </button>
@@ -1446,7 +1492,7 @@ $field_types = ['text', 'number', 'email', 'textarea', 'select', 'file', 'checkb
                             <input type="hidden" name="drive_form_fields[<?= $idx ?>][name]" value="<?= htmlspecialchars($field['name']) ?>">
                             <input type="hidden" name="drive_form_fields[<?= $idx ?>][type]" value="<?= htmlspecialchars($field['type'] ?? 'text') ?>">
                             <input type="hidden" name="drive_form_fields[<?= $idx ?>][options]" value="<?= htmlspecialchars($field['options'] ?? '') ?>">
-                            <input type="hidden" name="drive_form_fields[<?= $idx ?>][mandatory]" value="<?= !empty($field['mandatory']) ? '1' : '0' ?>">
+                            <input type="hidden" id="drive_field_mandatory_<?= $idx ?>" name="drive_form_fields[<?= $idx ?>][mandatory]" value="<?= $is_mand ? '1' : '0' ?>">
                         </div>
                     <?php endforeach; ?>
                 <?php else: ?>
@@ -2647,22 +2693,41 @@ function addDriveFormField() {
     const div = document.createElement('div');
     div.className = 'form-field-item';
     div.style.marginBottom = '0.5rem';
+    const mandHiddenId = `drive_field_mandatory_new_${Date.now()}_${index}`;
     div.innerHTML = `
         <strong>${name}</strong><br>
         <div style="margin-left:10px;">${fieldHTML}</div>
         <div style="display:inline-block; margin-top:5px;">
+            <label style="margin-right:12px; color:#d00; font-size:13px; cursor:pointer;">
+                <input type="checkbox" class="drive-field-mandatory-toggle"
+                       data-target="${mandHiddenId}"
+                       ${mandatory ? 'checked' : ''}
+                       style="margin-right:4px; vertical-align:middle;">
+                Mandatory
+            </label>
             <button type="button" class="btn btn-danger btn-sm" onclick="removeDriveFormFieldItem(this)">
                 <i class="fas fa-trash"></i>
             </button>
         </div>
         <input type="hidden" name="drive_form_fields[${index}][name]" value="${name}">
-        <input type="hidden" name="drive_form_fields[${index}][mandatory]" value="${mandatory}">
+        <input type="hidden" id="${mandHiddenId}" name="drive_form_fields[${index}][mandatory]" value="${mandatory}">
         <input type="hidden" name="drive_form_fields[${index}][options]" value="${value}">
     `;
 
     container.appendChild(div);
     closeDriveFormFieldModal();
 }
+
+// Keep hidden mandatory input in sync with the visible checkbox
+document.addEventListener('change', function(e) {
+    if (e.target && e.target.classList && e.target.classList.contains('drive-field-mandatory-toggle')) {
+        const targetId = e.target.getAttribute('data-target');
+        const hidden = targetId ? document.getElementById(targetId) : null;
+        if (hidden) {
+            hidden.value = e.target.checked ? '1' : '0';
+        }
+    }
+});
 
 // Remove field
 function removeDriveFormFieldItem(button) {

@@ -396,14 +396,43 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["csv_file_placed"])) 
                 $checkStudent->close();
             }
 
-            // If student doesn't exist, skip this record
+            // If student doesn't exist, auto-create them in `students` so admins can import
+            // internship placements without first running the registered-students import.
             if (!$student_id) {
-                $skipped++;
-                $skipReasons['student_not_found']++;
-                $skippedDetails[] = "Row $rowNumber: Student with UPID '$upid' not found in database";
-                error_log("[PLACED IMPORT] Skipping placement record - student with UPID '$upid' not found in students table");
-                $rowNumber++;
-                continue;
+                $row_ay_for_student = $_SESSION['selected_academic_year'] ?? '2026-2027';
+                $row_yop_for_student = null;
+                if (preg_match('/(\d{4})\s*-\s*(\d{4})/', $row_ay_for_student, $m_yop)) {
+                    $row_yop_for_student = (int)$m_yop[2];
+                }
+
+                $createStu = $conn->prepare("INSERT INTO students
+                    (upid, program_type, program, course, reg_no, student_name, email, phone_no, percentage, year_of_passing, academic_year)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+                if ($createStu) {
+                    $createStu->bind_param(
+                        "ssssssssdis",
+                        $upid, $program_type, $program, $course,
+                        $reg_no, $student_name, $email, $phone_no,
+                        $percentage, $row_yop_for_student, $row_ay_for_student
+                    );
+                    if ($createStu->execute()) {
+                        $student_id = (int)$conn->insert_id;
+                        $skippedDetails[] = "Row $rowNumber: Auto-registered new student '$student_name' (UPID '$upid')";
+                        error_log("[PLACED IMPORT] Auto-created student_id $student_id for UPID '$upid'");
+                    } else {
+                        error_log("[PLACED IMPORT] Auto-create failed for UPID $upid: " . $createStu->error);
+                    }
+                    $createStu->close();
+                }
+
+                if (!$student_id) {
+                    $skipped++;
+                    $skipReasons['student_not_found']++;
+                    $skippedDetails[] = "Row $rowNumber: Could not register UPID '$upid' (insert failed).";
+                    error_log("[PLACED IMPORT] Skipping placement record - could not auto-create student with UPID '$upid'");
+                    $rowNumber++;
+                    continue;
+                }
             }
 
             // Check if placement record already exists

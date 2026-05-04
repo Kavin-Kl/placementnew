@@ -1,0 +1,27 @@
+[2026-05-02 20:41:34] === IMPORT STARTED ===
+[2026-05-02 20:41:34] User: 7
+[2026-05-02 20:41:34] File received: internship_2026-2027.xlsx (Size: 8.41 KB)
+[2026-05-02 20:41:34] Batch year extracted: 2026-2027
+[2026-05-02 20:41:34] Header mapping result: {"upid":1,"reg_no":2,"student_name":3,"program_type":4,"program":5,"course":6,"email":7,"phone_no":8,"percentage":11}
+[2026-05-02 20:41:34] Expected columns: ["upid","program_type","program","course","reg_no","student_name","email","phone_no","percentage"]
+[2026-05-02 20:41:34] All required columns found, starting import...
+[2026-05-02 20:41:34] === IMPORT COMPLETED ===
+[2026-05-02 20:41:34] Results: Inserted=0, Skipped=1
+[2026-05-02 20:42:42] === IMPORT STARTED ===
+[2026-05-02 20:42:42] User: 7
+[2026-05-02 20:42:42] File received: internship_2026-2027.xlsx (Size: 8.41 KB)
+[2026-05-02 20:42:42] Batch year extracted: 2026-2027
+[2026-05-02 20:42:42] Header mapping result: {"upid":1,"reg_no":2,"student_name":3,"program_type":4,"program":5,"course":6,"email":7,"phone_no":8,"percentage":11}
+[2026-05-02 20:42:42] Expected columns: ["upid","program_type","program","course","reg_no","student_name","email","phone_no","percentage"]
+[2026-05-02 20:42:42] All required columns found, starting import...
+[2026-05-02 20:42:42] === IMPORT COMPLETED ===
+[2026-05-02 20:42:42] Results: Inserted=0, Skipped=1
+[2026-05-04 15:59:21] === IMPORT STARTED ===
+[2026-05-04 15:59:21] User: 7
+[2026-05-04 15:59:21] File received: internship_2026-2027.xlsx (Size: 8.41 KB)
+[2026-05-04 15:59:21] Batch year extracted: 2026-2027
+[2026-05-04 15:59:25] Header mapping result: {"upid":1,"reg_no":2,"student_name":3,"program_type":4,"program":5,"course":6,"email":7,"phone_no":8,"percentage":11}
+[2026-05-04 15:59:25] Expected columns: ["upid","program_type","program","course","reg_no","student_name","email","phone_no","percentage"]
+[2026-05-04 15:59:25] All required columns found, starting import...
+[2026-05-04 15:59:25] === IMPORT COMPLETED ===
+[2026-05-04 15:59:25] Results: Inserted=1, Skipped=0

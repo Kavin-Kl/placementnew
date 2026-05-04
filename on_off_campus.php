@@ -993,14 +993,19 @@ foreach ($columns as $col) {
 }
 echo "<th class='no-export'></th>";
 echo "</tr></thead>";
-// Fetch data
-$qry = "SELECT * FROM on_off_campus_students $where ORDER BY external_id DESC";
+// Fetch data — paginated to keep page render fast as the table grows.
+require_once __DIR__ . '/pagination_helper.php';
+$total_rows = 0;
+$count_res = $conn->query("SELECT COUNT(*) AS cnt FROM on_off_campus_students $where");
+if ($count_res) { $total_rows = (int)$count_res->fetch_assoc()['cnt']; }
+$pagination = paginate_setup($total_rows, 25, 'page');
+$qry = "SELECT * FROM on_off_campus_students $where ORDER BY external_id DESC LIMIT " . (int)$pagination['per_page'] . " OFFSET " . (int)$pagination['offset'];
 $r = $conn->query($qry);
 
 // ✅ Show table body
 echo "<tbody id='tableBody'>";
 if ($r && $r->num_rows > 0) {
-  $serial = 1; // 👈 Initialize serial number
+  $serial = (int)$pagination['offset'] + 1; // continue numbering across pages
     while ($row = $r->fetch_assoc()) {
         echo "<tr>";
         echo "<td>{$serial}</td>"; 
@@ -1069,6 +1074,7 @@ echo "</td>";
 echo "</tbody>";
 ?>
 </table>
+<?= render_pagination($pagination, 'page') ?>
 </div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>

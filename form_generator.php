@@ -173,32 +173,41 @@ if ($res->num_rows === 0) {
 
 $drive = $res->fetch_assoc();
 
-// Load custom form fields if configured for this drive
+// Normalize form_fields. edit_form_fields.php saves the structure
+// {enabled_fields: {category: [names]}, custom_fields: [{name, category, type}]},
+// but the rest of this file (and add_drive.php / edit_drive.php) expects a flat
+// array of field objects [{name, type, options, mandatory, section}]. Convert
+// the legacy structure to flat so downstream code works either way.
 if (!empty($drive['form_fields'])) {
-    $custom_config = json_decode($drive['form_fields'], true);
-    if (!empty($custom_config['enabled_fields'])) {
-        // Use custom enabled fields
-        $fields = $custom_config['enabled_fields'];
-
-        // Add custom fields to appropriate categories
-        if (!empty($custom_config['custom_fields']) && is_array($custom_config['custom_fields'])) {
-            foreach ($custom_config['custom_fields'] as $custom_field) {
-                // Skip if custom_field is not an array
-                if (!is_array($custom_field)) {
-                    continue;
-                }
-                $category = $custom_field['category'] ?? 'others';
-                $field_name = $custom_field['name'] ?? $custom_field;
-
-                if (!isset($fields[$category])) {
-                    $fields[$category] = [];
-                }
-                if (!is_array($fields[$category])) {
-                    $fields[$category] = [];
-                }
-                $fields[$category][] = $field_name;
+    $decoded = json_decode($drive['form_fields'], true);
+    if (is_array($decoded) && isset($decoded['enabled_fields']) && is_array($decoded['enabled_fields'])) {
+        $flat = [];
+        foreach ($decoded['enabled_fields'] as $cat => $fieldNames) {
+            if (!is_array($fieldNames)) continue;
+            foreach ($fieldNames as $fname) {
+                if (!is_string($fname) || strpos($fname, '---') !== false) continue;
+                $flat[] = [
+                    'name'      => $fname,
+                    'type'      => 'text',
+                    'options'   => '',
+                    'mandatory' => 0,
+                    'section'   => $cat,
+                ];
             }
         }
+        if (!empty($decoded['custom_fields']) && is_array($decoded['custom_fields'])) {
+            foreach ($decoded['custom_fields'] as $cf) {
+                if (!is_array($cf) || empty($cf['name'])) continue;
+                $flat[] = [
+                    'name'      => $cf['name'],
+                    'type'      => $cf['type'] ?? 'text',
+                    'options'   => '',
+                    'mandatory' => 0,
+                    'section'   => $cf['category'] ?? 'others',
+                ];
+            }
+        }
+        $drive['form_fields'] = json_encode($flat);
     }
 }
 

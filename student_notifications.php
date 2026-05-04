@@ -41,14 +41,24 @@ if (isset($_GET['delete']) && is_numeric($_GET['delete'])) {
 // Now include header after all redirects are handled
 include("student_header.php");
 
-// Fetch all notifications
+// Pagination — long notification histories shouldn't render in one shot.
+require_once __DIR__ . '/pagination_helper.php';
+$count_stmt = $conn->prepare("SELECT COUNT(*) AS cnt FROM student_notifications WHERE student_id = ?");
+$count_stmt->bind_param("i", $student_id);
+$count_stmt->execute();
+$total_notifs = (int)$count_stmt->get_result()->fetch_assoc()['cnt'];
+$notif_pagination = paginate_setup($total_notifs, 20, 'page');
+$notif_offset = (int)$notif_pagination['offset'];
+$notif_limit = (int)$notif_pagination['per_page'];
+
 $notif_query = "
     SELECT * FROM student_notifications
     WHERE student_id = ?
     ORDER BY created_at DESC
+    LIMIT ? OFFSET ?
 ";
 $notif_stmt = $conn->prepare($notif_query);
-$notif_stmt->bind_param("i", $student_id);
+$notif_stmt->bind_param("iii", $student_id, $notif_limit, $notif_offset);
 $notif_stmt->execute();
 $notifications = $notif_stmt->get_result();
 
@@ -147,6 +157,7 @@ $unread_count = $unread_stmt->get_result()->fetch_assoc()['unread'];
                   </div>
                 <?php endwhile; ?>
               </div>
+              <?= render_pagination($notif_pagination, 'page') ?>
             </div>
           </div>
         </div>

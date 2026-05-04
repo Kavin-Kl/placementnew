@@ -14,7 +14,16 @@ include("student_header.php");
 
 $student_id = $_SESSION['student_id'];
 
-// Fetch all applications
+// Pagination — keep the page light when a student has many past applications.
+require_once __DIR__ . '/pagination_helper.php';
+$count_stmt = $conn->prepare("SELECT COUNT(*) AS cnt FROM applications WHERE student_id = ?");
+$count_stmt->bind_param("i", $student_id);
+$count_stmt->execute();
+$total_apps = (int)$count_stmt->get_result()->fetch_assoc()['cnt'];
+$apps_pagination = paginate_setup($total_apps, 25, 'page');
+$apps_offset = (int)$apps_pagination['offset'];
+$apps_limit = (int)$apps_pagination['per_page'];
+
 $apps_query = "
     SELECT a.*, d.company_name, d.drive_no, d.extra_details AS drive_extra_details,
            dr.designation_name, dr.ctc, dr.stipend, dr.offer_type
@@ -23,9 +32,10 @@ $apps_query = "
     JOIN drive_roles dr ON a.role_id = dr.role_id
     WHERE a.student_id = ?
     ORDER BY a.applied_at DESC
+    LIMIT ? OFFSET ?
 ";
 $apps_stmt = $conn->prepare($apps_query);
-$apps_stmt->bind_param("i", $student_id);
+$apps_stmt->bind_param("iii", $student_id, $apps_limit, $apps_offset);
 $apps_stmt->execute();
 $applications = $apps_stmt->get_result();
 ?>
@@ -60,7 +70,7 @@ $applications = $apps_stmt->get_result();
                   </thead>
                   <tbody>
                     <?php
-                    $count = 1;
+                    $count = $apps_offset + 1;
                     while ($app = $applications->fetch_assoc()):
                       // Status badge color
                       $status_class = match($app['status']) {
@@ -120,8 +130,26 @@ $applications = $apps_stmt->get_result();
                           <?php endif; ?>
                         </td>
                         <td>
-                          <?php if (!empty($app['resume_file']) && file_exists($app['resume_file'])): ?>
-                            <a href="<?= htmlspecialchars($app['resume_file']) ?>" target="_blank" class="btn btn-sm btn-outline-primary">
+                          <?php
+                          // Resume path is sometimes on the applications.resume_file
+                          // column and sometimes inside the student_data JSON under
+                          // a "Resume" key (the form_generator stores it there). Try
+                          // both before falling back to N/A.
+                          $resumePath = !empty($app['resume_file']) ? $app['resume_file'] : null;
+                          if (!$resumePath && !empty($app['student_data'])) {
+                              $sd = json_decode($app['student_data'], true);
+                              if (is_array($sd)) {
+                                  foreach ($sd as $k => $v) {
+                                      if (is_string($v) && stripos($k, 'resume') !== false && trim($v) !== '') {
+                                          $resumePath = $v;
+                                          break;
+                                      }
+                                  }
+                              }
+                          }
+                          ?>
+                          <?php if ($resumePath && file_exists($resumePath)): ?>
+                            <a href="<?= htmlspecialchars($resumePath) ?>" target="_blank" class="btn btn-sm btn-outline-primary">
                               <i class="bx bx-download"></i> View
                             </a>
                           <?php else: ?>
@@ -133,6 +161,7 @@ $applications = $apps_stmt->get_result();
                   </tbody>
                 </table>
               </div>
+              <?= render_pagination($apps_pagination, 'page') ?>
             </div>
           </div>
         </div>

@@ -88,16 +88,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['bulk_add_round'])) {
     }
 }
 
-// Handle bulk update result
+// Handle bulk update result — upserts: if no round with this name exists for an
+// applicant, create one with the given result so admins can mark a result without
+// having to "Add Round" first.
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['bulk_update_result'])) {
     $application_ids = json_decode($_POST['application_ids'], true);
     $round_name = trim($_POST['round_name']);
+    $round_type = !empty($_POST['round_type']) ? $_POST['round_type'] : 'Other';
     $result = $_POST['result'];
     $comments = trim($_POST['comments']);
     $marked_by = $_SESSION['username'];
 
     $success_count = 0;
     $fail_count = 0;
+    $created_count = 0;
 
     foreach ($application_ids as $app_id) {
         // Find the most recent round with this name for this application
@@ -121,12 +125,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['bulk_update_result'])
                 $fail_count++;
             }
         } else {
-            $fail_count++;
+            $insert_stmt = $conn->prepare("INSERT INTO application_rounds (application_id, round_name, round_type, result, comments, marked_by, marked_at) VALUES (?, ?, ?, ?, ?, ?, NOW())");
+            $insert_stmt->bind_param("isssss", $app_id, $round_name, $round_type, $result, $comments, $marked_by);
+            if ($insert_stmt->execute()) {
+                $success_count++;
+                $created_count++;
+            } else {
+                $fail_count++;
+            }
         }
     }
 
     if ($success_count > 0) {
         $success_message = "Results updated for $success_count applicant(s) successfully!";
+        if ($created_count > 0) {
+            $success_message .= " ($created_count new round(s) auto-created.)";
+        }
     }
     if ($fail_count > 0) {
         $error_message = "Failed to update results for $fail_count applicant(s).";
@@ -848,7 +862,19 @@ require 'header.php';
             <div class="form-group">
                 <label for="bulk_update_round_name">Round Name *</label>
                 <input type="text" name="round_name" id="bulk_update_round_name" placeholder="e.g., Group Discussion" required>
-                <small class="text-muted">Enter the exact round name to update</small>
+                <small class="text-muted">If a round with this name doesn't exist for an applicant, it will be created.</small>
+            </div>
+
+            <div class="form-group">
+                <label for="bulk_update_round_type">Round Type (used only if a new round is created)</label>
+                <select name="round_type" id="bulk_update_round_type">
+                    <option value="Other">Other</option>
+                    <option value="GD">Group Discussion</option>
+                    <option value="Technical">Technical</option>
+                    <option value="HR">HR</option>
+                    <option value="Aptitude">Aptitude</option>
+                    <option value="Case Study">Case Study</option>
+                </select>
             </div>
 
             <div class="form-group">

@@ -72,9 +72,7 @@ foreach ($applications as &$app) {
             round_type,
             scheduled_date,
             result,
-            comments,
-            marked_by,
-            DATE_FORMAT(marked_at, '%d-%b-%Y %H:%i') as marked_date
+            comments
         FROM application_rounds
         WHERE application_id = ?
         ORDER BY created_at ASC
@@ -91,7 +89,7 @@ $sheet->setTitle('Round Results');
 
 // Set title
 $sheet->setCellValue('A1', 'ROUND RESULTS - ' . $drive['company_name'] . ' (Drive #' . $drive['drive_no'] . ')');
-$sheet->mergeCells('A1:M1');
+$sheet->mergeCells('A1:M1'); // M is the last column after dropping Marked By/Date
 $sheet->getStyle('A1')->applyFromArray([
     'font' => ['bold' => true, 'size' => 14, 'color' => ['rgb' => 'FFFFFF']],
     'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => '650000']],
@@ -112,9 +110,7 @@ $headers = [
     'Round Type',
     'Scheduled Date',
     'Result',
-    'Comments',
-    'Marked By',
-    'Marked Date'
+    'Comments'
 ];
 
 $col = 'A';
@@ -160,8 +156,6 @@ foreach ($applications as $app) {
             $sheet->setCellValue('K' . $row, $round['scheduled_date'] ?? 'Not scheduled');
             $sheet->setCellValue('L' . $row, ucfirst($round['result'] ?? 'Pending'));
             $sheet->setCellValue('M' . $row, $round['comments'] ?? '');
-            $sheet->setCellValue('N' . $row, $round['marked_by'] ?? '');
-            $sheet->setCellValue('O' . $row, $round['marked_date'] ?? '');
             $row++;
         }
     }
@@ -169,7 +163,7 @@ foreach ($applications as $app) {
 
 // Apply borders to all cells
 if ($row > 4) {
-    $sheet->getStyle('A3:O' . ($row - 1))->applyFromArray([
+    $sheet->getStyle('A3:M' . ($row - 1))->applyFromArray([
         'borders' => [
             'allBorders' => [
                 'borderStyle' => Border::BORDER_THIN,

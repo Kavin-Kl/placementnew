@@ -293,29 +293,33 @@ function render_students_table($conn, $result, $offset = 0) {
     while ($row = $result->fetch_assoc()) {
         $finalStatus = $row['final_status'];
 
-        // Update student table
-        $update = $conn->prepare("
-          UPDATE students SET
-              placed_status = ?,
-              comment = ?,
-              company_name = ?,
-              role = ?,
-              ctc = ?,
-              offer_type = ?
-          WHERE upid = ?
-        ");
+        // Preserve admin-set 'blocked' — see registered_students.php for full rationale.
+        $is_admin_blocked = ($finalStatus === 'not_placed' && ($row['placed_status'] ?? '') === 'blocked');
+        if ($is_admin_blocked) {
+            $finalStatus = 'blocked';
+        }
+
+        if ($is_admin_blocked) {
+            $update = $conn->prepare("UPDATE students SET placed_status = ? WHERE upid = ?");
+            $params = [$finalStatus, $row['upid']];
+            $types  = "ss";
+        } else {
+            $update = $conn->prepare("
+              UPDATE students SET
+                  placed_status = ?,
+                  comment = ?,
+                  company_name = ?,
+                  role = ?,
+                  ctc = ?,
+                  offer_type = ?
+              WHERE upid = ?
+            ");
+            $params = [$finalStatus, $row['comment'], $row['company_name'], $row['role_name'], $row['ctc'], $row['offer_type'], $row['upid']];
+            $types  = "sssssss";
+        }
 
         if ($update) {
-            $update->bind_param(
-              "sssssss",
-              $finalStatus,
-              $row['comment'],
-              $row['company_name'],
-              $row['role_name'],
-              $row['ctc'],
-              $row['offer_type'],
-              $row['upid']
-            );
+            $update->bind_param($types, ...$params);
             $update->execute();
             $update->close();
         } else {
