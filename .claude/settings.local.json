@@ -102,7 +102,10 @@
       "Bash(\"C:/xampp/php/php.exe\" -l \"C:/xampp/htdocs/placementcell/vantage_registered_students.php\")",
       "Bash(\"C:/xampp/php/php.exe\" -l \"C:/xampp/htdocs/placementcell/admin_student_progress.php\")",
       "Bash(\"C:/xampp/php/php.exe\" -l \"C:/xampp/htdocs/placementcell/generate_course_report.php\")",
-      "Bash(\"C:/xampp/php/php.exe\" -l \"C:/xampp/htdocs/placementcell/student_drives.php\")"
+      "Bash(\"C:/xampp/php/php.exe\" -l \"C:/xampp/htdocs/placementcell/student_drives.php\")",
+      "Read(//usr/local/bin/**)",
+      "Read(//opt/homebrew/bin/**)",
+      "Read(//Applications/MAMP/bin/**)"
     ],
     "deny": [],
     "ask": []

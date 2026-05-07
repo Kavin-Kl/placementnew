@@ -12,6 +12,16 @@ $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') ? 'https:/
 $base_url = $protocol . $_SERVER['HTTP_HOST'] 
           . rtrim(dirname($_SERVER['SCRIPT_NAME']), '/\\') . '/';
 
+// Ensure offer_type column exists (mirrors on_off_campus.php). Used to bifurcate
+// FTE-side offers from Internship-side offers across the two collection tabs.
+$check_ot = $conn->query("SHOW COLUMNS FROM on_off_campus_students LIKE 'offer_type'");
+if ($check_ot && $check_ot->num_rows === 0) {
+    $conn->query("ALTER TABLE on_off_campus_students ADD `offer_type` VARCHAR(64) DEFAULT NULL");
+}
+
+// Offer types this tab (Internship Letter Collection) is responsible for.
+$internship_offer_types = ['Internship', 'Apprenticeship (Part Time)', 'Internship + PPO (Pre-Final Year)'];
+
 $available_fields = [
     "company_name" => "Company Name",
     "full_name" => "Full Name",
@@ -42,9 +52,11 @@ $student_form_url = $base_url . "student_form";
 <?php
 
 $customFieldMap = [];
-$lastShortQuery = $conn->query("SELECT shortcode FROM form_links ORDER BY id DESC LIMIT 1");
+// Look up the form link specific to this tab (Internship) so the FTE tab's
+// generated link doesn't appear here.
+$lastShortQuery = $conn->query("SELECT shortcode FROM form_links WHERE shortcode = 'Overall_Placed_Students_Internship' LIMIT 1");
 
-if ($lastShortQuery->num_rows > 0) {
+if ($lastShortQuery && $lastShortQuery->num_rows > 0) {
     $shortcode = $lastShortQuery->fetch_assoc()['shortcode'];
     $generated_link = $student_form_url . "/" . $shortcode;
 } else {
@@ -84,12 +96,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['selected_fields'])) {
         // Save form link with just label array
         $custom_fields_json = json_encode($custom_fields_array);
 
-        $shortcode = "Overall_Placed_Students";
+        // Distinct shortcode for the Internship Letter Collection tab so it doesn't
+        // overwrite the FTE/Offer Letter Collection link.
+        $shortcode = "Overall_Placed_Students_Internship";
         $stmt = $conn->prepare("REPLACE INTO form_links (shortcode, fields, custom_field_meta) VALUES (?, ?, ?)");
         $stmt->bind_param("sss", $shortcode, $fields_query, $custom_fields_json);
         $stmt->execute();
 
-        $generated_link = $student_form_url . "/Overall_Placed_Students";
+        $generated_link = $student_form_url . "/Overall_Placed_Students_Internship";
     } else {
         $error = "Please select at least one field.";
     }
@@ -881,6 +895,17 @@ function downloadPhotoZip() {
           </select>
         </label>
 
+        <label>Offer Type:
+          <select name="offer_type">
+            <option value="">All offer types</option>
+            <?php foreach ($internship_offer_types as $ot): ?>
+              <option value="<?= htmlspecialchars($ot) ?>" <?= (($_GET['offer_type'] ?? '') === $ot) ? 'selected' : '' ?>>
+                <?= htmlspecialchars($ot) ?>
+              </option>
+            <?php endforeach; ?>
+          </select>
+        </label>
+
         <label>Campus Type:
           <select name="filter_campus">
             <option value="">Campus Type</option>
@@ -951,6 +976,17 @@ if (!empty($_GET['filter_campus'])) {
     $whereClauses[] = "campus_type = '$campus'";
 }
 
+// Bifurcation: this tab only shows Internship-side offer types. Legacy NULL/empty
+// rows belong to the FTE tab and are excluded here.
+if (!empty($_GET['offer_type']) && in_array($_GET['offer_type'], $internship_offer_types, true)) {
+    $ot = $conn->real_escape_string($_GET['offer_type']);
+    $whereClauses[] = "offer_type = '$ot'";
+} else {
+    $intern_quoted = implode(',', array_map(function ($t) use ($conn) {
+        return "'" . $conn->real_escape_string($t) . "'";
+    }, $internship_offer_types));
+    $whereClauses[] = "offer_type IN ($intern_quoted)";
+}
 
 $where = '';
 if (!empty($whereClauses)) {
@@ -977,7 +1013,8 @@ $customLabels = [
   'register_type' => 'Register Type', // Added custom label for display
   'onboarding_date' => 'Joining Date',
   'passing_year' => 'Year of Passing',
-  'role' => 'Designation'
+  'role' => 'Designation',
+  'offer_type' => 'Offer Type'
   // Add more custom labels as needed
 ];
 echo "<thead><tr>";

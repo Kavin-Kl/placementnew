@@ -57,6 +57,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'lookup_student') {
 $completionColumns = [
     'completion_certificate_received' => "ALTER TABLE on_off_campus_students ADD `completion_certificate_received` ENUM('yes','no') DEFAULT 'no'",
     'completion_certificate_file'     => "ALTER TABLE on_off_campus_students ADD `completion_certificate_file` LONGTEXT",
+    'offer_type'                      => "ALTER TABLE on_off_campus_students ADD `offer_type` VARCHAR(64) DEFAULT NULL",
 ];
 foreach ($completionColumns as $col => $alter) {
     $check = $conn->query("SHOW COLUMNS FROM on_off_campus_students LIKE '$col'");
@@ -100,6 +101,12 @@ if (!isset($_GET['short']) && isset($_SERVER['REQUEST_URI'])) {
 // ✅ Process shortcode if present
 if (isset($_GET['short'])) {
     $shortcode = $_GET['short'];
+    // Form context (FTE vs Internship) is encoded in the shortcode by the
+    // generating tab. Drives the offer_type dropdown options below.
+    $form_context = (stripos($shortcode, 'Internship') !== false) ? 'internship' : 'fte';
+    $offer_type_options = $form_context === 'internship'
+        ? ['Internship', 'Apprenticeship (Part Time)', 'Internship + PPO (Pre-Final Year)']
+        : ['FTE', 'Apprenticeship (Full time)', 'Internship + PPO (Final Year)'];
     $stmt = $conn->prepare("SELECT fields, custom_field_meta FROM form_links WHERE shortcode = ?");
     $stmt->bind_param("s", $shortcode);
     $stmt->execute();
@@ -154,6 +161,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['form_submit'])) {
     $field_errors = []; // Initialize field_errors array
     $success = false;
     $error = ''; // Global error message
+
+    // Validate offer_type against the options allowed by this form's context.
+    $offer_type_input = trim($_POST['offer_type'] ?? '');
+    if ($offer_type_input === '' || !in_array($offer_type_input, $offer_type_options, true)) {
+        $field_errors['offer_type'] = "Please select a valid Offer Type.";
+    } else {
+        $_POST['offer_type'] = $offer_type_input;
+    }
 
     // ✅ Override UPID if not registered
     if ($campus_type === 'on' && $register_type === 'not_registered') {
@@ -861,6 +876,26 @@ $filename = "{$safe_full_name}_{$safe_reg_no}_{$safe_company_name}_photo.{$ext}"
                     <span id="company_name_error" class="error-tooltip"></span>
                 </div>
             <?php endif; ?>
+
+            <?php
+            // Always render an offer_type dropdown — its options are scoped by which
+            // tab generated this form link (see $form_context above).
+            $stickyOfferType = getStickyValue('offer_type');
+            ?>
+            <div class="form-group" style="position: relative;">
+                <label>Offer Type<span style="color:red;">*</span></label>
+                <select name="offer_type" id="offer_type" required>
+                    <option value="">-- Select Offer Type --</option>
+                    <?php foreach ($offer_type_options as $ot): ?>
+                        <option value="<?= htmlspecialchars($ot) ?>" <?= ($stickyOfferType === $ot) ? 'selected' : '' ?>>
+                            <?= htmlspecialchars($ot) ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+                <span id="offer_type_error" class="error-tooltip">
+                    <?php echo $field_errors['offer_type'] ?? ''; ?>
+                </span>
+            </div>
 
             <?php if (in_array('role', $fieldList)): ?>
                 <div class="form-group" style="position: relative;">
