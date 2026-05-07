@@ -21,10 +21,10 @@ $available_fields = [
     "role" => "Designation",
     "course_name" => "Course Name",
     "phone_no" => "Phone No",
-    "offer_letter_received" => "Offer Letter Received",
-    "uploaded_offer_letter" => "Upload Offer Letter",
-    "intent_letter_received" => "Intent Letter Received",
-    "uploaded_intent_letter" => "Upload intent Letter",
+    "offer_letter_received" => "Internship Offer Letter Received",
+    "uploaded_offer_letter" => "Upload Internship Offer Letter",
+    "intent_letter_received" => "Completion Certificate Received",
+    "uploaded_intent_letter" => "Upload Completion Certificate",
     "completion_certificate_received" => "Internship Completion Certificate Received",
     "uploaded_completion_certificate" => "Upload Internship Completion Certificate",
     "onboarding_date" => "Joining Date",
@@ -100,7 +100,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['selected_fields'])) {
 </head>
 
 
-  <h2 class="headings">Offer Letter Collection</h2>
+  <h2 class="headings">Internship Letter Collection</h2>
   <p style="font-size: 16px; color: #4B5563; margin-top: 4px; font-family: 'Inter', sans-serif;">
   Student placement details for both on-campus and off-campus.
 </p>
@@ -775,11 +775,11 @@ if ($studentMode) {
         <h5>Export Options</h5>
         
         <button class="resets-button" style="margin-bottom:10px;" onclick="downloadOfferLetterZip()">
-            <i class="fas fa-file-archive" style="margin-right:3px; margin-top:2px"></i> Offer Letter ZIP
+            <i class="fas fa-file-archive" style="margin-right:3px; margin-top:2px"></i> Internship Offer Letter ZIP
         </button>
 
         <button class="resets-button" style="margin-bottom:10px;" onclick="downloadIntentLetterZip()">
-            <i class="fas fa-file-archive" style="margin-right:3px; margin-top:2px"></i> Intent Letter ZIP
+            <i class="fas fa-file-archive" style="margin-right:3px; margin-top:2px"></i> Completion Certificate ZIP
         </button>
 
         <button class="resets-button" onclick="downloadPhotoZip()">
@@ -873,9 +873,9 @@ function downloadPhotoZip() {
   </select>
 </label>
 
-        <label>Offer Letter:
+        <label>Internship Offer Letter:
           <select name="filter_offer">
-            <option value="">Offer Letter Received</option>
+            <option value="">Internship Offer Letter Received</option>
             <option value="yes" <?= (($_GET['filter_offer'] ?? '') === 'yes') ? 'selected' : '' ?>>Yes</option>
             <option value="no" <?= (($_GET['filter_offer'] ?? '') === 'no') ? 'selected' : '' ?>>No</option>
           </select>
@@ -970,8 +970,8 @@ $customLabels = [
   'upid' => 'Placement ID',
   'reg_no' => 'Register Number',
   'photo_path' => 'Photo',
-  'offer_letter_file' => 'Offer Letter',
-  'intent_letter_file' => 'Intent Letter',
+  'offer_letter_file' => 'Internship Offer Letter',
+  'intent_letter_file' => 'Completion Certificate',
   'completion_certificate_file' => 'Internship Completion Certificate',
   'campus_type' => 'Campus Type',
   'register_type' => 'Register Type', // Added custom label for display

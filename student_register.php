@@ -1,6 +1,29 @@
 <?php
 session_start();
 include "config.php";
+
+// AJAX endpoint: lookup placement ID + name by reg_no (used for autofill).
+if (isset($_GET['action']) && $_GET['action'] === 'lookup_student') {
+    while (ob_get_level() > 0) { ob_end_clean(); }
+    header('Content-Type: application/json');
+    $regno = strtoupper(trim($_GET['reg_no'] ?? ''));
+    $payload = ['student_name' => '', 'upid' => ''];
+    if ($regno !== '') {
+        $stmt = $conn->prepare("SELECT student_name, upid FROM students WHERE reg_no = ?");
+        $stmt->bind_param("s", $regno);
+        if ($stmt && $stmt->execute()) {
+            $res = $stmt->get_result();
+            if ($res && $res->num_rows > 0) {
+                $student = $res->fetch_assoc();
+                $payload['student_name'] = $student['student_name'] ?? '';
+                $payload['upid'] = $student['upid'] ?? '';
+            }
+        }
+    }
+    echo json_encode($payload);
+    exit;
+}
+
 include "course_groups_dynamic.php";
 
 $error = $_SESSION['error'] ?? "";
@@ -36,14 +59,14 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST['register'])) {
         exit;
     }
 
-    // Check if UPID exists in the imported students list
-    $check_stmt = $conn->prepare("SELECT student_id, upid, reg_no, student_name, email, phone_no, program_type, program, course, class, year_of_passing, password_hash FROM students WHERE upid = ?");
-    $check_stmt->bind_param("s", $upid);
+    // Look up the imported student record by register number
+    $check_stmt = $conn->prepare("SELECT student_id, upid, reg_no, student_name, email, phone_no, program_type, program, course, class, year_of_passing, password_hash FROM students WHERE reg_no = ?");
+    $check_stmt->bind_param("s", $reg_no);
     $check_stmt->execute();
     $check_res = $check_stmt->get_result();
 
     if ($check_res->num_rows === 0) {
-        $_SESSION['error'] = "Your UPID is not found in the system. Please contact the administrator.";
+        $_SESSION['error'] = "Your Register Number is not found in the system. Please contact the administrator.";
         header("Location: student_register.php");
         exit;
     }
@@ -57,9 +80,9 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST['register'])) {
         exit;
     }
 
-    // Verify register number matches
-    if ($existing_student['reg_no'] !== $reg_no) {
-        $_SESSION['error'] = "Register number does not match our records for this UPID.";
+    // Verify placement ID matches
+    if ($existing_student['upid'] !== $upid) {
+        $_SESSION['error'] = "Placement ID does not match our records for this Register Number.";
         header("Location: student_register.php");
         exit;
     }
@@ -289,12 +312,12 @@ button[type="submit"]:hover {
         <form method="POST">
           <div class="form-row">
             <div class="form-group">
-              <label for="upid">Placement ID (UPID) *</label>
-              <input type="text" id="upid" name="upid" placeholder="e.g., UP12345" required>
-            </div>
-            <div class="form-group">
               <label for="reg_no">Register Number *</label>
               <input type="text" id="reg_no" name="reg_no" placeholder="e.g., REG2023001" required>
+            </div>
+            <div class="form-group">
+              <label for="upid">Placement ID (UPID) *</label>
+              <input type="text" id="upid" name="upid" placeholder="e.g., UP12345" required>
             </div>
           </div>
 
@@ -373,6 +396,39 @@ button[type="submit"]:hover {
       }, 5000);
     }
   };
+
+  // Autofill placement ID + full name from register number.
+  document.addEventListener("DOMContentLoaded", function () {
+    const regInput = document.getElementById("reg_no");
+    const upidInput = document.getElementById("upid");
+    const nameInput = document.getElementById("student_name");
+    if (!regInput) return;
+
+    let lookupTimer = null;
+    function lookupStudent() {
+      const regno = (regInput.value || "").trim().toUpperCase();
+      if (!regno) return;
+      const params = new URLSearchParams({ action: "lookup_student", reg_no: regno });
+      fetch(`student_register.php?${params.toString()}`, { credentials: "same-origin" })
+        .then(r => r.json())
+        .then(data => {
+          if (!data) return;
+          if (nameInput && !nameInput.value.trim() && data.student_name) {
+            nameInput.value = data.student_name;
+          }
+          if (upidInput && !upidInput.value.trim() && data.upid) {
+            upidInput.value = data.upid;
+          }
+        })
+        .catch(() => {});
+    }
+
+    regInput.addEventListener("input", function () {
+      clearTimeout(lookupTimer);
+      lookupTimer = setTimeout(lookupStudent, 300);
+    });
+    regInput.addEventListener("blur", lookupStudent);
+  });
   </script>
 </body>
 </html>

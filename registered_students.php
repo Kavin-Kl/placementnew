@@ -1086,10 +1086,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                     <select name="offer_type">
                       <option value="">All options</option>
                       <option value="FTE" <?= (isset($_GET['offer_type']) && $_GET['offer_type'] === 'FTE') ? 'selected' : '' ?>>FTE</option>
-                      <option value="Internship" <?= (isset($_GET['offer_type']) && $_GET['offer_type'] === 'Internship') ? 'selected' : '' ?>>Internship</option>
-                      <option value="Apprenticeship (Part Time)" <?= (isset($_GET['offer_type']) && $_GET['offer_type'] === 'Apprenticeship (Part Time)') ? 'selected' : '' ?>>Apprenticeship (Part Time)</option>
+                      <option value="Apprenticeship (Full time)" <?= (isset($_GET['offer_type']) && $_GET['offer_type'] === 'Apprenticeship (Full time)') ? 'selected' : '' ?>>Apprenticeship (Full time)</option>
                       <option value="Internship + PPO (Final Year)" <?= (isset($_GET['offer_type']) && $_GET['offer_type'] === 'Internship + PPO (Final Year)') ? 'selected' : '' ?>>Internship + PPO (Final Year)</option>
-            <option value="Internship + PPO (Pre-Final Year)" <?= (isset($_GET['offer_type']) && $_GET['offer_type'] === 'Internship + PPO (Pre-Final Year)') ? 'selected' : '' ?>>Internship + PPO (Pre-Final Year)</option>
                     </select>
                   </label>
                   <label>Company:

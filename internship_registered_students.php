@@ -198,11 +198,11 @@ function fetch_students($conn, $where, $types, $params, $limit = 50, $offset = 0
               ELSE 'not_placed'
           END AS final_status,
 
-          -- Comments only for placed/blocked
+          -- Comments only for placed/blocked (informational; manual edits live in s.comment)
           CASE
               WHEN ra.status IN ('placed','blocked') THEN ra.comments
               ELSE NULL
-          END AS comment,
+          END AS app_comment,
 
           -- Company info only for placed/blocked
           CASE
@@ -304,18 +304,19 @@ function render_students_table($conn, $result, $offset = 0) {
             $params = [$finalStatus, $row['upid']];
             $types  = "ss";
         } else {
+            // Note: `comment` is intentionally excluded from this sync so that admin
+            // edits in the Comments column are preserved across renders.
             $update = $conn->prepare("
               UPDATE students SET
                   placed_status = ?,
-                  comment = ?,
                   company_name = ?,
                   role = ?,
                   ctc = ?,
                   offer_type = ?
               WHERE upid = ?
             ");
-            $params = [$finalStatus, $row['comment'], $row['company_name'], $row['role_name'], $row['ctc'], $row['offer_type'], $row['upid']];
-            $types  = "sssssss";
+            $params = [$finalStatus, $row['company_name'], $row['role_name'], $row['ctc'], $row['offer_type'], $row['upid']];
+            $types  = "ssssss";
         }
 
         if ($update) {
@@ -423,7 +424,11 @@ function render_students_table($conn, $result, $offset = 0) {
 
         // Company + Comment
         echo '<td>' . htmlspecialchars($row['company_name']) . '</td>';
-        echo '<td>' . htmlspecialchars($row['comment']) . '</td>';
+        $commentVal = $row['comment'] ?? '';
+        echo '<td>
+                <span class="field-view">' . htmlspecialchars($commentVal) . '</span>
+                <input type="text" class="field-edit form-control d-none" name="comment" value="' . htmlspecialchars($commentVal) . '" placeholder="Add comment...">
+              </td>';
 
         // Offcampus Selection Dropdown
         echo '<td>
@@ -936,7 +941,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     // Fields allowed to be updated
     $fieldsToUpdate = [
         'upid','program_type', 'program', 'course', 'percentage', 'reg_no', 'student_name',
-        'email', 'phone_no', 'allow_reapply', 'batch', 'editable_comment', 'Offcampus_selection'
+        'email', 'phone_no', 'allow_reapply', 'batch', 'comment', 'editable_comment', 'Offcampus_selection'
     ];
 
     $setParts = [];
@@ -948,7 +953,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             $value = trim($_POST[$field]);
 
             // reject empty values (except allow_reapply which can be "yes"/"no")
-            if ($value === "" && !in_array($field, ['allow_reapply', 'Offcampus_selection', 'editable_comment'])) {
+            if ($value === "" && !in_array($field, ['allow_reapply', 'Offcampus_selection', 'comment', 'editable_comment'])) {
                 echo ucfirst(str_replace("_", " ", $field)) . " cannot be empty.";
                 exit;
             }
@@ -1183,11 +1188,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                   <label>Offer Type:
                     <select name="offer_type">
                       <option value="">All options</option>
-                      <option value="FTE" <?= (isset($_GET['offer_type']) && $_GET['offer_type'] === 'FTE') ? 'selected' : '' ?>>FTE</option>
                       <option value="Internship" <?= (isset($_GET['offer_type']) && $_GET['offer_type'] === 'Internship') ? 'selected' : '' ?>>Internship</option>
                       <option value="Apprenticeship (Part Time)" <?= (isset($_GET['offer_type']) && $_GET['offer_type'] === 'Apprenticeship (Part Time)') ? 'selected' : '' ?>>Apprenticeship (Part Time)</option>
-                      <option value="Internship + PPO (Final Year)" <?= (isset($_GET['offer_type']) && $_GET['offer_type'] === 'Internship + PPO (Final Year)') ? 'selected' : '' ?>>Internship + PPO (Final Year)</option>
-            <option value="Internship + PPO (Pre-Final Year)" <?= (isset($_GET['offer_type']) && $_GET['offer_type'] === 'Internship + PPO (Pre-Final Year)') ? 'selected' : '' ?>>Internship + PPO (Pre-Final Year)</option>
+                      <option value="Internship + PPO (Pre-Final Year)" <?= (isset($_GET['offer_type']) && $_GET['offer_type'] === 'Internship + PPO (Pre-Final Year)') ? 'selected' : '' ?>>Internship + PPO (Pre-Final Year)</option>
                     </select>
                   </label>
                   <label>Company:
@@ -1840,8 +1843,8 @@ document.addEventListener("DOMContentLoaded", () => {
           }
         }
 
-        // --- Empty field check (editable_comment can be empty) ---
-        if (!val && !["allow_reapply", "editable_comment"].includes(input.name)) {
+        // --- Empty field check (comment fields can be empty) ---
+        if (!val && !["allow_reapply", "comment", "editable_comment"].includes(input.name)) {
           input.classList.add("is-invalid");
           valid = false;
           const label = input.name.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
