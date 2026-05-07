@@ -91,7 +91,7 @@ $available_fields = [
 $success = false;
 if (!isset($_GET['short']) && isset($_SERVER['REQUEST_URI'])) {
     $uri = $_SERVER['REQUEST_URI'];
-    if (preg_match('/student_form(?:\.php)?\/(form_[a-zA-Z0-9]+|Overall_Placed_Students)/', $uri, $matches)) {
+    if (preg_match('/student_form(?:\.php)?\/(form_[a-zA-Z0-9]+|Overall_Placed_Students[a-zA-Z0-9_]*)/', $uri, $matches)) {
     $_GET['short'] = $matches[1];
 }
 
@@ -105,7 +105,7 @@ if (isset($_GET['short'])) {
     // generating tab. Drives the offer_type dropdown options below.
     $form_context = (stripos($shortcode, 'Internship') !== false) ? 'internship' : 'fte';
     $offer_type_options = $form_context === 'internship'
-        ? ['Internship', 'Apprenticeship (Part Time)', 'Internship + PPO (Pre-Final Year)']
+        ? ['Internship', 'Apprenticeship (Part Time)']
         : ['FTE', 'Apprenticeship (Full time)', 'Internship + PPO (Final Year)'];
     $stmt = $conn->prepare("SELECT fields, custom_field_meta FROM form_links WHERE shortcode = ?");
     $stmt->bind_param("s", $shortcode);

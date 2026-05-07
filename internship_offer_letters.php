@@ -20,7 +20,7 @@ if ($check_ot && $check_ot->num_rows === 0) {
 }
 
 // Offer types this tab (Internship Letter Collection) is responsible for.
-$internship_offer_types = ['Internship', 'Apprenticeship (Part Time)', 'Internship + PPO (Pre-Final Year)'];
+$internship_offer_types = ['Internship', 'Apprenticeship (Part Time)'];
 
 $available_fields = [
     "company_name" => "Company Name",

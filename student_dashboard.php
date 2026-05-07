@@ -112,7 +112,7 @@ $upcoming_drives = $stmt->get_result();
 <div class="home-section">
   <div class="container-fluid">
     <div class="row mb-4">
-      <div class="col-12">
+      <div class="col-12 text-center">
         <h2>Welcome, <?= htmlspecialchars($student['student_name']) ?>!</h2>
         <p class="text-muted">Here's your placement dashboard overview</p>
       </div>
@@ -123,11 +123,9 @@ $upcoming_drives = $stmt->get_result();
       <div class="col-md-4 col-sm-6">
         <div class="card border-0 shadow-sm h-100">
           <div class="card-body">
-            <div class="d-flex justify-content-between align-items-center">
-              <div>
-                <h6 class="text-muted mb-1">Total Applications</h6>
-                <h2 class="mb-0"><?= $total_applications ?></h2>
-              </div>
+            <div class="d-flex flex-column align-items-center text-center gap-2">
+              <h6 class="text-muted mb-1">Total Applications</h6>
+              <h2 class="mb-0"><?= $total_applications ?></h2>
               <div class="stat-icon bg-primary bg-opacity-10 p-3 rounded">
                 <i class="bx bx-file text-primary" style="font-size: 32px;"></i>
               </div>
@@ -139,11 +137,9 @@ $upcoming_drives = $stmt->get_result();
       <div class="col-md-4 col-sm-6">
         <div class="card border-0 shadow-sm h-100">
           <div class="card-body">
-            <div class="d-flex justify-content-between align-items-center">
-              <div>
-                <h6 class="text-muted mb-1">Active Drives</h6>
-                <h2 class="mb-0"><?= $active_drives ?></h2>
-              </div>
+            <div class="d-flex flex-column align-items-center text-center gap-2">
+              <h6 class="text-muted mb-1">Active Drives</h6>
+              <h2 class="mb-0"><?= $active_drives ?></h2>
               <div class="stat-icon bg-info bg-opacity-10 p-3 rounded">
                 <i class="bx bx-briefcase text-info" style="font-size: 32px;"></i>
               </div>
