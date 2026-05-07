@@ -289,7 +289,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['application_id'], $_P
     $studentRow = $studentResult->fetch_assoc();
     $studentAllowReapply = $studentRow['allow_reapply'] ?? 'no';
 
-    $batch = ($studentAllowReapply === 'yes') ? 'reapplied' : 'original';
+    $batch = in_array(strtolower($studentAllowReapply ?? ''), ['yes', 'any', 'fulltime', 'internship'], true) ? 'reapplied' : 'original';
 
     // ✅ Update with batch
     $update = $conn->prepare("UPDATE applications SET status = ?, comments = ?, placement_batch = ? WHERE application_id = ?");
@@ -386,7 +386,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['bulk_update'], $_POST
         $studentQ->execute();
         $studentRow = $studentQ->get_result()->fetch_assoc();
         $studentAllowReapply = $studentRow['allow_reapply'] ?? 'no';
-        $batch = ($studentAllowReapply === 'yes') ? 'reapplied' : 'original';
+        $batch = in_array(strtolower($studentAllowReapply ?? ''), ['yes', 'any', 'fulltime', 'internship'], true) ? 'reapplied' : 'original';
 
         // ✅ Update all relevant applications for this student+role
         if ($bulkComment) {
@@ -502,7 +502,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_selected_bulk'
             $studentQ->execute();
             $studentRow = $studentQ->get_result()->fetch_assoc();
             $studentAllowReapply = $studentRow['allow_reapply'] ?? 'no';
-            $batch = ($studentAllowReapply === 'yes') ? 'reapplied' : 'original';
+            $batch = in_array(strtolower($studentAllowReapply ?? ''), ['yes', 'any', 'fulltime', 'internship'], true) ? 'reapplied' : 'original';
 
             // Prepare dynamic update query parts
 $updateFields = [];
@@ -1350,10 +1350,14 @@ function generateDisplayFileName($studentName, $regNo, $companyName, $columnName
 // ✅ Collect all file fields for this drive (across all roles)
 $availableFileFields = [];
 $roleIds = [];
+$driveIdForBtn = 0;
 
 foreach ($roles as $roleName => $appList) {
     if (isset($appList[0]['role_id'])) {
         $roleIds[] = $appList[0]['role_id'];
+    }
+    if (!$driveIdForBtn && isset($appList[0]['drive_id'])) {
+        $driveIdForBtn = (int)$appList[0]['drive_id'];
     }
 
 
@@ -1373,11 +1377,22 @@ foreach ($roles as $roleName => $appList) {
     }
 }
 $availableKeys = json_encode(array_keys($availableFileFields));
+
+// Detect whether there are still unread admin notifications for this drive,
+// so we only show "Data Shared" while there's something to mark as shared.
+$hasUnreadShare = false;
+if ($driveIdForBtn) {
+    $stmtUnread = $conn->prepare("SELECT 1 FROM admin_notifications WHERE drive_id = ? AND is_read = 0 LIMIT 1");
+    $stmtUnread->bind_param("i", $driveIdForBtn);
+    $stmtUnread->execute();
+    $hasUnreadShare = (bool)$stmtUnread->get_result()->fetch_row();
+    $stmtUnread->close();
+}
 ?>
 
 <!-- ✅ Export buttons per drive -->
 <div style="margin: 5px 0 5px 5px;">
-  <button 
+  <button
     type="button"
   onclick="showFieldPopup(
   '<?= md5($company.$driveNo) ?>',
@@ -1390,7 +1405,7 @@ $availableKeys = json_encode(array_keys($availableFileFields));
     <i class="fas fa-file-export" style="font-size:14px; margin-right:4px;"></i> Export Selected Fields
   </button>
 
- <button 
+ <button
   type="button"
   class="export-btn"
   onclick="openExportFilesModalCompanyWise(
@@ -1398,9 +1413,21 @@ $availableKeys = json_encode(array_keys($availableFileFields));
     '<?= htmlspecialchars(json_encode($roleIds)) ?>',
     '<?= htmlspecialchars($availableKeys) ?>'
   )">
-  <i class="fas fa-file-archive"></i> 
+  <i class="fas fa-file-archive"></i>
   <span style="margin-left: 5px;">Export Files</span>
 </button>
+
+<?php if ($driveIdForBtn): ?>
+  <button
+    type="button"
+    class="export-btn data-shared-btn"
+    data-drive-id="<?= $driveIdForBtn ?>"
+    <?= $hasUnreadShare ? '' : 'disabled style="opacity:0.6;cursor:default;"' ?>
+    title="Mark this drive's notifications as Data Shared">
+    <i class="fas fa-check"></i>
+    <span style="margin-left: 5px;"><?= $hasUnreadShare ? 'Data Shared' : 'Data Already Shared' ?></span>
+  </button>
+<?php endif; ?>
 
 </div>
 
@@ -3172,6 +3199,44 @@ function exportApplications() {
   // Open export in new window
   window.open(exportUrl, '_blank');
 }
+</script>
+
+<script>
+// "Data Shared" button — mark all unread admin notifications for this drive as read.
+document.addEventListener('click', function (e) {
+    const btn = e.target.closest('.data-shared-btn');
+    if (!btn || btn.disabled) return;
+    const driveId = btn.getAttribute('data-drive-id');
+    if (!driveId) return;
+    btn.disabled = true;
+    const labelSpan = btn.querySelector('span');
+    const originalLabel = labelSpan ? labelSpan.textContent : '';
+    if (labelSpan) labelSpan.textContent = 'Marking…';
+
+    const body = new URLSearchParams({ action: 'mark_drive_data_shared', drive_id: driveId });
+    fetch('admin_notifications.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: body.toString()
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data && data.success) {
+            if (labelSpan) labelSpan.textContent = 'Data Already Shared';
+            btn.style.opacity = '0.6';
+            btn.style.cursor = 'default';
+        } else {
+            if (labelSpan) labelSpan.textContent = originalLabel;
+            btn.disabled = false;
+            alert('Failed to mark as data shared' + (data && data.error ? ': ' + data.error : ''));
+        }
+    })
+    .catch(() => {
+        if (labelSpan) labelSpan.textContent = originalLabel;
+        btn.disabled = false;
+        alert('Failed to mark as data shared.');
+    });
+});
 </script>
 
 

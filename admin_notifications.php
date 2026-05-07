@@ -40,6 +40,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST['action'])) {
         exit();
     }
 
+    // Mark all unread notifications for a given drive as data shared.
+    // Used by the per-company "Data Shared" button on the Applications tab.
+    if ($action === 'mark_drive_data_shared') {
+        $drive_id = intval($_POST['drive_id'] ?? 0);
+        if ($drive_id <= 0) {
+            echo json_encode(['success' => false, 'error' => 'Missing drive_id']);
+            exit();
+        }
+        $stmt = $conn->prepare("UPDATE admin_notifications SET is_read = 1 WHERE drive_id = ? AND is_read = 0");
+        $stmt->bind_param("i", $drive_id);
+        if ($stmt->execute()) {
+            echo json_encode(['success' => true, 'updated' => $stmt->affected_rows]);
+        } else {
+            echo json_encode(['success' => false, 'error' => $conn->error]);
+        }
+        exit();
+    }
+
     if ($action === 'delete') {
         $notification_id = intval($_POST['notification_id']);
         $stmt = $conn->prepare("DELETE FROM admin_notifications WHERE notification_id = ?");
@@ -202,12 +220,6 @@ require 'header.php';
                                                        class="btn btn-sm btn-outline-primary">
                                                         <i class='bx bx-link-external'></i> View Details
                                                     </a>
-                                                <?php endif; ?>
-                                                <?php if (!$notification['is_read']): ?>
-                                                    <button class="btn btn-sm btn-outline-success mark-read-btn"
-                                                            data-id="<?php echo $notification['notification_id']; ?>">
-                                                        <i class='bx bx-check'></i> Data Shared
-                                                    </button>
                                                 <?php endif; ?>
                                                 <button class="btn btn-sm btn-outline-danger delete-btn"
                                                         data-id="<?php echo $notification['notification_id']; ?>">

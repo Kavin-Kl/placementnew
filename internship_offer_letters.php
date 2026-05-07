@@ -25,6 +25,8 @@ $available_fields = [
     "uploaded_offer_letter" => "Upload Offer Letter",
     "intent_letter_received" => "Intent Letter Received",
     "uploaded_intent_letter" => "Upload intent Letter",
+    "completion_certificate_received" => "Internship Completion Certificate Received",
+    "uploaded_completion_certificate" => "Upload Internship Completion Certificate",
     "onboarding_date" => "Joining Date",
     "passing_year" => "Year of Passing",
     "campus_type" => "On/Off Campus",
@@ -970,6 +972,7 @@ $customLabels = [
   'photo_path' => 'Photo',
   'offer_letter_file' => 'Offer Letter',
   'intent_letter_file' => 'Intent Letter',
+  'completion_certificate_file' => 'Internship Completion Certificate',
   'campus_type' => 'Campus Type',
   'register_type' => 'Register Type', // Added custom label for display
   'onboarding_date' => 'Joining Date',
@@ -1014,6 +1017,7 @@ if ($r && $r->num_rows > 0) {
                 case 'offer_letter_file':
                 case 'photo_path':
                 case 'intent_letter_file':
+                case 'completion_certificate_file':
                     if (!empty($row[$col])) {
                         $files = explode(',', $row[$col]);
 foreach ($files as $i => $file) {

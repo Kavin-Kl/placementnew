@@ -23,22 +23,35 @@ try {
 // Handle AJAX request for student name
 // ----------------------------
 if (isset($_GET['action']) && $_GET['action'] === 'get_student_name') {
-    $upid = $_GET['upid'] ?? '';
-    $regno = $_GET['regno'] ?? '';
+    $upid = trim(strtoupper($_GET['upid'] ?? ''));
+    $regno = trim(strtoupper($_GET['regno'] ?? ''));
     $student_name = '';
+    $student_upid = '';
 
-    if ($upid && $regno) {
-        try {
-            $stmt = $pdo->prepare("SELECT student_name FROM students WHERE upid = ? AND reg_no = ?");
+    try {
+        if ($upid && $regno) {
+            $stmt = $pdo->prepare("SELECT student_name, upid FROM students WHERE upid = ? AND reg_no = ?");
             $stmt->execute([$upid, $regno]);
-            $student = $stmt->fetch();
-            if ($student) $student_name = $student['student_name'];
-        } catch (PDOException $e) {
-            $student_name = '';
+        } elseif ($regno) {
+            $stmt = $pdo->prepare("SELECT student_name, upid FROM students WHERE reg_no = ?");
+            $stmt->execute([$regno]);
+        } else {
+            $stmt = null;
         }
+
+        if ($stmt) {
+            $student = $stmt->fetch();
+            if ($student) {
+                $student_name = $student['student_name'];
+                $student_upid = $student['upid'];
+            }
+        }
+    } catch (PDOException $e) {
+        $student_name = '';
+        $student_upid = '';
     }
 
-    echo json_encode(['student_name' => $student_name]);
+    echo json_encode(['student_name' => $student_name, 'upid' => $student_upid]);
     exit; // stop the rest of the page
 }
 
@@ -500,32 +513,54 @@ if (strcasecmp(trim($student['reg_no']), trim($regno)) !== 0) {
 
 elseif (strtolower($student['placed_status']) === "blocked") {
     $errorRegno = "You are blocked and not eligible.";
-} elseif (strtolower($student['placed_status']) === "placed" && strtolower($student['allow_reapply']) !== "yes") {
-    // Check if the placement is an internship - if so, allow applying for full-time roles
-    $placement_check = $conn->prepare("
-        SELECT dr.offer_type
-        FROM placed_students ps
-        JOIN drive_roles dr ON ps.role_id = dr.role_id
-        WHERE ps.student_id = ?
-        LIMIT 1
-    ");
-    $placement_check->bind_param("i", $student['student_id']);
-    $placement_check->execute();
-    $placement_result = $placement_check->get_result();
+} elseif (strtolower($student['placed_status']) === "placed") {
+    $allow_reapply = strtolower(trim($student['allow_reapply'] ?? 'no'));
+    // Legacy 'yes' (pre-migration) means free reapply, same as 'any'.
+    if ($allow_reapply === 'yes') $allow_reapply = 'any';
 
-    if ($placement_result->num_rows > 0) {
-        $placement_data = $placement_result->fetch_assoc();
-        $current_offer_type = $placement_data['offer_type'];
-
-        // Only block if placed in Full-time, Internship+PPO, or Apprentice
-        // Allow if placed in Internship only
-        if ($current_offer_type !== 'Internship') {
-            $errorRegno = "You are already placed (" . htmlspecialchars($current_offer_type) . ") and not eligible to apply for other roles.";
-        }
-        // If Internship, allow them to continue (no error)
+    if ($allow_reapply === 'any') {
+        // Unrestricted reapply — no further check.
     } else {
-        // No placement record found, block as precaution
-        $errorRegno = "You are already placed and not eligible.";
+        // Determine whether THIS drive is a full-time or internship drive
+        // (a drive is "internship" iff every role's offer_type is 'Internship').
+        $drive_offer_types = [];
+        if (!empty($roles)) {
+            foreach ($roles as $r) {
+                $drive_offer_types[] = $r['offer_type'] ?? '';
+            }
+        }
+        $drive_is_internship_only = !empty($drive_offer_types)
+            && count(array_filter($drive_offer_types, fn($t) => strcasecmp($t, 'Internship') === 0)) === count($drive_offer_types);
+
+        if ($allow_reapply === 'fulltime' && $drive_is_internship_only) {
+            $errorRegno = "You are already placed and only allowed to reapply for full-time roles.";
+        } elseif ($allow_reapply === 'internship' && !$drive_is_internship_only) {
+            $errorRegno = "You are already placed and only allowed to reapply for internships.";
+        } elseif ($allow_reapply === 'no') {
+            // Default: block placed students unless their original placement was an Internship,
+            // in which case they can apply for full-time roles.
+            $placement_check = $conn->prepare("
+                SELECT dr.offer_type
+                FROM placed_students ps
+                JOIN drive_roles dr ON ps.role_id = dr.role_id
+                WHERE ps.student_id = ?
+                LIMIT 1
+            ");
+            $placement_check->bind_param("i", $student['student_id']);
+            $placement_check->execute();
+            $placement_result = $placement_check->get_result();
+
+            if ($placement_result->num_rows > 0) {
+                $placement_data = $placement_result->fetch_assoc();
+                $current_offer_type = $placement_data['offer_type'];
+                if ($current_offer_type !== 'Internship') {
+                    $errorRegno = "You are already placed (" . htmlspecialchars($current_offer_type) . ") and not eligible to apply for other roles.";
+                }
+                // Originally placed as Internship → can apply for FT.
+            } else {
+                $errorRegno = "You are already placed and not eligible.";
+            }
+        }
     }
 }
 // 🚫 Check if already placed off-campus
@@ -578,9 +613,28 @@ if ($normalizedSelected !== $normalizedActual) {
     //pree chnaged
     skipEligibilityCheck:
     if (empty($errorUpid) && empty($errorRegno) && empty($errorPercentage) && empty($errorCourse)) {
+    // If the student is placed and the admin has restricted reapply to one offer-type,
+    // hide roles that don't match. ("any" / "no" don't filter here — "no" is already
+    // handled by the placed-block above; "any" allows everything.)
+    $reapply_filter = '';
+    if (strtolower($student['placed_status'] ?? '') === 'placed') {
+        $tmp = strtolower(trim($student['allow_reapply'] ?? 'no'));
+        if ($tmp === 'fulltime' || $tmp === 'internship') {
+            $reapply_filter = $tmp;
+        }
+    }
+
     foreach ($roles as $r) {
             $eligibleCourses = json_decode($r['eligible_courses'], true);
             if (!is_array($eligibleCourses)) $eligibleCourses = [];
+
+            // Skip roles that don't match the allowed offer-type when placed-with-restriction.
+            if ($reapply_filter === 'internship' && strcasecmp($r['offer_type'] ?? '', 'Internship') !== 0) {
+                continue;
+            }
+            if ($reapply_filter === 'fulltime' && strcasecmp($r['offer_type'] ?? '', 'Internship') === 0) {
+                continue;
+            }
 
             foreach ($eligibleCourses as $ec) {
                 if (strcasecmp(trim($course), trim($ec)) === 0 && $percentage >= floatval($r['min_percentage'])) {
@@ -1688,15 +1742,22 @@ for (const name of otherFileInputs) {
 
 <script>
 function fetchStudentName() {
-    const upid = document.querySelector('input[name="upid"]').value.trim().toUpperCase();
-    const regno = document.querySelector('input[name="regno"]').value.trim().toUpperCase();
+    const upidInput = document.querySelector('input[name="upid"]');
+    const regnoInput = document.querySelector('input[name="regno"]');
+    const upid = upidInput.value.trim().toUpperCase();
+    const regno = regnoInput.value.trim().toUpperCase();
 
-
-    if (upid && regno) {
-        fetch(`form_generator.php?action=get_student_name&upid=${encodeURIComponent(upid)}&regno=${encodeURIComponent(regno)}`)
+    if (regno) {
+        const params = new URLSearchParams({ action: 'get_student_name', regno });
+        if (upid) params.append('upid', upid);
+        fetch(`form_generator.php?${params.toString()}`)
             .then(response => response.json())
             .then(data => {
                 document.getElementById('student_name').value = data.student_name || '';
+                // Autofill placement ID only when the user hasn't typed one in.
+                if (!upid && data.upid) {
+                    upidInput.value = data.upid;
+                }
             });
     } else {
         document.getElementById('student_name').value = '';

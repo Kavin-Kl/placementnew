@@ -86,7 +86,9 @@ function sync_placed_students(mysqli $conn, array $opts = [])
             // Determine placement batch
             $batch = $r['placement_batch'];
             if (!$batch) {
-                $batch = ($r['allow_reapply'] === 'yes') ? 'reapplied' : 'original';
+                // Any non-'no' allow_reapply value flags this as a reapplied placement.
+                $batch = in_array(strtolower($r['allow_reapply'] ?? ''), ['yes', 'any', 'fulltime', 'internship'], true)
+                    ? 'reapplied' : 'original';
             }
 
             // Check if student filled on/off campus form

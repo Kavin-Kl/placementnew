@@ -77,8 +77,13 @@ if (!function_exists('apply_placement_lock_if_fulltime')) {
 
 if (!function_exists('student_is_locked_out')) {
     function student_is_locked_out(array $student): bool {
+        // A student is locked out only when they're placed AND admin has set
+        // allow_reapply = 'no'. Any non-'no' value (legacy 'yes', or the new
+        // 'any' / 'fulltime' / 'internship' settings) means they can reapply
+        // — the per-drive offer-type filter is enforced in form_generator.php.
+        $reapply = strtolower(trim($student['allow_reapply'] ?? 'no'));
         return ($student['placed_status'] ?? '') === 'placed'
-            && ($student['allow_reapply'] ?? '') !== 'yes';
+            && ($reapply === '' || $reapply === 'no');
     }
 }
 

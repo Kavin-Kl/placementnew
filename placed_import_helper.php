@@ -227,7 +227,12 @@ if (!function_exists('pi_upsert_placed_from_application')) {
         $stmt->close();
         if (!$r) return false;
 
-        $batch = $r['placement_batch'] ?: (($r['allow_reapply'] === 'yes') ? 'reapplied' : 'original');
+        // Any non-'no' allow_reapply value (yes / any / fulltime / internship) is treated
+        // as a reapply; only 'no' (or empty) keeps the original batch label.
+        $batch = $r['placement_batch'] ?: (
+            in_array(strtolower($r['allow_reapply'] ?? ''), ['yes', 'any', 'fulltime', 'internship'], true)
+                ? 'reapplied' : 'original'
+        );
 
         $check = $conn->prepare(
             "SELECT 1 FROM placed_students

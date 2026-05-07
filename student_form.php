@@ -24,6 +24,46 @@ if (isset($_GET['submitted']) && $_GET['submitted'] == '1') {
 ob_start();
 session_start();
 include("config.php");
+
+// AJAX endpoint: lookup placement ID + name by reg_no (used for autofill).
+if (isset($_GET['action']) && $_GET['action'] === 'lookup_student') {
+    while (ob_get_level() > 0) { ob_end_clean(); }
+    header('Content-Type: application/json');
+    $regno = strtoupper(trim($_GET['reg_no'] ?? ''));
+    $upid_hint = strtoupper(trim($_GET['upid'] ?? ''));
+    $payload = ['full_name' => '', 'upid' => ''];
+    if ($regno !== '') {
+        if ($upid_hint !== '') {
+            $stmt = $conn->prepare("SELECT student_name, upid FROM students WHERE reg_no = ? AND upid = ?");
+            $stmt->bind_param("ss", $regno, $upid_hint);
+        } else {
+            $stmt = $conn->prepare("SELECT student_name, upid FROM students WHERE reg_no = ?");
+            $stmt->bind_param("s", $regno);
+        }
+        if ($stmt && $stmt->execute()) {
+            $res = $stmt->get_result();
+            if ($res && $res->num_rows > 0) {
+                $student = $res->fetch_assoc();
+                $payload['full_name'] = $student['student_name'] ?? '';
+                $payload['upid'] = $student['upid'] ?? '';
+            }
+        }
+    }
+    echo json_encode($payload);
+    exit;
+}
+
+// Ensure internship completion certificate columns exist
+$completionColumns = [
+    'completion_certificate_received' => "ALTER TABLE on_off_campus_students ADD `completion_certificate_received` ENUM('yes','no') DEFAULT 'no'",
+    'completion_certificate_file'     => "ALTER TABLE on_off_campus_students ADD `completion_certificate_file` LONGTEXT",
+];
+foreach ($completionColumns as $col => $alter) {
+    $check = $conn->query("SHOW COLUMNS FROM on_off_campus_students LIKE '$col'");
+    if ($check && $check->num_rows === 0) {
+        $conn->query($alter);
+    }
+}
 $available_fields = [
     "company_name" => "Company Name",
     "full_name" => "Full Name",
@@ -37,6 +77,8 @@ $available_fields = [
     "uploaded_offer_letter" => "Upload Offer Letter",
     "intent_letter_received" => "Intent Letter Received",
     "uploaded_intent_letter" => "Upload intent Letter",
+    "completion_certificate_received" => "Internship Completion Certificate Received",
+    "uploaded_completion_certificate" => "Upload Internship Completion Certificate",
     "onboarding_date" => "Joining Date",
     "passing_year" => "Year of Passing",
     "campus_type" => "On/Off Campus",
@@ -234,6 +276,31 @@ $filename = "{$safe_full_name}_{$safe_reg_no}_{$safe_company_name}_intent_Letter
             }
         }
 
+        // ✅ Internship Completion Certificate Upload Handling
+        $completion_certificate_path = '';
+        if (isset($_POST['completion_certificate_received']) && $_POST['completion_certificate_received'] === 'yes') {
+            if (!isset($_FILES["uploaded_completion_certificate"]) || $_FILES["uploaded_completion_certificate"]["error"] !== 0) {
+                $field_errors['uploaded_completion_certificate'] = "Completion Certificate is required if marked as received.";
+            } else {
+                $safe_full_name = preg_replace("/[^a-zA-Z0-9]/", "_", $_POST['full_name'] ?? '');
+                $safe_reg_no = preg_replace("/[^a-zA-Z0-9]/", "_", $_POST['reg_no'] ?? '');
+                $safe_company_name = preg_replace("/[^a-zA-Z0-9]/", "_", $_POST['company_name'] ?? '');
+                $filename = "{$safe_full_name}_{$safe_reg_no}_{$safe_company_name}_completion_Certificate.pdf";
+                $target = "uploads/" . $filename;
+                $ext = strtolower(pathinfo($_FILES["uploaded_completion_certificate"]["name"], PATHINFO_EXTENSION));
+
+                if ($ext !== 'pdf') {
+                    $field_errors['uploaded_completion_certificate'] = "Only PDF is allowed for Completion Certificate.";
+                } elseif ($_FILES["uploaded_completion_certificate"]["size"] > 10 * 1024 * 1024) {
+                    $field_errors['uploaded_completion_certificate'] = "Completion Certificate must be less than 10MB.";
+                } elseif (!move_uploaded_file($_FILES["uploaded_completion_certificate"]["tmp_name"], $target)) {
+                    $field_errors['uploaded_completion_certificate'] = "Completion Certificate upload failed.";
+                } else {
+                    $completion_certificate_path = $target;
+                }
+            }
+        }
+
         // ✅ Photo Upload (Optional)
         if (isset($_FILES["photo"]) && $_FILES["photo"]["error"] === 0) {
             $ext = strtolower(pathinfo($_FILES["photo"]["name"], PATHINFO_EXTENSION));
@@ -267,6 +334,7 @@ $filename = "{$safe_full_name}_{$safe_reg_no}_{$safe_company_name}_photo.{$ext}"
                 // ✅ Add final file paths to $_POST
                 $_POST['offer_letter_file'] = implode(',', $offer_letter_paths);
                 $_POST['intent_letter_file'] = $intent_letter_path;
+                $_POST['completion_certificate_file'] = $completion_certificate_path;
                 $_POST['photo_path'] = $photo_path;
                 $_POST['campus_type'] = $campus_type;
                 $_POST['register_type'] = $register_type; // Add register_type to $_POST
@@ -381,6 +449,31 @@ $filename = "{$safe_full_name}_{$safe_reg_no}_{$safe_company_name}_intent_Letter
             }
         }
 
+        // ✅ Internship Completion Certificate Upload Handling
+        $completion_certificate_path = '';
+        if (isset($_POST['completion_certificate_received']) && $_POST['completion_certificate_received'] === 'yes') {
+            if (!isset($_FILES["uploaded_completion_certificate"]) || $_FILES["uploaded_completion_certificate"]["error"] !== 0) {
+                $field_errors['uploaded_completion_certificate'] = "Completion Certificate is required if marked as received.";
+            } else {
+                $safe_full_name = preg_replace("/[^a-zA-Z0-9]/", "_", $_POST['full_name'] ?? '');
+                $safe_reg_no = preg_replace("/[^a-zA-Z0-9]/", "_", $_POST['reg_no'] ?? '');
+                $safe_company_name = preg_replace("/[^a-zA-Z0-9]/", "_", $_POST['company_name'] ?? '');
+                $filename = "{$safe_full_name}_{$safe_reg_no}_{$safe_company_name}_completion_Certificate.pdf";
+                $target = "uploads/" . $filename;
+                $ext = strtolower(pathinfo($_FILES["uploaded_completion_certificate"]["name"], PATHINFO_EXTENSION));
+
+                if ($ext !== 'pdf') {
+                    $field_errors['uploaded_completion_certificate'] = "Only PDF is allowed for Completion Certificate.";
+                } elseif ($_FILES["uploaded_completion_certificate"]["size"] > 10 * 1024 * 1024) {
+                    $field_errors['uploaded_completion_certificate'] = "Completion Certificate must be less than 10MB.";
+                } elseif (!move_uploaded_file($_FILES["uploaded_completion_certificate"]["tmp_name"], $target)) {
+                    $field_errors['uploaded_completion_certificate'] = "Completion Certificate upload failed.";
+                } else {
+                    $completion_certificate_path = $target;
+                }
+            }
+        }
+
         // ✅ Photo Upload (Optional)
         if (isset($_FILES["photo"]) && $_FILES["photo"]["error"] === 0) {
             $ext = strtolower(pathinfo($_FILES["photo"]["name"], PATHINFO_EXTENSION));
@@ -424,6 +517,7 @@ $filename = "{$safe_full_name}_{$safe_reg_no}_{$safe_company_name}_photo.{$ext}"
         } else {
             $_POST['offer_letter_file'] = implode(',', $offer_letter_paths);
             $_POST['intent_letter_file'] = $intent_letter_path;
+            $_POST['completion_certificate_file'] = $completion_certificate_path;
             $_POST['photo_path'] = $photo_path;
             $_POST['campus_type'] = $campus_type;
             $_POST['upid'] = null; // UPI ID is not applicable for off-campus
@@ -807,6 +901,23 @@ $filename = "{$safe_full_name}_{$safe_reg_no}_{$safe_company_name}_photo.{$ext}"
                     <input type="file" name="uploaded_intent_letter" id="uploaded_intent_letter" accept=".pdf" />
                     <span id="uploaded_intent_letter_error" class="error-tooltip">
                         <?php echo $field_errors['uploaded_intent_letter'] ?? ''; ?>
+                    </span>
+                </div>
+            <?php endif; ?>
+            <?php if (in_array('completion_certificate_received', $fieldList)): ?>
+                <div class="form-group" style="position: relative;">
+                    <label>Internship Completion Certificate Received<span style="color:red;">*</span></label>
+                    <input type="radio" name="completion_certificate_received" value="yes" <?php echo getStickyChecked('completion_certificate_received', 'yes'); ?> required /> Yes
+                    <input type="radio" name="completion_certificate_received" value="no" <?php echo getStickyChecked('completion_certificate_received', 'no'); ?> /> No
+                    <span id="completion_certificate_received_error" class="error-tooltip"></span>
+                </div>
+            <?php endif; ?>
+            <?php if (in_array('uploaded_completion_certificate', $fieldList)): ?>
+                <div class="form-group" style="position: relative;">
+                    <label>Upload Internship Completion Certificate</label>
+                    <input type="file" name="uploaded_completion_certificate" id="uploaded_completion_certificate" accept=".pdf" />
+                    <span id="uploaded_completion_certificate_error" class="error-tooltip">
+                        <?php echo $field_errors['uploaded_completion_certificate'] ?? ''; ?>
                     </span>
                 </div>
             <?php endif; ?>
@@ -1261,6 +1372,40 @@ document.addEventListener("DOMContentLoaded", function () {
     });
 });
 
+</script>
+<script>
+// Autofill placement ID + full name from register number.
+document.addEventListener("DOMContentLoaded", function () {
+    const regInput = document.getElementById("reg_no");
+    const upidInput = document.getElementById("upid");
+    const nameInput = document.getElementById("full_name");
+    if (!regInput) return;
+
+    let lookupTimer = null;
+    function lookupStudent() {
+        const regno = (regInput.value || "").trim().toUpperCase();
+        if (!regno) return;
+        const params = new URLSearchParams({ action: "lookup_student", reg_no: regno });
+        fetch(`student_form.php?${params.toString()}`, { credentials: "same-origin" })
+            .then(r => r.json())
+            .then(data => {
+                if (!data) return;
+                if (nameInput && !nameInput.value.trim() && data.full_name) {
+                    nameInput.value = data.full_name;
+                }
+                if (upidInput && !upidInput.value.trim() && data.upid) {
+                    upidInput.value = data.upid;
+                }
+            })
+            .catch(() => {});
+    }
+
+    regInput.addEventListener("input", function () {
+        clearTimeout(lookupTimer);
+        lookupTimer = setTimeout(lookupStudent, 300);
+    });
+    regInput.addEventListener("blur", lookupStudent);
+});
 </script>
 
 </body>

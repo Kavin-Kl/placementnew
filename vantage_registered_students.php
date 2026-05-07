@@ -777,8 +777,10 @@ function render_students_table($conn, $result, $offset = 0) {
         // Allow Reapply Dropdown
         echo '<td>
                 <select id="allow-reapply-' . htmlspecialchars($row['upid']) . '" class="allow-reapply-select">
-                    <option value="yes"' . ($row['allow_reapply'] === 'yes' ? ' selected' : '') . '>Yes</option>
                     <option value="no"' . ($row['allow_reapply'] === 'no' ? ' selected' : '') . '>No</option>
+                    <option value="any"' . ($row['allow_reapply'] === 'any' ? ' selected' : '') . '>Allow Reapply (Any)</option>
+                    <option value="fulltime"' . ($row['allow_reapply'] === 'fulltime' ? ' selected' : '') . '>Allow Reapply &mdash; Full-time only</option>
+                    <option value="internship"' . ($row['allow_reapply'] === 'internship' ? ' selected' : '') . '>Allow Reapply &mdash; Internship only</option>
                 </select>
               </td>';
         
@@ -1187,8 +1189,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                   <label>Allow Reapply:
                     <select name="allow_reapply">
                       <option value="">All</option>
-                      <option value="yes">Yes</option>
                       <option value="no">No</option>
+                      <option value="any">Allow Reapply (Any)</option>
+                      <option value="fulltime">Allow Reapply &mdash; Full-time only</option>
+                      <option value="internship">Allow Reapply &mdash; Internship only</option>
                     </select>
                   </label>
                   <label>On Campus Placed Status:

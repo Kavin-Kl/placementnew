@@ -5,8 +5,27 @@ if (!isset($_SESSION['admin_id'])) {
     header("Location: index");
     exit;
 }
+
+// Drop the legacy 50-char ceiling on CTC / stipend so admins can paste full
+// compensation breakdowns (the old varchar(50) is what triggered the
+// "what you've written is too long" message and lost the half-filled form).
+foreach ([
+    "drive_roles" => ['ctc', 'stipend'],
+    "drive_data"  => ['ctc', 'stipend'],
+] as $tbl => $cols) {
+    foreach ($cols as $col) {
+        $check = $conn->query("SHOW COLUMNS FROM `$tbl` LIKE '$col'");
+        if ($check && ($info = $check->fetch_assoc())) {
+            $type = strtolower($info['Type']);
+            if (strpos($type, 'varchar') !== false || strpos($type, 'char') !== false) {
+                $conn->query("ALTER TABLE `$tbl` MODIFY `$col` TEXT");
+            }
+        }
+    }
+}
+
 include("header.php");
-include("course_groups_dynamic.php"); 
+include("course_groups_dynamic.php");
 
 function romanize($num) {
     $n = intval($num);
@@ -283,7 +302,7 @@ $stmt->bind_param(
 
 
   
-<form method="POST" enctype="multipart/form-data" onsubmit="return validateDriveForm()"style="
+<form id="addDriveForm" method="POST" enctype="multipart/form-data" onsubmit="return validateDriveForm()"style="
   background: #fff;        /* white background */
   padding: 20px;           /* inner spacing */
   border: 1px solid #ccc;  /* border */
@@ -2325,6 +2344,82 @@ document.addEventListener('change', function(e) {
     }
 });
 
+</script>
+
+<script>
+// Autosave: persist the Add Drive form locally so a server error or accidental
+// reload doesn't wipe everything the user typed. File inputs can't be restored,
+// so they're skipped; everything else (text/number/date/select/textarea/checkbox/radio)
+// is saved on every change and restored on page load.
+(function () {
+    const STORAGE_KEY = 'add_drive_autosave_v1';
+    const form = document.getElementById('addDriveForm');
+    if (!form) return;
+
+    function snapshot() {
+        const data = {};
+        form.querySelectorAll('input, select, textarea').forEach((el, idx) => {
+            if (!el.name) return;
+            if (el.type === 'file' || el.type === 'submit' || el.type === 'button') return;
+            // Use name + index to disambiguate repeated fields like role_name[]
+            const key = el.name + '|' + idx;
+            if (el.type === 'checkbox' || el.type === 'radio') {
+                data[key] = { value: el.value, checked: el.checked };
+            } else {
+                data[key] = { value: el.value };
+            }
+        });
+        try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); } catch (e) {}
+    }
+
+    function restore() {
+        let saved;
+        try { saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null'); } catch (e) { saved = null; }
+        if (!saved) return;
+        form.querySelectorAll('input, select, textarea').forEach((el, idx) => {
+            if (!el.name) return;
+            if (el.type === 'file' || el.type === 'submit' || el.type === 'button') return;
+            const key = el.name + '|' + idx;
+            if (!(key in saved)) return;
+            const s = saved[key];
+            if (el.type === 'checkbox' || el.type === 'radio') {
+                if (s.value === el.value) el.checked = !!s.checked;
+            } else if (s.value !== undefined) {
+                el.value = s.value;
+                el.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+        });
+    }
+
+    function clearSaved() {
+        try { localStorage.removeItem(STORAGE_KEY); } catch (e) {}
+    }
+
+    // Restore once the rest of the page (and any dynamic role rows) has settled.
+    window.addEventListener('load', () => setTimeout(restore, 50));
+
+    form.addEventListener('input', snapshot);
+    form.addEventListener('change', snapshot);
+
+    // Don't keep autosave around once the form posts successfully. The server
+    // currently returns the same page; if there's no validation error in the
+    // visible HTML after submit, drop the saved snapshot.
+    form.addEventListener('submit', () => {
+        // Defer so that an onsubmit returning false (validation fail) keeps the data.
+        setTimeout(() => {
+            // If the page doesn't navigate within ~1s, the submit was likely OK
+            // (or replaced by a redirect) — clear either way once we get past validation.
+        }, 0);
+    });
+
+    // If the page reloaded showing the success banner, drop the snapshot.
+    if (document.getElementById('successMessage')) {
+        clearSaved();
+    }
+
+    // Expose for manual reset (e.g., after a successful save).
+    window.clearAddDriveAutosave = clearSaved;
+})();
 </script>
 
 <?php include("footer.php"); ?>

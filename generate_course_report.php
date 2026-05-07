@@ -355,6 +355,58 @@ if ($program_type_filter !== null) {
 $students_not_placed = $students_registered - $students_placed - $students_defaulted - $offcampus_placed;
 $placement_percentage = $students_registered > 0 ? round((($students_placed + $offcampus_placed) / $students_registered) * 100) : 0;
 
+// === Placed-by-offer-type bifurcation (FTE / Apprenticeship / Internship) ===
+$placed_by_type = ['FTE' => 0, 'Apprenticeship' => 0, 'Internship' => 0, 'Other' => 0];
+$bucket_expr = "
+    CASE
+        WHEN dr.offer_type IS NULL OR dr.offer_type = '' THEN 'Other'
+        WHEN dr.offer_type = 'FTE' OR dr.offer_type LIKE '%PPO%' THEN 'FTE'
+        WHEN dr.offer_type LIKE '%Apprenticeship%' THEN 'Apprenticeship'
+        WHEN dr.offer_type = 'Internship' THEN 'Internship'
+        ELSE 'Other'
+    END
+";
+if ($program_type_filter !== null) {
+    $pt_where_b = ($program_type_filter === 'ALL') ? "" : " AND s.program_type = '" . $conn->real_escape_string($program_type_filter) . "'";
+    $sql_bif = "
+      SELECT $bucket_expr AS bucket, COUNT(DISTINCT a.upid) AS total
+      FROM applications a
+      INNER JOIN students s ON a.student_id = s.student_id
+      LEFT JOIN drive_roles dr ON a.role_id = dr.role_id
+      WHERE LOWER(a.status) = 'placed'
+        $pt_where_b
+        $ay_filter_students_s
+      GROUP BY bucket
+    ";
+    $res_b = $conn->query($sql_bif);
+    if ($res_b) {
+        while ($r = $res_b->fetch_assoc()) {
+            $placed_by_type[$r['bucket']] = (int)$r['total'];
+        }
+    }
+} else {
+    $stmt = $conn->prepare("
+      SELECT $bucket_expr AS bucket, COUNT(DISTINCT a.upid) AS total
+      FROM applications a
+      INNER JOIN students s ON a.student_id = s.student_id
+      LEFT JOIN drive_roles dr ON a.role_id = dr.role_id
+      WHERE LOWER(TRIM(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(a.course,'&','and'),'–',''),'-',''),'(',''),')',''),' ',''),'.',''),'_',''),',','')))
+            IN ($placeholders)
+        AND LOWER(a.status) = 'placed'
+        AND (s.vantage_participant != 'yes' OR s.vantage_participant IS NULL)
+        $ay_filter_students_s
+      GROUP BY bucket
+    ");
+    if ($stmt) {
+        $stmt->bind_param($types, ...$cleaned_courses);
+        $stmt->execute();
+        $res_b = $stmt->get_result();
+        while ($r = $res_b->fetch_assoc()) {
+            $placed_by_type[$r['bucket']] = (int)$r['total'];
+        }
+    }
+}
+
 // CTC
 // Fetch CTC values from placed_students. Prefer the admin-edited override
 // (edit_ctc / edit_stipend) when present so manual corrections are reflected
@@ -674,9 +726,10 @@ $pg_not_placed = $pg_registered - $pg_placed;
 
 
 
-// === EXPORT TO EXCEL ===
+// === EXPORT TO EXCEL (xlsx with two sheets: metrics + companies) ===
 if (isset($_GET['export']) && $_GET['export'] === 'excel') {
-    // Build report type title
+    require_once __DIR__ . '/vendor/autoload.php';
+
     $report_type = '';
     if ($offer_type_filter === 'FULLTIME') {
         $report_type = ' - FULL-TIME';
@@ -684,67 +737,106 @@ if (isset($_GET['export']) && $_GET['export'] === 'excel') {
         $report_type = ' - INTERNSHIP';
     }
 
-    header("Content-Type: application/vnd.ms-excel");
-    header("Content-Disposition: attachment; filename=placement_report_" . str_replace(' ', '_', $course) . "_" . $offer_type_filter . ".xls");
-    header("Pragma: no-cache");
-    header("Expires: 0");
+    $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
 
-    echo "<table border='1'>";
-    echo "<tr><th colspan='2' style='background:#650000;color:#fff;'>PLACEMENT REPORT" . $report_type . " - " . htmlspecialchars($course) . "</th></tr>";
+    // === Sheet 1: Metrics ===
+    $sheet = $spreadsheet->getActiveSheet();
+    $sheet->setTitle('Metrics');
 
-    echo "<tr><td>Students Registered</td><td>$students_registered</td></tr>";
-    echo "<tr><td>Students Placed On-Campus</td><td>$students_placed</td></tr>";
-      echo "<tr><td>Students Placed Off-Campus</td><td>$offcampus_placed</td></tr>";
-    //echo "<tr><td>Students Not Placed</td><td>$students_not_placed</td></tr>";
-    echo "<tr><td>Students Defaulted</td><td>$students_defaulted</td></tr>";
-    echo "<tr><td>Placement Percentage</td><td>$placement_percentage%</td></tr>";
-    //echo "<tr><td>Students Placed Off-Campus</td><td>$offcampus_placed</td></tr>";
+    $row = 1;
+    $sheet->setCellValue("A$row", "PLACEMENT REPORT" . $report_type . " - " . $course);
+    $sheet->mergeCells("A$row:B$row");
+    $sheet->getStyle("A$row")->getFont()->setBold(true);
+    $sheet->getStyle("A$row")->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)->getStartColor()->setRGB('650000');
+    $sheet->getStyle("A$row")->getFont()->getColor()->setRGB('FFFFFF');
+    $row++;
 
+    $put = function($label, $value) use ($sheet, &$row) {
+        $sheet->setCellValue("A$row", $label);
+        $sheet->setCellValue("B$row", $value);
+        $row++;
+    };
+    $section = function($title) use ($sheet, &$row) {
+        $sheet->setCellValue("A$row", $title);
+        $sheet->mergeCells("A$row:B$row");
+        $sheet->getStyle("A$row")->getFont()->setBold(true);
+        $row++;
+    };
 
-   // Show UG/PG split only for overall reports
-// Show UG/PG split only for ALL report
-if ($course === 'ALL') {
-    echo "<tr><th colspan='2'>UG / PG Breakdown</th></tr>";
-    echo "<tr><td>UG Registered</td><td>$ug_registered</td></tr>";
-    echo "<tr><td>UG Placed</td><td>$ug_placed</td></tr>";
-    echo "<tr><td>UG Not Placed</td><td>$ug_not_placed</td></tr>";
-    echo "<tr><td>PG Registered</td><td>$pg_registered</td></tr>";
-    echo "<tr><td>PG Placed</td><td>$pg_placed</td></tr>";
-    echo "<tr><td>PG Not Placed</td><td>$pg_not_placed</td></tr>";
-}
+    $put('Students Registered', $students_registered);
+    $put('Students Placed On-Campus', $students_placed);
+    $put('Students Placed Off-Campus', $offcampus_placed);
+    $put('Students Defaulted', $students_defaulted);
+    $put('Placement Percentage', $placement_percentage . '%');
 
-
-    echo "<tr><th colspan='2'>Companies Recruited</th></tr>";
-    if (!empty($companies)) {
-        foreach ($companies as $c) {
-            echo "<tr><td colspan='2'>" . htmlspecialchars($c) . "</td></tr>";
-        }
-    } else {
-        echo "<tr><td colspan='2'>None</td></tr>";
+    $section('Placed by Offer Type');
+    $put('FTE', $placed_by_type['FTE']);
+    $put('Apprenticeship', $placed_by_type['Apprenticeship']);
+    $put('Internship', $placed_by_type['Internship']);
+    if (!empty($placed_by_type['Other'])) {
+        $put('Other', $placed_by_type['Other']);
     }
 
-    // List of companies that visited (i.e., had a drive matching the course filter),
-    // mirroring what the HTML/PDF version of the report shows.
-    echo "<tr><th colspan='2'>Companies Visited</th></tr>";
-    if (!empty($companies_visited_list)) {
-        foreach ($companies_visited_list as $c) {
-            echo "<tr><td colspan='2'>" . htmlspecialchars($c) . "</td></tr>";
-        }
-    } else {
-        echo "<tr><td colspan='2'>None</td></tr>";
+    if ($course === 'ALL') {
+        $section('UG / PG Breakdown');
+        $put('UG Registered', $ug_registered);
+        $put('UG Placed', $ug_placed);
+        $put('UG Not Placed', $ug_not_placed);
+        $put('PG Registered', $pg_registered);
+        $put('PG Placed', $pg_placed);
+        $put('PG Not Placed', $pg_not_placed);
     }
 
-    echo "<tr><th colspan='2'>Package Details</th></tr>";
-    echo "<tr><td>Average $compensation_label</td><td>$average_ctc</td></tr>";
-    echo "<tr><td>Median $compensation_label</td><td>$median_ctc</td></tr>";
-    echo "<tr><td>Highest $compensation_label</td><td>$highest_ctc</td></tr>";
+    $section('Package Details');
+    $put('Average ' . $compensation_label, $average_ctc);
+    $put('Median ' . $compensation_label, $median_ctc);
+    $put('Highest ' . $compensation_label, $highest_ctc);
 
-    echo "<tr><th colspan='2'>Companies Overview</th></tr>";
-    echo "<tr><td>Total Companies Visited</td><td>$companies_visited</td></tr>";
-    echo "<tr><td>Companies Hired</td><td>$companies_hired</td></tr>";
-    echo "<tr><td>Course Agnostic (All UG / All PG / All UG &amp; PG)</td><td>$companies_course_agnostic</td></tr>";
+    $section('Companies Overview');
+    $put('Total Companies Visited', $companies_visited);
+    $put('Companies Hired', $companies_hired);
+    $put('Course Agnostic (All UG / All PG / All UG & PG)', $companies_course_agnostic);
 
-    echo "</table>";
+    foreach (['A', 'B'] as $col) {
+        $sheet->getColumnDimension($col)->setAutoSize(true);
+    }
+
+    // === Sheet 2: Companies (Recruited + Visited) ===
+    $sheet2 = $spreadsheet->createSheet();
+    $sheet2->setTitle('Companies');
+
+    $sheet2->setCellValue('A1', 'Companies Recruited');
+    $sheet2->setCellValue('B1', 'Companies Visited');
+    $sheet2->getStyle('A1:B1')->getFont()->setBold(true);
+
+    $rrow = 2;
+    $maxRows = max(count($companies), count($companies_visited_list));
+    for ($i = 0; $i < $maxRows; $i++) {
+        if (isset($companies[$i])) {
+            $sheet2->setCellValue('A' . $rrow, $companies[$i]);
+        }
+        if (isset($companies_visited_list[$i])) {
+            $sheet2->setCellValue('B' . $rrow, $companies_visited_list[$i]);
+        }
+        $rrow++;
+    }
+    if ($maxRows === 0) {
+        $sheet2->setCellValue('A2', 'None');
+        $sheet2->setCellValue('B2', 'None');
+    }
+    foreach (['A', 'B'] as $col) {
+        $sheet2->getColumnDimension($col)->setAutoSize(true);
+    }
+
+    $spreadsheet->setActiveSheetIndex(0);
+
+    while (ob_get_level() > 0) { ob_end_clean(); }
+    $filename = 'placement_report_' . str_replace(' ', '_', $course) . '_' . $offer_type_filter . '.xlsx';
+    header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    header('Content-Disposition: attachment; filename="' . $filename . '"');
+    header('Cache-Control: max-age=0');
+    $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
+    $writer->save('php://output');
     exit;
 }
 
@@ -955,10 +1047,22 @@ include ("header.php");
             <tr><td>Students Registered</td><td><?= $students_registered ?></td></tr>
             <tr><td>Students Placed On-Campus</td><td><?= $students_placed ?></td></tr>
             <tr><td>Students Placed Off-Campus</td><td><?= $offcampus_placed ?></td></tr>
-           
+
             <tr><td>Students Defaulted</td><td><?= $students_defaulted ?></td></tr>
             <tr><td>Placement Percentage</td><td><?= $placement_percentage ?>%</td></tr>
-           
+
+        </tbody>
+    </table>
+
+    <table class="table table-bordered table-striped">
+        <thead><tr><th>Offer Type</th><th>Students Placed</th></tr></thead>
+        <tbody>
+            <tr><td>FTE</td><td><?= $placed_by_type['FTE'] ?></td></tr>
+            <tr><td>Apprenticeship</td><td><?= $placed_by_type['Apprenticeship'] ?></td></tr>
+            <tr><td>Internship</td><td><?= $placed_by_type['Internship'] ?></td></tr>
+            <?php if (!empty($placed_by_type['Other'])): ?>
+            <tr><td>Other</td><td><?= $placed_by_type['Other'] ?></td></tr>
+            <?php endif; ?>
         </tbody>
     </table>
 
@@ -974,6 +1078,24 @@ include ("header.php");
 <?php endif; ?>
 
 
+
+    <table class="table table-bordered table-striped">
+        <thead><tr><th>Package Type</th><th>Value</th></tr></thead>
+        <tbody>
+            <tr><td>Average <?= $compensation_label ?></td><td><?= $average_ctc ?></td></tr>
+            <tr><td>Median <?= $compensation_label ?></td><td><?= $median_ctc ?></td></tr>
+            <tr><td>Highest <?= $compensation_label ?></td><td><?= $highest_ctc ?></td></tr>
+        </tbody>
+    </table>
+
+    <table class="table table-bordered table-striped">
+        <thead><tr><th>Metric</th><th>Value</th></tr></thead>
+        <tbody>
+            <tr><td>Total Companies Visited</td><td><?= $companies_visited ?></td></tr>
+            <tr><td>Companies Hired</td><td><?= $companies_hired ?></td></tr>
+            <tr><td>Course Agnostic (All UG / All PG / All UG &amp; PG)</td><td><?= $companies_course_agnostic ?></td></tr>
+        </tbody>
+    </table>
 
    <table class="table table-bordered table-striped">
     <thead><tr><th>Companies Recruited</th></tr></thead>
@@ -1012,25 +1134,6 @@ include ("header.php");
         </tr>
     </tbody>
 </table>
-
-
-    <table class="table table-bordered table-striped">
-        <thead><tr><th>Package Type</th><th>Value</th></tr></thead>
-        <tbody>
-            <tr><td>Average <?= $compensation_label ?></td><td><?= $average_ctc ?></td></tr>
-            <tr><td>Median <?= $compensation_label ?></td><td><?= $median_ctc ?></td></tr>
-            <tr><td>Highest <?= $compensation_label ?></td><td><?= $highest_ctc ?></td></tr>
-        </tbody>
-    </table>
-
-    <table class="table table-bordered table-striped">
-        <thead><tr><th>Metric</th><th>Value</th></tr></thead>
-        <tbody>
-            <tr><td>Total Companies Visited</td><td><?= $companies_visited ?></td></tr>
-            <tr><td>Companies Hired</td><td><?= $companies_hired ?></td></tr>
-            <tr><td>Course Agnostic (All UG / All PG / All UG &amp; PG)</td><td><?= $companies_course_agnostic ?></td></tr>
-        </tbody>
-    </table>
 
     <!-- <?php
 // Fetch company status breakdown (reuse query logic)

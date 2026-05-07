@@ -10,6 +10,18 @@ include("config.php");
 require 'vendor/autoload.php';
 use PhpOffice\PhpSpreadsheet\IOFactory;
 
+// One-time migration: widen `allow_reapply` from enum('yes','no') to a varchar
+// so we can store the new four-way reapply setting (no / any / fulltime / internship).
+// Legacy 'yes' rows are mapped to 'any' (free reapply, the prior behaviour).
+$colInfo = $conn->query("SHOW COLUMNS FROM students LIKE 'allow_reapply'");
+if ($colInfo && ($colRow = $colInfo->fetch_assoc())) {
+    $colType = strtolower($colRow['Type']);
+    if (strpos($colType, 'enum') !== false || strpos($colType, 'varchar') === false) {
+        $conn->query("ALTER TABLE students MODIFY `allow_reapply` VARCHAR(20) NOT NULL DEFAULT 'no'");
+        $conn->query("UPDATE students SET allow_reapply = 'any' WHERE allow_reapply = 'yes'");
+    }
+}
+
 $batches = $conn->query("SELECT DISTINCT batch FROM students ORDER BY batch DESC");
 $placedStatuses = $conn->query("SELECT DISTINCT placed_status FROM students ORDER BY placed_status ASC");
 $applications = $conn->query("
@@ -194,11 +206,11 @@ function fetch_students($conn, $where, $types, $params, $limit = 50, $offset = 0
               ELSE 'not_placed'
           END AS final_status,
 
-          -- Comments only for placed/blocked
-          CASE 
+          -- Comments only for placed/blocked (informational; manual edits live in s.comment)
+          CASE
               WHEN ra.status IN ('placed','blocked') THEN ra.comments
               ELSE NULL
-          END AS comment,
+          END AS app_comment,
 
           -- Company info only for placed/blocked
           CASE 
@@ -301,18 +313,19 @@ function render_students_table($conn, $result, $offset = 0) {
             $params = [$finalStatus, $row['upid']];
             $types  = "ss";
         } else {
+            // Note: `comment` is intentionally excluded from this sync so that admin
+            // edits in the Comments column are preserved across renders.
             $update = $conn->prepare("
               UPDATE students SET
                   placed_status = ?,
-                  comment = ?,
                   company_name = ?,
                   role = ?,
                   ctc = ?,
                   offer_type = ?
               WHERE upid = ?
             ");
-            $params = [$finalStatus, $row['comment'], $row['company_name'], $row['role_name'], $row['ctc'], $row['offer_type'], $row['upid']];
-            $types  = "sssssss";
+            $params = [$finalStatus, $row['company_name'], $row['role_name'], $row['ctc'], $row['offer_type'], $row['upid']];
+            $types  = "ssssss";
         }
 
         if ($update) {
@@ -404,8 +417,10 @@ function render_students_table($conn, $result, $offset = 0) {
         // Allow Reapply Dropdown
         echo '<td>
                 <select id="allow-reapply-' . htmlspecialchars($row['upid']) . '" class="allow-reapply-select">
-                    <option value="yes"' . ($row['allow_reapply'] === 'yes' ? ' selected' : '') . '>Yes</option>
                     <option value="no"' . ($row['allow_reapply'] === 'no' ? ' selected' : '') . '>No</option>
+                    <option value="any"' . ($row['allow_reapply'] === 'any' ? ' selected' : '') . '>Allow Reapply (Any)</option>
+                    <option value="fulltime"' . ($row['allow_reapply'] === 'fulltime' ? ' selected' : '') . '>Allow Reapply &mdash; Full-time only</option>
+                    <option value="internship"' . ($row['allow_reapply'] === 'internship' ? ' selected' : '') . '>Allow Reapply &mdash; Internship only</option>
                 </select>
               </td>';
         
@@ -418,7 +433,11 @@ function render_students_table($conn, $result, $offset = 0) {
 
         // Company + Comment
         echo '<td>' . htmlspecialchars($row['company_name']) . '</td>';
-        echo '<td>' . htmlspecialchars($row['comment']) . '</td>';
+        $commentVal = $row['comment'] ?? '';
+        echo '<td>
+                <span class="field-view">' . htmlspecialchars($commentVal) . '</span>
+                <input type="text" class="field-edit form-control d-none" name="comment" value="' . htmlspecialchars($commentVal) . '" placeholder="Add comment...">
+              </td>';
 
         // Offcampus Selection Dropdown
         echo '<td>
@@ -819,7 +838,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     // Fields allowed to be updated
     $fieldsToUpdate = [
         'upid','program_type', 'program', 'course', 'percentage', 'reg_no', 'student_name',
-        'email', 'phone_no', 'allow_reapply', 'batch', 'editable_comment', 'Offcampus_selection'
+        'email', 'phone_no', 'allow_reapply', 'batch', 'comment', 'editable_comment', 'Offcampus_selection'
     ];
 
     $setParts = [];
@@ -831,7 +850,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             $value = trim($_POST[$field]);
 
             // reject empty values (except allow_reapply which can be "yes"/"no")
-            if ($value === "" && !in_array($field, ['allow_reapply', 'Offcampus_selection', 'editable_comment'])) {
+            if ($value === "" && !in_array($field, ['allow_reapply', 'Offcampus_selection', 'comment', 'editable_comment'])) {
                 echo ucfirst(str_replace("_", " ", $field)) . " cannot be empty.";
                 exit;
             }
@@ -1048,8 +1067,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                   <label>Allow Reapply:
                     <select name="allow_reapply">
                       <option value="">All</option>
-                      <option value="yes">Yes</option>
                       <option value="no">No</option>
+                      <option value="any">Allow Reapply (Any)</option>
+                      <option value="fulltime">Allow Reapply &mdash; Full-time only</option>
+                      <option value="internship">Allow Reapply &mdash; Internship only</option>
                     </select>
                   </label>
                   <label>On Campus Placed Status:
@@ -1720,8 +1741,8 @@ document.addEventListener("DOMContentLoaded", () => {
           }
         }
 
-        // --- Empty field check (editable_comment can be empty) ---
-        if (!val && !["allow_reapply", "editable_comment"].includes(input.name)) {
+        // --- Empty field check (comment fields can be empty) ---
+        if (!val && !["allow_reapply", "comment", "editable_comment"].includes(input.name)) {
           input.classList.add("is-invalid");
           valid = false;
           const label = input.name.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
