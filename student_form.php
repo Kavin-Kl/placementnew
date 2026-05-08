@@ -368,7 +368,10 @@ $filename = "{$safe_full_name}_{$safe_reg_no}_{$safe_company_name}_photo.{$ext}"
 
                     $insert = "INSERT INTO on_off_campus_students ($columns) VALUES ($values)";
                     if ($conn->query($insert)) {
-                        header("Location: on_off_campus.php?submitted=1");
+                        $redirect_target = ($form_context === 'internship')
+                            ? 'internship_offer_letters.php?submitted=1'
+                            : 'on_off_campus.php?submitted=1';
+                        header("Location: $redirect_target");
                         exit;
                     } else {
                         $error = "Database insert failed: " . $conn->error; // Global error
@@ -552,7 +555,10 @@ $filename = "{$safe_full_name}_{$safe_reg_no}_{$safe_company_name}_photo.{$ext}"
 
                 $insert = "INSERT INTO on_off_campus_students ($columns) VALUES ($values)";
                 if ($conn->query($insert)) {
-                    header("Location: on_off_campus.php?submitted=1");
+                    $redirect_target = ($form_context === 'internship')
+                        ? 'internship_offer_letters.php?submitted=1'
+                        : 'on_off_campus.php?submitted=1';
+                    header("Location: $redirect_target");
                     exit;
                 } else {
                     $error = "Database insert failed: " . $conn->error; // Global error

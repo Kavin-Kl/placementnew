@@ -225,7 +225,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES["csv_file"])) {
   <?php endif; ?>
 
   <?php if (!empty($results)): ?>
-    <div class="table-responsive" style="max-height: 500px; overflow-y: auto;">
+    <div class="table-responsive" style="max-height: calc(100vh - 220px); min-height: 60vh; overflow-y: auto;">
       <table class="pertable">
         <thead>
           <tr>

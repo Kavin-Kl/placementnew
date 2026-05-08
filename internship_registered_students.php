@@ -1305,7 +1305,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
       <?= $messageHtml ?>
     </div>
   <?php endif; ?>
-<div class="table-responsive" style="max-height: 500px; overflow-y: auto;">
+<div class="table-responsive" style="max-height: calc(100vh - 220px); min-height: 60vh; overflow-y: auto;">
   <!-- Bulk Action Controls -->
   <div style="margin-bottom: 15px; display: flex; align-items: center; gap: 10px;">
     <button type="button" id="bulkDeleteBtn" class="btn btn-danger btn-sm" style="display: none;">

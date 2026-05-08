@@ -219,7 +219,8 @@ i {
 .table-responsive {
   overflow-x: auto;
   position: relative;
-  max-height: 500px;
+  max-height: calc(100vh - 220px);
+  min-height: 60vh;
   overflow-y: auto;
 }
 
@@ -846,7 +847,8 @@ input[type="submit"]:hover {
   width: 100%;
   overflow-x: auto;
   overflow-y: auto;
-  max-height: 500px;
+  max-height: calc(100vh - 220px);
+  min-height: 60vh;
   margin-top: 20px;
   display: block;
   box-sizing: border-box;
@@ -855,8 +857,8 @@ input[type="submit"]:hover {
 .table-container table {
   width: 100%;
   border-collapse: collapse;
-  min-width: 1200px;
-  table-layout: fixed;
+  min-width: 100%;
+  table-layout: auto;
 }
 
 th,
@@ -1500,7 +1502,7 @@ h2, h4 {
 /* === Enrolled Table === */
 table.enrolled-table {
   width: 100%;
-  min-width: 3000px;
+  min-width: 100%;
   border-collapse: collapse;
   font-size: 12px;
   line-height: 1.2;

@@ -691,7 +691,7 @@ table.company-table td:nth-child(4) {
 /* === Enrolled Table === */
 table.company-table {
   width: 100%;
-  min-width: 3000px;
+  min-width: 100%;
   border-collapse: collapse;
   font-size: 12px;
   line-height: 1.2;

@@ -192,7 +192,7 @@ $page_title = "Internship Company Data";
 }
 .company-data-table {
     font-size: 13px;
-    min-width: 1800px;       /* force the table to be wider than viewport so scrollbar appears */
+    min-width: 100%;
     margin-bottom: 0;
 }
 .company-data-table th,
