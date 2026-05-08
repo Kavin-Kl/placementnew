@@ -196,16 +196,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['form_submit'])) {
            }
         }
         if (empty($field_errors)) { // Proceed only if initial validation (if any) passed
-            // Dedup per (reg_no, company_name) so a student with offers from multiple
-            // companies can submit the form once for each.
-            $checkStmt = $conn->prepare("SELECT 1 FROM on_off_campus_students WHERE reg_no = ? AND company_name = ?");
+            // Prior submission for this (reg_no, company_name)? Pull it back and
+            // override $_POST so getStickyValue() renders the previous response in
+            // the form below, instead of just blocking with a useless error.
+            $checkStmt = $conn->prepare("SELECT * FROM on_off_campus_students WHERE reg_no = ? AND company_name = ?");
             $checkStmt->bind_param("ss", $reg_no, $company_name);
             $checkStmt->execute();
             $checkResult = $checkStmt->get_result();
-
-            if ($checkResult && $checkResult->num_rows > 0) {
-                $error = "You have already submitted the form for this company."; // Global error
-            } else {
+            $already_submitted = ($checkResult && $checkResult->num_rows > 0);
+            if ($already_submitted) {
+                $existing = $checkResult->fetch_assoc();
+                foreach ($existing as $k => $v) {
+                    if ($v !== null && $k !== 'external_id') {
+                        $_POST[$k] = $v;
+                    }
+                }
+                $error = "You have already submitted for this company. Below is your previous response.";
+            }
+            if (!$already_submitted) {
                 $offer_letter_paths = [];
                 $intent_letter_path = '';
                 $photo_path = '';
@@ -388,6 +396,26 @@ $filename = "{$safe_full_name}_{$safe_reg_no}_{$safe_company_name}_photo.{$ext}"
     } elseif ($campus_type === 'off') {
         error_log("✅ Off Campus Block Triggered");
 
+        // Prior submission for this (reg_no, company_name)? Pull it back and
+        // override $_POST so getStickyValue() renders the previous response in
+        // the form below, instead of just blocking with a useless error.
+        $checkStmt = $conn->prepare("SELECT * FROM on_off_campus_students WHERE reg_no = ? AND company_name = ?");
+        $checkStmt->bind_param("ss", $reg_no, $company_name);
+        $checkStmt->execute();
+        $checkResult = $checkStmt->get_result();
+        $already_submitted = ($checkResult && $checkResult->num_rows > 0);
+        if ($already_submitted) {
+            $existing = $checkResult->fetch_assoc();
+            foreach ($existing as $k => $v) {
+                if ($v !== null && $k !== 'external_id') {
+                    $_POST[$k] = $v;
+                }
+            }
+            $error = "You have already submitted for this company. Below is your previous response.";
+        }
+
+        if (!$already_submitted) {
+
         $offer_letter_paths = [];
         $intent_letter_path = '';
         $photo_path = '';
@@ -529,16 +557,6 @@ $filename = "{$safe_full_name}_{$safe_reg_no}_{$safe_company_name}_photo.{$ext}"
         }
         $_POST['onboarding_date'] = $onboarding_date !== '' ? $onboarding_date : null;
 
-        // Dedup per (reg_no, company_name) so a student with offers from multiple
-        // companies can submit the form once for each.
-        $checkStmt = $conn->prepare("SELECT 1 FROM on_off_campus_students WHERE reg_no = ? AND company_name = ?");
-        $checkStmt->bind_param("ss", $reg_no, $company_name);
-        $checkStmt->execute();
-        $checkResult = $checkStmt->get_result();
-
-        if ($checkResult && $checkResult->num_rows > 0) {
-            $error = "You have already submitted the form for this company."; // Global error
-        } else {
             $_POST['offer_letter_file'] = implode(',', $offer_letter_paths);
             $_POST['intent_letter_file'] = $intent_letter_path;
             $_POST['completion_certificate_file'] = $completion_certificate_path;
@@ -571,7 +589,8 @@ $filename = "{$safe_full_name}_{$safe_reg_no}_{$safe_company_name}_photo.{$ext}"
                     $error = "Database insert failed: " . $conn->error; // Global error
                 }
             }
-        }
+
+        } // end if (!$already_submitted)
 
         if (!empty($error)) {
             echo "<script>console.error('❌ FORM ERROR: " . $error . "');</script>";
