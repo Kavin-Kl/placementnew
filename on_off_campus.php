@@ -390,7 +390,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['selected_fields'])) {
   font-size: 12px; /* Base row font size */
 }
 .table-wrapper {
-  max-height: 400px;
+  max-height: calc(100vh - 220px);
+  min-height: 60vh;
   overflow-y: auto;
   overflow-x: auto;
   border: 1px solid #ccc;
@@ -618,6 +619,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['selected_fields'])) {
 <!-- 💡 Bootstrap Field Selection Modal -->
 </head>
 <body>
+
+<?php if (isset($_GET['submitted']) && $_GET['submitted'] === '1'): ?>
+<div id="submitToast" role="status" aria-live="polite"
+     style="position:fixed;top:20px;left:50%;transform:translateX(-50%);
+            background:#0f5132;color:#fff;padding:12px 20px;border-radius:6px;
+            box-shadow:0 4px 14px rgba(0,0,0,0.18);z-index:10000;
+            font-family:system-ui,Segoe UI,Arial,sans-serif;font-size:14px;
+            display:flex;align-items:center;gap:10px;">
+  <span>✓ Offer letter submitted successfully.</span>
+  <button type="button" onclick="document.getElementById('submitToast').remove()"
+          style="background:transparent;border:0;color:#fff;font-size:18px;
+                 cursor:pointer;line-height:1;padding:0 0 0 6px;">×</button>
+</div>
+<script>
+  setTimeout(function(){ var t=document.getElementById('submitToast'); if(t) t.remove(); }, 5000);
+  // Strip ?submitted=1 from the URL so a refresh doesn't show the banner again.
+  if (window.history && window.history.replaceState) {
+    var u = new URL(window.location.href); u.searchParams.delete('submitted');
+    window.history.replaceState({}, '', u.toString());
+  }
+</script>
+<?php endif; ?>
 
 <!-- 💡 Bootstrap Field Selection Modal -->
 <!-- REMOVED 'show' class from here -->
