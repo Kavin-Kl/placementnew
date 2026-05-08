@@ -2,8 +2,9 @@
 session_start();
 include("config.php");
 
+$base = __DIR__ . DIRECTORY_SEPARATOR;
 $zip = new ZipArchive();
-$filename = "uploads/Overall_Placed_Students_all_offer_letters.zip";
+$filename = $base . "uploads/Overall_Placed_Students_all_offer_letters.zip";
 
 if (!$zip->open($filename, ZipArchive::CREATE | ZipArchive::OVERWRITE)) {
     http_response_code(500);
@@ -18,13 +19,14 @@ $missing = [];
 while ($row = $result->fetch_assoc()) {
     $paths = explode(',', $row['offer_letter_file']);
     foreach ($paths as $path) {
-        $file = trim($path);
-        if ($file === '') continue;
+        $rel = trim($path);
+        if ($rel === '') continue;
+        $file = $base . ltrim($rel, '/\\');
         if (file_exists($file)) {
             $zip->addFile($file, basename($file));
             $added++;
         } else {
-            $missing[] = $file;
+            $missing[] = $rel;
         }
     }
 }

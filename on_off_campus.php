@@ -808,18 +808,18 @@ if ($studentMode) {
     <div class="export-files-modal-content">
         <span class="export-files-close" onclick="closeModal()">&times;</span>
         <h5>Export Options</h5>
-        
-        <button class="resets-button" style="margin-bottom:10px;" onclick="downloadOfferLetterZip()">
+
+        <a href="download_all_offers_zip.php" class="resets-button" style="margin-bottom:10px; display:inline-block; text-decoration:none;">
             <i class="fas fa-file-archive" style="margin-right:3px; margin-top:2px"></i> Offer Letter ZIP
-        </button>
+        </a>
 
-        <button class="resets-button" style="margin-bottom:10px;" onclick="downloadIntentLetterZip()">
+        <a href="download_all_indent_zip.php" class="resets-button" style="margin-bottom:10px; display:inline-block; text-decoration:none;">
             <i class="fas fa-file-archive" style="margin-right:3px; margin-top:2px"></i> Intent Letter ZIP
-        </button>
+        </a>
 
-        <button class="resets-button" onclick="downloadPhotoZip()">
+        <a href="download_all_photos_zip.php" class="resets-button" style="display:inline-block; text-decoration:none;">
             <i class="fas fa-file-archive" style="margin-right:3px; margin-top:2px"></i> Photo ZIP
-        </button>
+        </a>
     </div>
 </div>
 

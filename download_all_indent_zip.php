@@ -2,8 +2,9 @@
 session_start();
 include("config.php");
 
+$base = __DIR__ . DIRECTORY_SEPARATOR;
 $zip = new ZipArchive();
-$filename = "uploads/Over_all_Placed_Students_all_intent_letters.zip";
+$filename = $base . "uploads/Over_all_Placed_Students_all_intent_letters.zip";
 
 if (!$zip->open($filename, ZipArchive::CREATE | ZipArchive::OVERWRITE)) {
     http_response_code(500);
@@ -16,13 +17,14 @@ $result = $conn->query("SELECT intent_letter_file FROM on_off_campus_students WH
 $added = 0;
 $missing = [];
 while ($row = $result->fetch_assoc()) {
-    $file = trim($row['intent_letter_file']);
-    if ($file === '') continue;
+    $rel = trim($row['intent_letter_file']);
+    if ($rel === '') continue;
+    $file = $base . ltrim($rel, '/\\');
     if (file_exists($file)) {
         $zip->addFile($file, basename($file));
         $added++;
     } else {
-        $missing[] = $file;
+        $missing[] = $rel;
     }
 }
 
