@@ -10,6 +10,7 @@ if (!isset($_SESSION['student_id'])) {
 
 date_default_timezone_set('Asia/Kolkata');
 include("config.php");
+require_once __DIR__ . '/admin_preview_helper.php';
 include("student_header.php");
 
 $student_id = $_SESSION['student_id'];
@@ -44,19 +45,22 @@ $active_drives_sql = "SELECT COUNT(*) as total FROM drives
 $active_params = [$now, $now];
 $active_types = 'ss';
 
-if ($student_ay) {
-    $active_drives_sql .= " AND academic_year = ?";
-    $active_params[] = $student_ay;
-    $active_types .= 's';
-}
-if ($student_yop) {
-    // Strict match: drives must explicitly target this graduating year.
-    // Empty / NULL graduating_year does NOT pass — admin must tag each drive.
-    $active_drives_sql .= " AND graduating_year IS NOT NULL
-                            AND graduating_year <> ''
-                            AND FIND_IN_SET(?, REPLACE(graduating_year, ' ', ''))";
-    $active_params[] = $student_yop;
-    $active_types .= 's';
+// Admin preview account sees every active drive without AY / grad-year filtering.
+if (!is_admin_preview()) {
+    if ($student_ay) {
+        $active_drives_sql .= " AND academic_year = ?";
+        $active_params[] = $student_ay;
+        $active_types .= 's';
+    }
+    if ($student_yop) {
+        // Strict match: drives must explicitly target this graduating year.
+        // Empty / NULL graduating_year does NOT pass — admin must tag each drive.
+        $active_drives_sql .= " AND graduating_year IS NOT NULL
+                                AND graduating_year <> ''
+                                AND FIND_IN_SET(?, REPLACE(graduating_year, ' ', ''))";
+        $active_params[] = $student_yop;
+        $active_types .= 's';
+    }
 }
 
 $stmt = $conn->prepare($active_drives_sql);
@@ -87,18 +91,21 @@ $upcoming_sql = "SELECT d.*, COUNT(dr.role_id) as role_count
 $upcoming_params = [$now, $now];
 $upcoming_types = 'ss';
 
-if ($student_ay) {
-    $upcoming_sql .= " AND d.academic_year = ?";
-    $upcoming_params[] = $student_ay;
-    $upcoming_types .= 's';
-}
-if ($student_yop) {
-    // Strict match: drives must explicitly target this graduating year.
-    $upcoming_sql .= " AND d.graduating_year IS NOT NULL
-                       AND d.graduating_year <> ''
-                       AND FIND_IN_SET(?, REPLACE(d.graduating_year, ' ', ''))";
-    $upcoming_params[] = $student_yop;
-    $upcoming_types .= 's';
+// Admin preview account sees every drive without AY / grad-year filtering.
+if (!is_admin_preview()) {
+    if ($student_ay) {
+        $upcoming_sql .= " AND d.academic_year = ?";
+        $upcoming_params[] = $student_ay;
+        $upcoming_types .= 's';
+    }
+    if ($student_yop) {
+        // Strict match: drives must explicitly target this graduating year.
+        $upcoming_sql .= " AND d.graduating_year IS NOT NULL
+                           AND d.graduating_year <> ''
+                           AND FIND_IN_SET(?, REPLACE(d.graduating_year, ' ', ''))";
+        $upcoming_params[] = $student_yop;
+        $upcoming_types .= 's';
+    }
 }
 
 $upcoming_sql .= " GROUP BY d.drive_id ORDER BY d.open_date ASC LIMIT 5";

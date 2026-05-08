@@ -10,6 +10,7 @@ if (!isset($_SESSION['student_id'])) {
 
 date_default_timezone_set('Asia/Kolkata');
 include("config.php");
+require_once __DIR__ . '/admin_preview_helper.php';
 include("course_groups_dynamic.php");
 include("student_header.php");
 
@@ -73,33 +74,36 @@ $drives_query = "
     WHERE d.open_date <= '$now' AND d.close_date >= '$now'
 ";
 
-// Add eligibility filter based on student's placement category
-if ($placement_category === 'internship') {
-    $drives_query .= " AND d.show_to_internship = 1";
-} elseif ($placement_category === 'vantage') {
-    $drives_query .= " AND d.show_to_vantage = 1";
-} elseif ($placement_category === 'full-time') {
-    $drives_query .= " AND d.show_to_placement = 1";
-} else {
-    // If no category or 'none', show nothing or all - you can adjust this logic
-    $drives_query .= " AND (d.show_to_internship = 1 OR d.show_to_vantage = 1 OR d.show_to_placement = 1)";
-}
+// Admin preview account sees every drive regardless of category, AY, or grad year.
+if (!is_admin_preview()) {
+    // Add eligibility filter based on student's placement category
+    if ($placement_category === 'internship') {
+        $drives_query .= " AND d.show_to_internship = 1";
+    } elseif ($placement_category === 'vantage') {
+        $drives_query .= " AND d.show_to_vantage = 1";
+    } elseif ($placement_category === 'full-time') {
+        $drives_query .= " AND d.show_to_placement = 1";
+    } else {
+        // If no category or 'none', show nothing or all - you can adjust this logic
+        $drives_query .= " AND (d.show_to_internship = 1 OR d.show_to_vantage = 1 OR d.show_to_placement = 1)";
+    }
 
-// Filter by academic year — drive's AY must match the student's stored AY.
-$student_ay = $student['academic_year'] ?? null;
-if ($student_ay) {
-    $student_ay_e = $conn->real_escape_string($student_ay);
-    $drives_query .= " AND d.academic_year = '$student_ay_e'";
-}
+    // Filter by academic year — drive's AY must match the student's stored AY.
+    $student_ay = $student['academic_year'] ?? null;
+    if ($student_ay) {
+        $student_ay_e = $conn->real_escape_string($student_ay);
+        $drives_query .= " AND d.academic_year = '$student_ay_e'";
+    }
 
-// Strict graduating_year match — drives without an explicit graduating_year tag are hidden
-// from student dashboards. Forces admins to tag each drive's target cohort.
-$student_year = $student['year_of_passing'] ?? null;
-if ($student_year) {
-    $student_year_e = $conn->real_escape_string((string)$student_year);
-    $drives_query .= " AND d.graduating_year IS NOT NULL
-                       AND d.graduating_year <> ''
-                       AND FIND_IN_SET('$student_year_e', REPLACE(d.graduating_year, ' ', ''))";
+    // Strict graduating_year match — drives without an explicit graduating_year tag are hidden
+    // from student dashboards. Forces admins to tag each drive's target cohort.
+    $student_year = $student['year_of_passing'] ?? null;
+    if ($student_year) {
+        $student_year_e = $conn->real_escape_string((string)$student_year);
+        $drives_query .= " AND d.graduating_year IS NOT NULL
+                           AND d.graduating_year <> ''
+                           AND FIND_IN_SET('$student_year_e', REPLACE(d.graduating_year, ' ', ''))";
+    }
 }
 
 $drives_query .= " ORDER BY d.close_date ASC";
@@ -354,6 +358,12 @@ $selected_drive_id = $_GET['drive_id'] ?? null;
 
                           $meets_percentage = !$role['min_percentage'] ||
                                              ($student['percentage'] && $student['percentage'] >= $role['min_percentage']);
+
+                          // Admin preview: treat every role as eligible so the full UI is visible.
+                          if (is_admin_preview()) {
+                              $is_eligible = true;
+                              $meets_percentage = true;
+                          }
 
                           $can_apply = $is_eligible && $meets_percentage && !$role_applied && !$student_locked_out;
                         ?>

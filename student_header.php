@@ -13,6 +13,7 @@ if (!isset($_SESSION['student_id'])) {
 }
 
 include("config.php");
+require_once __DIR__ . '/admin_preview_helper.php';
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -601,6 +602,18 @@ html.sidebar-open .home-section {
   </style>
 </head>
 <body>
+
+<?php if (is_admin_preview()): ?>
+<div style="position: sticky; top: 0; z-index: 200;
+            background: linear-gradient(90deg, #581729, #7a1f38);
+            color: #fff; padding: 8px 16px; font-size: 14px;
+            font-family: 'Segoe UI', sans-serif; text-align: center;
+            box-shadow: 0 2px 6px rgba(0,0,0,.15);">
+  <i class="bx bx-shield-quarter"></i>
+  <strong>Admin Preview Mode</strong> — viewing the student portal with all
+  filters disabled. <a href="student_logout.php" style="color: #ffd166; margin-left: 10px;">Exit preview</a>
+</div>
+<?php endif; ?>
 
 <div class="sidebar" id="studentSidebar">
   <div class="logo-details">
