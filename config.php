@@ -14,7 +14,8 @@ if ($conn->connect_error) {
     error_log('[DB CONNECT] ' . $conn->connect_error);
     if (function_exists('_placement_render_error_page')) {
         _placement_render_error_page('Database is currently unreachable',
-            'Please try again in a moment. If this persists, contact the placement-cell admin.');
+            'Please try again in a moment. If this persists, contact the placement-cell admin.',
+            true);
         exit;
     }
     die("Database connection failed: " . $conn->connect_error);

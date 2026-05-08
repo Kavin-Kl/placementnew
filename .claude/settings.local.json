@@ -105,7 +105,11 @@
       "Bash(\"C:/xampp/php/php.exe\" -l \"C:/xampp/htdocs/placementcell/student_drives.php\")",
       "Read(//usr/local/bin/**)",
       "Read(//opt/homebrew/bin/**)",
-      "Read(//Applications/MAMP/bin/**)"
+      "Read(//Applications/MAMP/bin/**)",
+      "Bash(lsof -iTCP -sTCP:LISTEN -P -n)",
+      "Bash(brew services *)",
+      "Read(//usr/local/**)",
+      "Read(//opt/homebrew/opt/**)"
     ],
     "deny": [],
     "ask": []
