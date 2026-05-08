@@ -967,7 +967,9 @@ if (!empty($_SESSION['selected_academic_year'])) {
     $ay_full_e = $conn->real_escape_string($ay_full);
     $ay_short_e = $conn->real_escape_string($ay_short);
     $ay_trail_e = $conn->real_escape_string($ay_trailing);
-    $whereClauses[] = "(passing_year = '$ay_full_e' OR passing_year = '$ay_short_e' OR passing_year = '$ay_trail_e')";
+    // Also keep rows that have no passing_year (e.g. student forms generated
+    // without passing_year as a selected field) so submissions still appear.
+    $whereClauses[] = "(passing_year IS NULL OR passing_year = '' OR passing_year = '$ay_full_e' OR passing_year = '$ay_short_e' OR passing_year = '$ay_trail_e')";
 }
 
 if (!empty($_GET['search'])) {
