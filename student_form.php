@@ -368,9 +368,15 @@ $filename = "{$safe_full_name}_{$safe_reg_no}_{$safe_company_name}_photo.{$ext}"
 
                     $insert = "INSERT INTO on_off_campus_students ($columns) VALUES ($values)";
                     if ($conn->query($insert)) {
+                        // Absolute path: a relative redirect would be resolved
+                        // against /student_form/<shortcode> and then re-routed back
+                        // to student_form.php by the htaccess RewriteRule, leaving
+                        // the user stuck on the form's success page instead of the
+                        // listing page.
+                        $base_dir = rtrim(dirname($_SERVER['SCRIPT_NAME']), '/\\');
                         $redirect_target = ($form_context === 'internship')
-                            ? 'internship_offer_letters.php?submitted=1'
-                            : 'on_off_campus.php?submitted=1';
+                            ? $base_dir . '/internship_offer_letters.php?submitted=1'
+                            : $base_dir . '/on_off_campus.php?submitted=1';
                         header("Location: $redirect_target");
                         exit;
                     } else {
@@ -555,9 +561,10 @@ $filename = "{$safe_full_name}_{$safe_reg_no}_{$safe_company_name}_photo.{$ext}"
 
                 $insert = "INSERT INTO on_off_campus_students ($columns) VALUES ($values)";
                 if ($conn->query($insert)) {
+                    $base_dir = rtrim(dirname($_SERVER['SCRIPT_NAME']), '/\\');
                     $redirect_target = ($form_context === 'internship')
-                        ? 'internship_offer_letters.php?submitted=1'
-                        : 'on_off_campus.php?submitted=1';
+                        ? $base_dir . '/internship_offer_letters.php?submitted=1'
+                        : $base_dir . '/on_off_campus.php?submitted=1';
                     header("Location: $redirect_target");
                     exit;
                 } else {

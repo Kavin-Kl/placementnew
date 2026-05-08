@@ -109,7 +109,9 @@
       "Bash(lsof -iTCP -sTCP:LISTEN -P -n)",
       "Bash(brew services *)",
       "Read(//usr/local/**)",
-      "Read(//opt/homebrew/opt/**)"
+      "Read(//opt/homebrew/opt/**)",
+      "Bash(/Applications/XAMPP/xamppfiles/bin/mysql --socket=/Applications/XAMPP/xamppfiles/var/mysql/mysql.sock -u root -P 3308 -e \"SHOW DATABASES\")",
+      "Bash(mysql -h 127.0.0.1 -P 3308 -u root -e \"SHOW DATABASES\")"
     ],
     "deny": [],
     "ask": []
