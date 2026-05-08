@@ -954,7 +954,7 @@ if (!empty($_SESSION['import_message'])) {
   <button onclick="applyBulkUpdate()" class="bulksave-button">Save Selected Rows</button>
 </div>
 
-<div class="table-responsive" style="max-height: calc(100vh - 220px); min-height: 60vh; overflow-y: auto;">
+<div class="table-responsive" style="height: calc(100vh - 220px); overflow-y: auto;">
   <table class="table table-bordered table-striped custom-table sticky-table" id="placed_studentsTable">
     <thead>
       <tr>

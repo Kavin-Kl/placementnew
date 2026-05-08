@@ -159,7 +159,7 @@ $files = array_diff(scandir($backupDir), ['.', '..']);
         <?php if (count($files) === 0): ?>
             <p class="no-files">No files available in storage.</p>
         <?php else: ?>
-            <div class="table-responsive" style="max-height: calc(100vh - 220px); min-height: 60vh; overflow-y: auto;">
+            <div class="table-responsive" style="height: calc(100vh - 220px); overflow-y: auto;">
             <table class="table table-bordered table-striped custom-table">
                 <thead>
                     <tr>

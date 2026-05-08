@@ -32,7 +32,7 @@ ini_set('memory_limit', '2048M');
 <head>
     <meta charset="UTF-8">
     <title>Reset & Import Placed Students</title>
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="style.css?v=<?= @filemtime(__DIR__ . "/style.css") ?: time() ?>">
     <style>
         .import-container {
             max-width: 1200px;

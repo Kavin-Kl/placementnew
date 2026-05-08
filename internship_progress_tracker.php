@@ -924,7 +924,7 @@ table.company-table th.sticky-col { background: #650000; z-index: 5; }
 </head>
 <body>
 <?php include 'header.php'; ?>
-<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="style.css?v=<?= @filemtime(__DIR__ . "/style.css") ?: time() ?>">
 
 
 <div class="heading-container7">

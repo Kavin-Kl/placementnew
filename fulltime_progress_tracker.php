@@ -948,7 +948,7 @@ body { display: flex; flex-direction: column; min-height: 100vh; }
 </head>
 <body>
 <?php include 'header.php'; ?>
-<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="style.css?v=<?= @filemtime(__DIR__ . "/style.css") ?: time() ?>">
 
 
 <div class="heading-container7">

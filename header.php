@@ -76,7 +76,7 @@ $users_module_admins = ['Asgar Ahmed', 'Annie Shruthi'];
     <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
 
     <!-- Your custom stylesheet for site-specific styles -->
-    <link href="style.css" rel="stylesheet">
+    <link href="style.css?v=<?= @filemtime(__DIR__ . "/style.css") ?: time() ?>" rel="stylesheet">
 
     <!-- Chart.js Data Labels Plugin: adds labels to charts -->
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>

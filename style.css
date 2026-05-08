@@ -219,9 +219,10 @@ i {
 .table-responsive {
   overflow-x: auto;
   position: relative;
-  max-height: calc(100vh - 220px);
-  min-height: 60vh;
+  height: calc(100vh - 220px);
   overflow-y: auto;
+  border: 1px solid #e2dada;
+  border-radius: 6px;
 }
 
 /* === Sticky Table Base Styles === */
@@ -847,11 +848,12 @@ input[type="submit"]:hover {
   width: 100%;
   overflow-x: auto;
   overflow-y: auto;
-  max-height: calc(100vh - 220px);
-  min-height: 60vh;
+  height: calc(100vh - 220px);
   margin-top: 20px;
   display: block;
   box-sizing: border-box;
+  border: 1px solid #e2dada;
+  border-radius: 6px;
 }
 
 .table-container table {

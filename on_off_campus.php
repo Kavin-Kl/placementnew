@@ -390,11 +390,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['selected_fields'])) {
   font-size: 12px; /* Base row font size */
 }
 .table-wrapper {
-  max-height: calc(100vh - 220px);
-  min-height: 60vh;
+  height: calc(100vh - 220px);
   overflow-y: auto;
   overflow-x: auto;
   border: 1px solid #ccc;
+  border-radius: 6px;
 }
 
 .custom-table th {
