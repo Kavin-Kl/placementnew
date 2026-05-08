@@ -1305,7 +1305,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
       <?= $messageHtml ?>
     </div>
   <?php endif; ?>
-<div class="table-responsive" style="height: calc(100vh - 220px); overflow-y: auto;">
+<div class="table-responsive" style="height: calc(100vh - 100px); overflow-y: auto;">
   <!-- Bulk Action Controls -->
   <div style="margin-bottom: 15px; display: flex; align-items: center; gap: 10px;">
     <button type="button" id="bulkDeleteBtn" class="btn btn-danger btn-sm" style="display: none;">
@@ -1394,31 +1394,17 @@ document.addEventListener("DOMContentLoaded", () => {
     filterModal.style.display = "none";
   });
 
-  // Auto-load data on page load
-  applyFilters();
+  // Initial load is handled by loadMoreStudents(true) below; do not double-fetch.
 });
 
-// Apply filters and reload table data
+// Apply filters: reset offset and delegate to the lazy-loader so filter changes
+// reuse the same paginated path (avoids racing against loadMoreStudents).
 function applyFilters(searchQuery = "") {
-  const form = document.getElementById("filterForm");
-  const formData = new FormData(form);
-  formData.append("ajax_filter", "1");
-
-  // Include search term if present
-  if (searchQuery.trim() !== "") {
-    formData.append("search_query", searchQuery.trim());
+  const modal = document.getElementById("filterModal");
+  if (modal) modal.style.display = "none";
+  if (typeof loadMoreStudents === "function") {
+    loadMoreStudents(true);
   }
-
-  fetch("internship_registered_students", {
-    method: "POST",
-    body: formData
-  })
-    .then((res) => res.text())
-    .then((data) => {
-      document.getElementById("tableBody").innerHTML = data;
-      document.getElementById("filterModal").style.display = "none";
-    })
-    .catch((err) => console.error("Fetch error:", err));
 }
 
 
