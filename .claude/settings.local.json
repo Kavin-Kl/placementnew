@@ -111,7 +111,14 @@
       "Read(//usr/local/**)",
       "Read(//opt/homebrew/opt/**)",
       "Bash(/Applications/XAMPP/xamppfiles/bin/mysql --socket=/Applications/XAMPP/xamppfiles/var/mysql/mysql.sock -u root -P 3308 -e \"SHOW DATABASES\")",
-      "Bash(mysql -h 127.0.0.1 -P 3308 -u root -e \"SHOW DATABASES\")"
+      "Bash(mysql -h 127.0.0.1 -P 3308 -u root -e \"SHOW DATABASES\")",
+      "Bash(/Applications/XAMPP/xamppfiles/bin/mysql --version)",
+      "Bash(mysql --version)",
+      "Read(//Applications/XAMPP/xamppfiles/bin/**)",
+      "Read(//Applications/MAMP/Library/bin/**)",
+      "Read(//Applications/**)",
+      "Read(//opt/lampp/bin/**)",
+      "Bash(find / -maxdepth 5 -name \"mysql\" -type f)"
     ],
     "deny": [],
     "ask": []

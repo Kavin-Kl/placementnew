@@ -6,6 +6,8 @@ include("config.php");
 include_once __DIR__ . '/logger.php';
 
 $users_module_admins = ['Asgar Ahmed', 'Annie Shruthi'];
+$super_admins = ['Asgar Ahmed'];
+$is_super_admin = isset($_SESSION['username']) && in_array($_SESSION['username'], $super_admins, true);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -845,6 +847,7 @@ html.sidebar-open .sidebar li.nav-group > .nav-group-children {
                         'backup_module.php',
                         'admin_student_progress.php',
                         'users.php',
+                        'super_admin.php',
                     ];
 
                     $ft_active      = $is_ft_apps  || in_array($currentPage, $ft_pages, true);
@@ -1084,6 +1087,15 @@ html.sidebar-open .sidebar li.nav-group > .nav-group-children {
                                 <span class="links_name">Users</span>
                             </a>
                             <span class="tooltip">Users</span>
+                        </li>
+                        <?php endif; ?>
+                        <?php if (!empty($is_super_admin)): ?>
+                        <li>
+                            <a href="super_admin.php" class="<?= $currentPage === 'super_admin.php' ? 'active' : '' ?>">
+                                <i class="bi bi-shield-lock"></i>
+                                <span class="links_name">Database Tables</span>
+                            </a>
+                            <span class="tooltip">Database Tables</span>
                         </li>
                         <?php endif; ?>
                     </ul>
